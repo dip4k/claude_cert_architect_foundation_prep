@@ -418,13 +418,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-# VS Code files for those working on multiple tools
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
+# Visual Studio Code
+.vscode/
+*.code-workspace
+.vscode-test/
 
 # Local History for Visual Studio Code
 .history/
@@ -443,13 +440,7 @@ FodyWeavers.xsd
 #*.lscache
 
 # Visual Studio Code
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-!.vscode/*.code-snippets
-!*.code-workspace
+.vscode/
 
 # Built Visual Studio Code Extensions
 *.vsix
@@ -816,10 +807,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
-.vscode/settings.json
-docs/codemie/**
+# Visual Studio Code & CodeMie
+.vscode/
+*.code-workspace
+.vscode-test/
+.codemie/
+codemie/
+docs/codemie/
+**/codemie/**
+*codemie*
 uv.lock
-.codemie/**
 
 # Virtual environments, local backups & tool caches
 .venv*/
