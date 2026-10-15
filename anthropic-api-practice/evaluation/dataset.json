@@ -1,0 +1,17 @@
+[
+  {
+    "task": "Parse an AWS CloudFormation template and extract all resource logical IDs that have type 'AWS::S3::Bucket'",
+    "format": "python",
+    "solution_criteria": "Function correctly identifies and returns a list of logical IDs for all S3 bucket resources in a given CloudFormation template dictionary"
+  },
+  {
+    "task": "Create a JSON policy document that grants an IAM user read-only access to a specific S3 bucket named 'my-data-bucket'",
+    "format": "json",
+    "solution_criteria": "Valid IAM policy JSON that allows s3:GetObject and s3:ListBucket actions only on the specified bucket with correct resource ARNs"
+  },
+  {
+    "task": "Write a regex pattern to validate AWS EC2 security group rule CIDR notation (e.g., '192.168.1.0/24' or '0.0.0.0/0')",
+    "format": "regex",
+    "solution_criteria": "Pattern correctly matches valid CIDR blocks and rejects invalid formats, handling both specific subnets and wildcard notation"
+  }
+]

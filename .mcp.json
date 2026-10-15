@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/mcp-config.json",
+  "mcpServers": {
+    "customer-service-mcp": {
+      "command": "python3",
+      "args": ["-m", "domain2.ts_2_4_mcp_server_integration.server"],
+      "env": {
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+        "SERVICE_ENV": "development",
+        "DEBUG": "true"
+      }
+    },
+    "memory-mcp": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    }
+  }
+}
