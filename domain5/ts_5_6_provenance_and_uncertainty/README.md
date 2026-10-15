@@ -8,15 +8,16 @@ Understand how to construct structured claim-source mappings, maintain provenanc
 ## 🏗️ Architecture: Conflict Preservation & Provenance Graph
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    SourceA["Source A (Earnings Call, Oct 1)<br/>'Q3 Cloud Revenue was $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
-    SourceB["Source B (10-Q SEC Filing, Oct 15)<br/>'Q3 Cloud Revenue was $1.4B'"] --> Synthesizer
+    SourceA["Source A (Earnings Call, Oct 1)<br/>'Q3 Cloud Revenue: $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
+    SourceB["Source B (10-Q Filing, Oct 15)<br/>'Q3 Cloud Revenue: $1.4B'"] --> Synthesizer
     
     Synthesizer --> ConflictDetector{"Do Claims Conflict?"}
     
     ConflictDetector -- "Yes" --> PreserveConflict["Conflict Preservation Protocol"]
     
-    PreserveConflict --> Out["Structured Claim Matrix<br/>Disclose both figures with citations<br/>(Never average into artificial mean)"]
+    PreserveConflict --> Out["Structured Claim Matrix<br/>Disclose both figures with citations<br/>(Never average into synthetic mean)"]
 ```
 
 ---

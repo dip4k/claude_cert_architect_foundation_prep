@@ -6,19 +6,20 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart LR
     subgraph Config["Configuration & Extensions"]
         direction TB
-        C1["TS 3.1: 4-Tier CLAUDE.md Hierarchy"]
-        C2["TS 3.2: Commands & Skills (fork)"]
-        C3["TS 3.3: Path-Specific Rules (Glob)"]
+        C1["TS 3.1:<br/>4-Tier Hierarchy"]
+        C2["TS 3.2:<br/>Commands & Skills (fork)"]
+        C3["TS 3.3:<br/>Path Rules (Glob)"]
     end
 
     subgraph Exec["Execution & Automation"]
         direction TB
-        E1["TS 3.4: Plan Mode vs Direct Execution"]
-        E2["TS 3.5: Iterative Refinement & Interview"]
-        E3["TS 3.6: Headless Non-Interactive CI/CD"]
+        E1["TS 3.4:<br/>Plan Mode vs Direct"]
+        E2["TS 3.5:<br/>Refinement & Interview"]
+        E3["TS 3.6:<br/>Headless Non-Interactive CI"]
     end
 ```
 
@@ -41,11 +42,12 @@ flowchart LR
 Claude Code enforces a strict, hierarchical inheritance model when loading configuration instructions:
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    L1["1. User-Level: ~/.claude/CLAUDE.md<br/>(Personal defaults, unversioned)"]
-    L2["2. Project-Level: .claude/CLAUDE.md<br/>(Team standards, in git)"]
-    L3["3. Directory-Level: &lt;subdir&gt;/CLAUDE.md<br/>(Subtree specific)"]
-    L4["4. Path-Scoped Rules: .claude/rules/*.md<br/>(Conditionally loaded by glob)"]
+    L1["1. User Scope: ~/.claude/CLAUDE.md<br/>(Personal defaults, unversioned)"]
+    L2["2. Project Scope: .claude/CLAUDE.md<br/>(Team standards, in git)"]
+    L3["3. Directory Scope: subdir/CLAUDE.md<br/>(Subtree specific)"]
+    L4["4. Path Rules: .claude/rules/*.md<br/>(Conditionally loaded by glob)"]
     L1 -->|Overridden by| L2
     L2 -->|Overridden by| L3
     L3 -->|Overridden by| L4
@@ -264,9 +266,10 @@ Using `--output-format json` with `--json-schema` guarantees that Claude's revie
 Downstream CI steps can parse this JSON with `jq` to post automated PR comments or block merging if `findings` contains `HIGH` or `CRITICAL` severity issues.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Event["CI Trigger (PR Event)"] --> Sandbox["Ephemeral Container Sandbox"]
-    Sandbox --> Exec["Run claude -p --dangerously-skip-permissions<br/>(--output-format json)"]
+    Sandbox --> Exec["Run claude -p<br/>--dangerously-skip-permissions<br/>(--output-format json)"]
     Exec --> Parse["Parse JSON Output"]
     Parse --> Check{"Critical / High Findings?"}
     Check -->|Yes| Block["Exit Code 1: Block Merge Gate"]
@@ -543,6 +546,7 @@ Option B is correct. In TS 3.5 (Iterative Refinement), a core architectural rule
 ### 🧠 Domain 3 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. Team standards or slash commands?"] -->|Yes| A1["<b>Repository Root: .claude/</b><br/>Never personal ~/.claude/"]
     Q1 -->|No| Q2["2. Verbose exploration skill?"]

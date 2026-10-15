@@ -52,13 +52,14 @@ We are architecting an enterprise data ingestion and document processing pipelin
 ### 🧠 Scenario 6 Rapid Exam Decision Tree
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start{Extraction Scenario Focus}
-    Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br/>(Forced tool_choice, never regex/text)"]
+    Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br/>(Forced tool_choice,<br/>never regex/text)"]
     Start -->|Missing Optional Fields| D2["Nullable Schema: type ['string', 'null']<br/>(Never strictly required)"]
     Start -->|Arithmetic Mismatch| D3["Closed-Loop Retry<br/>(Targeted math error feedback)"]
-    Start -->|Physically Absent Data| D4["Fail-Fast to Human Review<br/>(Retries cannot invent absent data)"]
-    Start -->|Audit 98% Accurate Pipeline| D5["5-10% Stratified Sampling<br/>(Across document subtypes & vendors)"]
+    Start -->|Physically Absent Data| D4["Fail-Fast to Human Review<br/>(Retries cannot invent<br/>absent data)"]
+    Start -->|Audit 98% Accurate Pipeline| D5["5-10% Stratified Sampling<br/>(Across document subtypes<br/>& vendors)"]
 ```
 
 | Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
@@ -176,13 +177,14 @@ Rigid enums force the model to categorize edge-case items into the nearest incor
 When deterministic validation fails, the orchestrator must decide whether to retry or abort:
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     ValidationError["Validation Failure Triggered"] --> FailureType{"Failure Root Cause"}
     
     FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count < 2?"}
     
-    RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br/>Send targeted math error via tool_result"]
-    RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human Exception Queue"]
+    RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br/>Send targeted math error<br/>via tool_result"]
+    RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human<br/>Exception Queue"]
     
     FailureType -- "Fact Fundamentally Absent (missing on paper)" --> FastFail["Fast-Fail to Human Queue<br/>Abort retries; keep field null"]
 ```
@@ -345,7 +347,7 @@ A common management mistake is observing an aggregate **98% extraction accuracy*
 ```mermaid
 stateDiagram-v2
     [*] --> OCR_INGESTION: Document uploaded
-    OCR_INGESTION --> SCHEMA_EXTRACTION: Run Claude with tool_choice: "extract_invoice_data"
+    OCR_INGESTION --> SCHEMA_EXTRACTION: Run Claude with tool_choice extract_invoice_data
     
     SCHEMA_EXTRACTION --> DETERMINISTIC_VALIDATION: Claude emits structured JSON
     

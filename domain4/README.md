@@ -117,6 +117,7 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 ### 🧠 Domain 4 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["<b>tool_use with forced tool_choice</b><br/>Guaranteed valid JSON schema"]
     Q1 -->|No| Q2["2. Document attributes missing?"]

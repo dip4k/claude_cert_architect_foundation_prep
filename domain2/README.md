@@ -120,6 +120,7 @@ Domain 2 accounts for 18% of the **Claude Certified Architect – Foundations (C
 ### 🧠 Domain 2 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. Model picks wrong tool?"] -->|Yes| A1["<b>Refine Tool Description & Boundaries</b><br/>Never build custom classifier"]
     Q1 -->|No| Q2["2. Zero records returned?"]

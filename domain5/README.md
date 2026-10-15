@@ -119,6 +119,7 @@ Domain 5 accounts for 15% of the **Claude Certified Architect – Foundations (C
 ### 🧠 Domain 5 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. Customer demands a human?"] -->|Yes| A1["<b>Escalate Immediately</b><br/>Zero friction; compile handoff manifest"]
     Q1 -->|No| Q2["2. Entity lookup collision?"]

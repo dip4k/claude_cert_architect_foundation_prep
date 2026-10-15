@@ -125,6 +125,7 @@ Domain 1 represents the highest-weighted domain on the **Claude Certified Archit
 ### 🧠 Domain 1 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. Ending an agentic loop?"] -->|Yes| A1["<b>stop_reason == 'end_turn'</b><br/>Never parse text or regex"]
     Q1 -->|No| Q2["2. Enforcing business rules?"]

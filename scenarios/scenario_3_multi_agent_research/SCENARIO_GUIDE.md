@@ -51,10 +51,11 @@ We are architecting an autonomous, institutional-grade market and financial due-
 ### 🧠 Scenario 3 Rapid Exam Decision Tree
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start{Research Inquiry Focus}
     Start -->|Spawn 3 Subagents| D1["Multiple Task Calls in Turn 1<br/>(Concurrent parallel fan-out)"]
-    Start -->|Conflicting Metrics| D2["Cite Both Numbers & Dates<br/>(Never average into synthetic mean)"]
+    Start -->|Conflicting Metrics| D2["Cite Both Numbers & Dates<br/>(Never average into mean)"]
     Start -->|Subagent Timeout / Error| D3["Structured Error Propagation<br/>(Add coverage gap notice)"]
     Start -->|0 Matching Records| D4["Valid Empty: isError false, count 0<br/>(Ground truth finding)"]
 ```
@@ -76,6 +77,7 @@ In complex multi-domain intelligence gathering, allowing subagents to communicat
 - **The Hub-and-Spoke Rule**: All control flow routes strictly through the Coordinator. Subagents receive a scoped task, execute in isolation, and report findings back to the Hub.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     UserQuery["User Request"] --> Hub["Coordinator Hub"]
     subgraph IsolatedSpokes["Isolated Subagents (Zero P2P Traffic)"]

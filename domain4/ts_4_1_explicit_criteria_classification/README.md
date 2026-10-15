@@ -8,15 +8,16 @@ Understand how to replace vague prompt heuristics with concrete categorical crit
 ## 🏗️ Architecture: Vague vs Explicit Prompting
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    subgraph AntiPattern["Anti-Pattern (High False Positive Rate)"]
-        Vague["'Be conservative. Flag any code that looks risky.'"]
+    subgraph AntiPattern["Anti-Pattern: High False Positives"]
+        Vague["'Be conservative.<br/>Flag code that looks risky.'"]
         ResultA["Flags mock passwords in tests<br/>Flags benign helper functions"]
     end
 
-    subgraph Recommended["Explicit Rubric Pattern (Calibrated Precision)"]
-        Explicit["Concrete Category Rules + Negative Boundaries<br/>(Exclude test mocks and fixtures)"]
-        ResultB["Zero false positives on test fixtures<br/>High precision on production vulnerabilities"]
+    subgraph Recommended["Explicit Rubric Pattern"]
+        Explicit["Concrete Category Rules<br/>+ Negative Boundaries<br/>(Exclude test mocks & fixtures)"]
+        ResultB["Zero false positives on fixtures<br/>High precision on vulnerabilities"]
     end
 ```
 

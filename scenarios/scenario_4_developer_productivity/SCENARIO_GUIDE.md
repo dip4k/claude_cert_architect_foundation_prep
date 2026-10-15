@@ -51,6 +51,7 @@ We are engineering an AI-augmented developer onboarding and maintenance workflow
 ### 🧠 Scenario 4 Rapid Exam Decision Tree
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start{Developer Workflow Focus}
     Start -->|Locating Symbols| D1["Glob -> Grep -> Chunked Read<br/>(Never bulk-read all files)"]
@@ -79,6 +80,7 @@ When a developer asks to fix a bug in an unfamiliar repository, a novice agent a
   3. **Chunked `Read` (Surgical Slice)**: Inspect only the surrounding 30–50 lines: `Read(path="services/billing/tax.py", offset=140, limit=40)`.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart LR
     Start["User Request"] --> Step1["1. Glob<br/>(Candidate files)"]
     Step1 --> Step2["2. Grep<br/>(Pinpoint line)"]
@@ -90,6 +92,7 @@ flowchart LR
 Claude Code's built-in `Edit` tool performs an exact string replacement (`old_string` $\rightarrow$ `new_string`). To prevent corrupting duplicate lines, the tool strictly requires that `old_string` matches **exactly one location** in the target file.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     CallEdit["1. Call Edit(path, old, new)"] --> CheckUniqueness{"Target String Unique?"}
     CheckUniqueness -->|Yes: 1 Match| Success["Commit Edit"]
@@ -98,7 +101,7 @@ flowchart TD
     Expansion --> RetryEdit["Retry Edit with Expanded Anchor"]
     RetryEdit --> RetryCheck{"Now Unique?"}
     RetryCheck -->|Yes| Success
-    RetryCheck -->|No| FallbackWrite["3. Fallback: Read + Write Reconciled File"]
+    RetryCheck -->|No| FallbackWrite["3. Fallback: Read + Write<br/>Reconciled File"]
     FallbackWrite --> Success
 ```
 

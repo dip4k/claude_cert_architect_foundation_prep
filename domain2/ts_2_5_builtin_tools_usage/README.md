@@ -22,14 +22,15 @@ Understand when and how Claude Code selects and applies built-in developer tools
 
 On the exam, scenarios often ask what happens when `Edit` fails:
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     A["Attempt Edit(old_str, new_str)"] --> B{Edit Status?}
     B -- Success --> C["Code Updated"]
     B -- "Multiple matches found" --> D["Read context around target line"]
     B -- "Target text not found" --> D
-    D --> E["Expand anchor string to include unique lines"]
+    D --> E["Expand anchor string<br/>to include unique lines"]
     E --> F["Re-attempt Edit with unique context"]
-    F -- Still failing --> G["Fall back to Read + Write (full file replacement)"]
+    F -- Still failing --> G["Fall back to Read + Write<br/>(full file replacement)"]
 ```
 
 ### Key Gotcha

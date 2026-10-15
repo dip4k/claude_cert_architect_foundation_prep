@@ -52,11 +52,12 @@ We are engineering an automated pull request (PR) gatekeeper and code review eng
 ### 🧠 Scenario 5 Rapid Exam Decision Tree
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start{CI/CD Review Focus}
     Start -->|Runner Hangs on Stdin| D1["Pass -p / --print Flag<br/>(Never unix stdin redirects)"]
-    Start -->|Batch API for PR Checks| D2["Reject for Blocking PRs<br/>(Use Real-Time API; Batch has 24h SLA)"]
-    Start -->|Multi-File PR Attention Loss| D3["Two-Pass Review Pipeline<br/>(Pass 1 Local + Pass 2 Integration)"]
+    Start -->|Batch API for PR Checks| D2["Reject for Blocking PRs<br/>(Use Real-Time API;<br/>Batch has 24h SLA)"]
+    Start -->|Multi-File PR Attention Loss| D3["Two-Pass Review Pipeline<br/>(Pass 1 Local +<br/>Pass 2 Integration)"]
     Start -->|Author Reviews Own PR| D4["Spawn Independent Instance<br/>(Eliminate self-review bias)"]
 ```
 
@@ -96,17 +97,19 @@ Anthropic's Message Batches API provides a **50% discount** on input and output 
 - **When to Use Batch API**: Non-blocking, asynchronous workloads that tolerate latency, such as **overnight technical debt audits**, weekly documentation updates, or bulk static security scans across 10,000 repository files.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Task["Code Review Workload"] --> LatencyCheck{"Pre-merge or blocking?"}
     
     LatencyCheck -- "Yes (< 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br/>Immediate response; standard pricing"]
-    LatencyCheck -- "No (<= 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br/>50% cost discount; asynchronous turnaround"]
+    LatencyCheck -- "No (<= 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br/>50% cost discount; asynchronous"]
 ```
 
 ### 3. Two-Pass Review Architecture (TS 4.6)
 Attempting to evaluate both line-by-line syntax and system-wide API contracts in a single prompt causes **attentional dilution**. The model focuses on obvious local syntax bugs while overlooking subtle cross-module contract breaks.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     PR["Incoming Multi-File PR"] --> Split["Split Files into Isolated Contexts"]
     
@@ -123,12 +126,12 @@ flowchart TD
     R1 & R2 & R3 --> Agg["Aggregate Local Findings Manifest"]
     
     subgraph Pass2["Pass 2: System API Contracts & Integration (Holistic)"]
-        Agg --> P2Instance["Pass 2 Independent Review<br/>(Aggregated Findings + Exported Signatures)"]
+        Agg --> P2Instance["Pass 2 Independent Review<br/>(Aggregated Findings +<br/>Exported Signatures)"]
         P2Instance --> ContractEval{"Contract Violations Found?"}
     end
     
-    ContractEval -- "Yes" --> BlockGate["Exit Code 1: Block PR & Post Inline Review"]
-    ContractEval -- "No" --> PassGate["Exit Code 0: Approve PR Merge Gate"]
+    ContractEval -- "Yes" --> BlockGate["Exit Code 1: Block PR &<br/>Post Inline Review"]
+    ContractEval -- "No" --> PassGate["Exit Code 0: Approve<br/>PR Merge Gate"]
 ```
 
 | Review Dimension | Pass 1: Local File Correctness | Pass 2: System API Contracts & Integration |

@@ -48,18 +48,19 @@ uv run domain1/ts_1_1_multi_tool_agent_loop/main.py
 ## 🏛️ Exam Content Domains (27 Task Statements)
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    CCAR["<b>Claude Certified Architect – Foundations (CCAR-F)</b><br/>Passing Score: 720 / 1000 | 60 Questions | 120 Minutes"]
+    CCAR["<b>Claude Certified Architect – Foundations (CCAR-F)</b><br/>Score: 720 / 1000 | 60 Questions | 120 Mins"]
     
     subgraph Core["Core Architecture & Tooling"]
-        D1["<b>Domain 1: Agentic Loops & Coordination (27%)</b><br/>• stop_reason == 'end_turn' • Hub-and-spoke • SDK hooks"]
-        D2["<b>Domain 2: Tool Design & MCP (18%)</b><br/>• Descriptions as interfaces • Structured MCP errors • Least privilege"]
+        D1["<b>Domain 1: Agentic Loops & Coordination (27%)</b><br/>• stop_reason == 'end_turn'<br/>• Hub-and-spoke topology<br/>• SDK hooks"]
+        D2["<b>Domain 2: Tool Design & MCP (18%)</b><br/>• Descriptions as interfaces<br/>• Structured MCP errors<br/>• Least privilege"]
     end
     
     subgraph Workflows["Workflows, Prompting & Reliability"]
-        D3["<b>Domain 3: Claude Code Workflows (20%)</b><br/>• CLAUDE.md hierarchy • Plan Mode • Headless CI (-p)"]
-        D4["<b>Domain 4: Prompt Engineering & Output (20%)</b><br/>• JSON via tool_use • Nullable fields • Real-time vs Batch"]
-        D5["<b>Domain 5: Context & Reliability (15%)</b><br/>• Case Facts layer • Immediate escalation • Stratified audits"]
+        D3["<b>Domain 3: Claude Code Workflows (20%)</b><br/>• CLAUDE.md hierarchy<br/>• Plan Mode<br/>• Headless CI (-p)"]
+        D4["<b>Domain 4: Prompt Engineering & Output (20%)</b><br/>• JSON via tool_use<br/>• Nullable fields<br/>• Real-time vs Batch"]
+        D5["<b>Domain 5: Context & Reliability (15%)</b><br/>• Case Facts layer<br/>• Immediate escalation<br/>• Stratified audits"]
     end
 
     CCAR --> Core

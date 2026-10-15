@@ -6,19 +6,20 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart LR
     subgraph Tools["Tool Interfaces & Execution"]
         direction TB
-        T1["TS 2.1: Descriptions & Boundaries"]
-        T2["TS 2.2: MCP Structured Errors"]
-        T3["TS 2.3: Least Privilege & tool_choice"]
+        T1["TS 2.1:<br/>Descriptions & Boundaries"]
+        T2["TS 2.2:<br/>MCP Structured Errors"]
+        T3["TS 2.3:<br/>Least Privilege & tool_choice"]
     end
 
     subgraph MCP["MCP Integration & Scoping"]
         direction TB
-        M1["TS 2.4: Project vs User Scoping"]
-        M2["TS 2.4: MCP Resources for Catalogs"]
-        M3["TS 2.5: Built-in Tool Selection & Edit"]
+        M1["TS 2.4:<br/>Project vs User Scoping"]
+        M2["TS 2.4:<br/>MCP Resources for Catalogs"]
+        M3["TS 2.5:<br/>Built-in Tool Selection & Edit"]
     end
 ```
 
@@ -45,9 +46,10 @@ In LLM-based agent systems, the language model does not see backend database tab
 Minimal, vague, or overlapping descriptions (e.g. `description: "Finds stuff"`) cause an immediate **50%+ tool selection misrouting rate**, triggering hallucinated arguments or infinite tool-hopping loops.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    Intent["User Intent:<br/>'Lookup status of shipment #8812'"] --> Eval["Claude Evaluates Tool Declarations"]
-    Eval -->|Minimal Description| Ambiguous["Ambiguous: order_tool vs shipping_tool<br/>50% Misrouting (Guesses blindly)"]
+    Intent["User Intent:<br/>'Lookup status of shipment #8812'"] --> Eval["Claude Evaluates<br/>Tool Declarations"]
+    Eval -->|Minimal Description| Ambiguous["Ambiguous: order vs shipping<br/>50% Misrouting (Guesses blindly)"]
     Eval -->|Boundary Description| Clear["Differentiated: lookup_shipment<br/>100% Deterministic Routing"]
 ```
 
@@ -126,13 +128,14 @@ Providing an agent with 15–25 tools degrades performance:
 - **The Standard**: Restrict agents to **4–5 specialized tools** strictly aligned with their core role. If an agent requires more capabilities, decompose the workflow into a coordinator with specialized subagents.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     subgraph AntiPattern["Anti-Pattern: Monolithic Agent"]
         Mono["Single Agent with 15+ Tools<br/>High confusion & context pollution"]
     end
 
-    subgraph BestPractice["Production: Least Privilege (4-5 Tools/Agent)"]
-        Coord["Coordinator (allowedTools: Task)"]
+    subgraph BestPractice["Production: Least Privilege"]
+        Coord["Coordinator<br/>(allowedTools: Task)"]
         Coord --> Sub1["Billing Subagent<br/>[query_billing, process_refund]"]
         Coord --> Sub2["Order Support Subagent<br/>[lookup_order, track_shipment]"]
     end
@@ -240,12 +243,13 @@ The `Edit` tool relies on finding an exact, unique `old_string` anchor in the ta
   3. Formulate a replacement with expanded unique anchor context, OR use `Write` with the fully reconciled content.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start["Attempt Surgical Edit"] --> Check{"Edit Succeeded?"}
     Check -->|Yes| Done["Edit Applied"]
-    Check -->|No: Anchor Collision| Read["1. Invoke Read<br/>(Inspect exact lines & context)"]
+    Check -->|No: Anchor Collision| Read["1. Invoke Read<br/>(Inspect exact lines)"]
     Read --> Reconcile["2. Expand Anchor Context"]
-    Reconcile --> Fallback["3. Retry Edit OR Fallback to Write"]
+    Reconcile --> Fallback["3. Retry Edit OR<br/>Fallback to Write"]
 ```
 
 ---
@@ -482,6 +486,7 @@ Option B is correct. Claude models support parallel tool use by default, emittin
 ### 🧠 Domain 2 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. Model picks wrong tool?"] -->|Yes| A1["<b>Refine Tool Description & Boundaries</b><br/>Never build custom classifier"]
     Q1 -->|No| Q2["2. Zero records returned?"]

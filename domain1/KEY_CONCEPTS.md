@@ -6,21 +6,22 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart LR
     subgraph Single["Single-Agent Core"]
         direction TB
-        S1["TS 1.1: stop_reason Lifecycle"]
-        S2["TS 1.4: Programmatic Gates"]
-        S3["TS 1.5: Pre/Post SDK Hooks"]
-        S4["TS 1.7: Session Resumption"]
+        S1["TS 1.1:<br/>stop_reason Lifecycle"]
+        S2["TS 1.4:<br/>Programmatic Gates"]
+        S3["TS 1.5:<br/>Pre/Post SDK Hooks"]
+        S4["TS 1.7:<br/>Session Resumption"]
     end
 
     subgraph Multi["Multi-Agent Orchestration"]
         direction TB
-        M1["TS 1.2: Hub-and-Spoke Topology"]
-        M2["TS 1.3: Parallel Task Spawning"]
-        M3["TS 1.6: Two-Pass Decomposition"]
-        M4["TS 1.7: Session Forking"]
+        M1["TS 1.2:<br/>Hub-and-Spoke Topology"]
+        M2["TS 1.3:<br/>Parallel Task Spawning"]
+        M3["TS 1.6:<br/>Two-Pass Decomposition"]
+        M4["TS 1.7:<br/>Session Forking"]
     end
 ```
 
@@ -43,6 +44,7 @@ flowchart LR
 #### 1. The Autonomous Loop Lifecycle
 An autonomous agent is fundamentally a stateful client-side loop orchestrating conversational turns between the user, the Claude API, and backend tool execution environments.
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     S1["1. Init History (messages)"] --> S2["2. Call Messages API"]
     S2 --> S3{"stop_reason?"}
@@ -50,7 +52,7 @@ flowchart TD
     S4 --> S5["4. Execute Tools Locally"]
     S5 --> S6["5. Append User Turn<br/>(tool_result blocks)"]
     S6 --> S2
-    S3 -->|"end_turn"| SEnd["Complete: Return Text to User"]
+    S3 -->|"end_turn"| SEnd["Complete:<br/>Return Text to User"]
 ```
 
 #### 2. Deterministic Loop Control: `response.stop_reason`
@@ -152,11 +154,12 @@ In enterprise architectures, multi-agent systems must follow a **Hub-and-Spoke**
 - **Deterministic Escalation**: The coordinator enforces business policies and SLA boundaries before presenting output to the client.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Coord["Coordinator Agent<br/>(State & Routing Hub)"]
-    Coord -->|Prompt Injection| Sub1["Web Search Subagent<br/>(Context: 0K)"]
-    Coord -->|Prompt Injection| Sub2["Doc Extraction Subagent<br/>(Context: 0K)"]
-    Coord -->|Prompt Injection| Sub3["Fact Checker Subagent<br/>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub1["Web Search<br/>Subagent<br/>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub2["Doc Extraction<br/>Subagent<br/>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub3["Fact Checker<br/>Subagent<br/>(Context: 0K)"]
 ```
 
 #### 2. The Context Isolation Contract
@@ -311,12 +314,13 @@ The Claude Agent SDK provides lifecycle hooks allowing developers to execute arb
 2. `PostToolUse` (Normalization Hook): Fires **after** the tool executes but **before** the output is added to the message array and fed back to Claude. Can redact PII, transform schemas, normalize units, or prune extraneous tokens.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Emit["Claude Emits tool_use"] --> Pre{"Policy Check Passed?"}
     Pre -->|No: Violation| Abort["Abort & Return Error"]
     Pre -->|Yes: Allowed| Exec["Execute Tool<br/>(API / DB Call)"]
     Exec --> Post["PostToolUse Hook<br/>(Normalize, Trim, Redact PII)"]
-    Post --> Done["Append Clean tool_result to Context"]
+    Post --> Done["Append Clean tool_result<br/>to Context"]
 ```
 
 #### 2. Tool Call Interception for Regulatory and Financial Compliance
@@ -354,8 +358,9 @@ When an agent is presented with a complex, multi-file code review (e.g. 15 files
 The proven architectural pattern for complex multi-file tasks is **Two-Pass Prompt Chaining**:
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into Per-File Tasks"]
+    PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into<br/>Per-File Tasks"]
     
     subgraph Pass1["Pass 1: Isolated Local Reviews"]
         Decomp --> F1["File 1 Reviewer"]
@@ -366,14 +371,14 @@ flowchart TD
         Fn --> Mn["Local Manifest N"]
     end
     
-    M1 & M2 & Mn --> Agg["Aggregate Findings + Signatures"]
+    M1 & M2 & Mn --> Agg["Aggregate Findings<br/>+ Signatures"]
     
     subgraph Pass2["Pass 2: System Integration Review"]
         Agg --> Reviewer["Integration Reviewer"]
         Reviewer --> Gate{"Contract Violations?"}
     end
     
-    Gate -->|Yes| Fail["Block Merge & Report Findings"]
+    Gate -->|Yes| Fail["Block Merge &<br/>Report Findings"]
     Gate -->|No| Pass["Approve Merge Gate"]
 ```
 
@@ -668,6 +673,7 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 ### 🧠 Domain 1 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. Ending an agentic loop?"] -->|Yes| A1["<b>stop_reason == 'end_turn'</b><br/>Never parse text or regex"]
     Q1 -->|No| Q2["2. Enforcing business rules?"]

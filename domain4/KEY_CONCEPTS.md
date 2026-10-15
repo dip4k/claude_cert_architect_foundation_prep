@@ -6,21 +6,22 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart LR
     subgraph Precision["Precision & Enforcement"]
         direction TB
-        P1["TS 4.1: Explicit Criteria & Boundaries"]
-        P2["TS 4.2: Targeted Diverse Few-Shot"]
-        P3["TS 4.3: Guaranteed JSON via tool_use"]
-        P4["TS 4.4: Validation & Retry Loops"]
+        P1["TS 4.1:<br/>Explicit Criteria"]
+        P2["TS 4.2:<br/>Targeted Few-Shot"]
+        P3["TS 4.3:<br/>JSON via tool_use"]
+        P4["TS 4.4:<br/>Validation & Retry"]
     end
 
     subgraph Pipelines["High-Throughput Pipelines"]
         direction TB
-        H1["TS 4.5: Message Batches API (50% Off)"]
-        H2["TS 4.5: custom_id Correlation"]
-        H3["TS 4.6: Multi-Instance Reviews"]
-        H4["TS 4.6: Two-Pass Review Pipeline"]
+        H1["TS 4.5:<br/>Message Batches (50% Off)"]
+        H2["TS 4.5:<br/>custom_id Correlation"]
+        H3["TS 4.6:<br/>Multi-Instance Reviews"]
+        H4["TS 4.6:<br/>Two-Pass Review"]
     end
 ```
 
@@ -50,6 +51,7 @@ A common failure mode in LLM prompting is attempting to tune precision using sub
   - *"Do not flag comments for grammatical style, brevity, or missing punctuation."*
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Spectrum["Prompt Precision Spectrum"]
     Spectrum -->|Vague Directives| Vague["Vague: 'Be conservative'<br/>High false positives; erodes trust"]
@@ -130,9 +132,10 @@ When extracting structured data, prompting Claude to *"Return raw valid JSON"* i
 - **Architectural Guarantee**: Output delivered via `tool_use` is parsed and validated directly by Anthropic's streaming JSON parser at the API layer, guaranteeing **100% syntactically valid JSON**.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Tech["Structured Data Extraction"]
-    Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br/>Syntax errors & non-zero parse failures"]
+    Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br/>Syntax errors & parse failures"]
     Tech -->|Forced tool_use| ToolMode["tool_use with JSON Schema<br/>100% Valid syntax via tool_choice"]
 ```
 
@@ -192,10 +195,11 @@ A crucial architectural concept on the certification exam:
   - *Remedy*: Detect that missing required data cannot be resolved, break the retry loop immediately, and return a structured failure manifest for human exception handling.
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start["Validation Error Occurs"] --> Check{"Is data present in document?"}
-    Check -- "YES" --> Rec["Recoverable Error<br/>(Formatting / Arithmetic)<br/>Send targeted feedback for self-correction"]
-    Check -- "NO" --> Unrec["Unrecoverable Error<br/>(Data missing from source)<br/>Break loop & escalate to human exception"]
+    Check -- "YES" --> Rec["Recoverable Error<br/>(Formatting / Math)<br/>Send targeted feedback"]
+    Check -- "NO" --> Unrec["Unrecoverable Error<br/>(Data missing from source)<br/>Escalate to human review"]
 ```
 
 #### 3. Semantic Cross-Validation
@@ -269,6 +273,7 @@ for result in client.messages.batches.results(batch.id):
 For pull requests spanning multiple files:
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     PR["Multi-File PR (5+ Files)"] --> Split["Split Files into Isolated Contexts"]
     
@@ -571,6 +576,7 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
 ### 🧠 Domain 4 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["<b>tool_use with forced tool_choice</b><br/>Guaranteed valid JSON schema"]
     Q1 -->|No| Q2["2. Document attributes missing?"]

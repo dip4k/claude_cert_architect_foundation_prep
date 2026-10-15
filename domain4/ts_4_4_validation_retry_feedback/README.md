@@ -8,6 +8,7 @@ Understand how to design closed-loop validation with targeted error feedback, bo
 ## 🏗️ Architecture: Closed-Loop Validation with Early Exit
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Extracted["Claude Outputs Extracted Payload"] --> Validator{"Validator Check"}
     
@@ -15,11 +16,11 @@ flowchart TD
     
     Validator -- "Invalid (Schema / Constraint)" --> ErrorType{"Is Error Fixable?"}
     
-    ErrorType -- "Missing source fact" --> FastFail["Stop Retrying Immediately<br/>Flag MISSING_SOURCE_DATA / Nullable Field"]
+    ErrorType -- "Missing source fact" --> FastFail["Stop Retrying Immediately<br/>Flag Missing / Nullable Field"]
     
     ErrorType -- "Formatting / Math mismatch" --> RetryCount{"Retry Count < 3?"}
     
-    RetryCount -- "Yes" --> FeedBack["Inject Targeted Feedback<br/>'Field discount cannot exceed subtotal'"]
+    RetryCount -- "Yes" --> FeedBack["Inject Targeted Feedback<br/>'Discount cannot exceed subtotal'"]
     FeedBack --> Extracted
     
     RetryCount -- "No (Exhausted)" --> Fallback["Escalate to Human Review"]

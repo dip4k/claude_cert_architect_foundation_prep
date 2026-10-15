@@ -14,22 +14,23 @@ Each scenario directory below is an end-to-end learning lab containing:
 ## 🧭 The 6 Production Scenarios Directory
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Scenarios["<b>6 CCAR-F Production Scenarios</b><br/>(4 Randomly Selected on Exam)"]
     
     subgraph Ops["Enterprise Operations"]
-        S1["<b>Scenario 1: Customer Support</b><br/>• Programmatic 2FA Gating<br/>• Zero-Friction Human Escalation"]
-        S3["<b>Scenario 3: Multi-Agent Research</b><br/>• Turn-1 Concurrent Task Calls<br/>• Preserving Conflicting Stats"]
+        S1["<b>Scenario 1: Support</b><br/>• Programmatic 2FA Gating<br/>• Zero-Friction Escalation"]
+        S3["<b>Scenario 3: Research</b><br/>• Turn-1 Concurrent Task Calls<br/>• Preserving Conflicting Stats"]
     end
 
     subgraph Dev["Developer Tooling"]
-        S2["<b>Scenario 2: Code Generation</b><br/>• Plan Mode for Multi-File Refactors<br/>• Path-Scoped Rules (.claude/rules/)"]
-        S4["<b>Scenario 4: Developer Productivity</b><br/>• Glob -> Grep -> Chunked Read<br/>• Surgical Edit Fallback"]
+        S2["<b>Scenario 2: Code Gen</b><br/>• Plan Mode for Refactors<br/>• Path-Scoped Rules (.claude/rules/)"]
+        S4["<b>Scenario 4: Productivity</b><br/>• Glob -> Grep -> Read<br/>• Surgical Edit Fallback"]
     end
 
     subgraph Auto["Automation & Data"]
-        S5["<b>Scenario 5: Continuous Integration</b><br/>• Headless Flag (-p) for Runners<br/>• Two-Pass Review Pipeline"]
-        S6["<b>Scenario 6: Data Extraction</b><br/>• Guaranteed JSON Schema via tool_use<br/>• 5-10% Stratified Drift Audits"]
+        S5["<b>Scenario 5: CI/CD</b><br/>• Headless Flag (-p)<br/>• Two-Pass Review Pipeline"]
+        S6["<b>Scenario 6: Extraction</b><br/>• JSON Schema via tool_use<br/>• 5-10% Stratified Audits"]
     end
 
     Scenarios --> Ops

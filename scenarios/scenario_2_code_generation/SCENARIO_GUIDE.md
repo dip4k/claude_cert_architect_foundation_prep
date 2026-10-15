@@ -51,10 +51,11 @@ We are architecting an enterprise developer productivity system using Claude Cod
 ### 🧠 Scenario 2 Rapid Exam Decision Tree
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Start{Code Generation Focus}
-    Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br/>(Explore & require blueprint approval)"]
-    Start -->|Ambiguous Requirements| D2["Interview Pattern<br/>(Clarify 3-5 options before coding)"]
+    Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br/>(Explore & require<br/>blueprint approval)"]
+    Start -->|Ambiguous Requirements| D2["Interview Pattern<br/>(Clarify 3-5 options<br/>before coding)"]
     Start -->|Distributed Conventions| D3[".claude/rules/*.md (paths glob)<br/>(Never duplicate CLAUDE.md)"]
     Start -->|Verbose Skill Output| D4["context: fork in SKILL.md<br/>(Isolate tokens in subagent)"]
 ```
@@ -75,6 +76,7 @@ flowchart TD
 Enterprise developers work under multiple layers of policy. When rules conflict, Claude Code enforces strict top-down precedence:
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
     Enterprise["1. Enterprise Policy<br/>(/etc/claude/CLAUDE.md - Immutable)"]
     User["2. Global User Profile<br/>(~/.claude/CLAUDE.md - Personal)"]
@@ -269,7 +271,7 @@ stateDiagram-v2
     AWAIT_APPROVAL --> DRAFT_BLUEPRINT: Developer requests adjustments
     AWAIT_APPROVAL --> FORKED_EXECUTION: Developer approves plan
     
-    DIRECT_EXECUTION --> FORKED_EXECUTION: Run in forked subagent (context: fork)
+    DIRECT_EXECUTION --> FORKED_EXECUTION: Run in forked subagent with context fork
     
     FORKED_EXECUTION --> TEST_VERIFICATION: Run offline test suite
     TEST_VERIFICATION --> FORKED_EXECUTION: Test failed (self-repair in-place)

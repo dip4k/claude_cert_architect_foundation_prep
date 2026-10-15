@@ -8,32 +8,33 @@ Understand how to eliminate author bias through independent Claude review instan
 ## 🏗️ Architecture: Multi-Instance Two-Pass Review Pipeline
 
 ```mermaid
+%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
 flowchart TD
-    Generator["Agent 1: Code Generator Instance"] --> Codebase["Generated Code Artifacts (auth.py, client.py)"]
+    Generator["Agent 1:<br/>Code Generator Instance"] --> Codebase["Generated Code Artifacts<br/>(auth.py, client.py)"]
     
-    subgraph Pass1["Pass 1: Independent File Reviewers (Isolated Contexts)"]
-        ReviewerA["Claude Instance A (File Level)<br/>Reviews auth.py"]
-        ReviewerB["Claude Instance B (File Level)<br/>Reviews client.py"]
+    subgraph Pass1["Pass 1: File-Level Reviewers (Isolated)"]
+        ReviewerA["Claude Instance A<br/>(Reviews auth.py)"]
+        ReviewerB["Claude Instance B<br/>(Reviews client.py)"]
     end
     
     Codebase --> ReviewerA
     Codebase --> ReviewerB
     
-    ReviewerA --> FileFindingsA["Local Issues: Off-by-one, typing, edge cases"]
-    ReviewerB --> FileFindingsB["Local Issues: Error handling, logging"]
+    ReviewerA --> FileFindingsA["Local Issues:<br/>Off-by-one, typing, edge cases"]
+    ReviewerB --> FileFindingsB["Local Issues:<br/>Error handling, logging"]
     
     subgraph Pass2["Pass 2: System Architecture Reviewer"]
-        CrossReviewer["Claude Instance C (Cross-File Integration)<br/>Reviews interactions & API contracts"]
+        CrossReviewer["Claude Instance C<br/>(Cross-File Integration)<br/>Reviews interactions & API contracts"]
     end
     
     Codebase --> CrossReviewer
-    CrossReviewer --> ContractFindings["Contract Mismatches: Token expiration mismatch, parameter name discrepancies"]
+    CrossReviewer --> ContractFindings["Contract Mismatches:<br/>Token expiration mismatch,<br/>parameter name discrepancies"]
     
     FileFindingsA --> Aggregator["Synthesis Aggregator"]
     FileFindingsB --> Aggregator
     ContractFindings --> Aggregator
     
-    Aggregator --> FinalAudit["Consolidated, Deduplicated Audit Report"]
+    Aggregator --> FinalAudit["Consolidated, Deduplicated<br/>Audit Report"]
 ```
 
 ---
