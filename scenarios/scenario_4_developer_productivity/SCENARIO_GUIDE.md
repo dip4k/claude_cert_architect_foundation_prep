@@ -19,6 +19,56 @@ We are engineering an AI-augmented developer onboarding and maintenance workflow
 
 ---
 
+## ⚡ Scenario 4 Golden Rules & Anti-Patterns Reference
+
+### 🏆 The 5 Golden Architectural Rules for Developer Productivity Tools
+
+1. **The 3-Step Incremental Discovery Protocol (`TS 2.5`)**:  
+   Never read large files or full directories upfront. Always follow the 3-step discipline: **`Glob`** to find candidate file paths $\rightarrow$ **`Grep`** to pinpoint symbol declarations or error messages $\rightarrow$ **Chunked `Read`** (30–50 lines) to inspect local context.
+2. **Least Privilege Tool Provisioning (`TS 2.3`)**:  
+   Equip developer agents with **4–5 specialized tools** (`Glob`, `Grep`, `Read`, `Edit`, `Write`). Over-provisioning agents with 15+ tools degrades tool selection accuracy, inflates token overhead, and introduces dangerous execution side effects.
+3. **Passive Reference Catalogs as MCP Resources (`TS 2.4`)**:  
+   Expose internal API specs, database schemas, and documentation trees as **MCP Resources** (`resources/read`), NOT active tools (`tools/call`). Resources give Claude read-only catalog visibility without triggering multi-turn exploratory tool churn.
+4. **The Edit Failure Fallback Protocol (`TS 2.5`)**:  
+   When surgical `Edit` fails due to ambiguous anchor collisions or missing unique text, **never retry blindly**. Execute `Read` to retrieve exact line numbers and context, expand the anchor block with unique surrounding code, or fall back to `Write` with reconciled contents.
+5. **Persistent Scratchpad External Memory (`TS 5.4`)**:  
+   Maintain a persistent `scratchpad.md` in the repository root to document verified facts, key file paths, and interface contracts. In long onboarding sessions, models suffer from context drift; the scratchpad anchors truth outside conversational history.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Scenario 4 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Bulk Reading Files Upfront** | Using `Read` or `cat` on entire packages to "understand everything before starting". | Instantly exhausts 40k+ tokens, causes severe "lost-in-the-middle" attention degradation, and hits rate limits. | Apply Incremental Discovery: `Glob` $\rightarrow$ `Grep` $\rightarrow$ chunked `Read`. |
+| **Tool Over-Provisioning (15+ Tools)** | Granting all developer tools (terminal, git, linter, docker, k8s, edit, build) to a single agent. | High misrouting rate (Claude calls terminal commands instead of dedicated file tools) and high token cost. | Principle of Least Privilege: restrict to 4–5 specialized built-in file manipulation tools. |
+| **Exposing Docs as Active Tools** | Wrapping OpenAPI specifications in a tool `get_api_documentation(endpoint)`. | Forces Claude into 2–3 exploratory round-trips simply to discover available endpoints. | Expose documentation catalogs as passive MCP Resources (`resources/read`). |
+| **Blind `Edit` Retrying Without `Read`** | Retrying the identical `Edit` tool invocation after an anchor text mismatch. | Deterministic failure; repeats until turn cap is reached, accomplishing zero work. | Call `Read` to inspect exact line context, expand anchor boundaries, or overwrite via `Write`. |
+| **Executing Raw `sed`/`awk` Shell Edits** | Running `sed -i 's/foo/bar/g'` via terminal commands to bypass tool errors. | Bypasses schema validation, destroys undo logging, and risks silent multi-file code corruption. | Use verified file modification tools (`Edit` with fallback to `Write`). |
+
+---
+
+### 🧠 Scenario 4 Rapid Exam Decision Tree
+
+```mermaid
+flowchart TD
+    Start{Developer Workflow Focus}
+    Start -->|Locating Symbols| D1["Glob -> Grep -> Chunked Read<br/>(Never bulk-read all files)"]
+    Start -->|Edit Anchor Collision| D2["Read File -> Expand Anchor<br/>(Fallback to Write if needed)"]
+    Start -->|Schemas & API Specs| D3["MCP Resources (resources/read)<br/>(Never active tool calls)"]
+    Start -->|Multi-Hour Exploration| D4["scratchpad.md + Explore Subagent<br/>(Use context: fork)"]
+```
+
+| Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Locating symbols in large repositories?** | **PROGRESSIVE DISCOVERY** | `Glob` (paths) $\rightarrow$ `Grep` (lines) $\rightarrow$ chunked `Read` *(NEVER bulk-read all files)*. |
+| **Edit tool collision (non-unique anchor text)?** | **SAFE FALLBACK** | Call `Read` to inspect line offsets, expand anchor, or fall back to `Write`. |
+| **Exposing company API docs & database schemas?** | **MCP RESOURCES** | Expose via MCP Resources (`resources/read`) *(NEVER active tool calls)*. |
+| **Long multi-hour codebase exploration?** | **SCRATCHPAD + SUBAGENT** | Maintain persistent `scratchpad.md` and use Explore subagents with `context: fork`. |
+
+
+---
+
 ## 🔑 Deep Technical Concepts & Anthropic API Structures
 
 ### 1. The Incremental Discovery Protocol (TS 2.5)
@@ -30,10 +80,10 @@ When a developer asks to fix a bug in an unfamiliar repository, a novice agent a
 
 ```mermaid
 flowchart LR
-    Start["User: 'Fix tax rounding bug'"] --> Step1["1. Glob('**/tax*.py')<br/>Find file candidates<br/>Cost: ~80 tokens"]
-    Step1 --> Step2["2. Grep('def calculate_sales_tax')<br/>Pinpoint line 142<br/>Cost: ~120 tokens"]
-    Step2 --> Step3["3. Read(offset=130, limit=35)<br/>Inspect target slice<br/>Cost: ~350 tokens"]
-    Step3 --> Edit["4. Surgical Edit<br/>Total Discovery: < 600 tokens!"]
+    Start["User Request"] --> Step1["1. Glob<br/>(Candidate files)"]
+    Step1 --> Step2["2. Grep<br/>(Pinpoint line)"]
+    Step2 --> Step3["3. Chunked Read<br/>(Inspect slice)"]
+    Step3 --> Edit["4. Surgical Edit<br/>(Under 600 tokens)"]
 ```
 
 ### 2. The Edit Fallback Protocol (TS 2.5)
@@ -41,19 +91,14 @@ Claude Code's built-in `Edit` tool performs an exact string replacement (`old_st
 
 ```mermaid
 flowchart TD
-    CallEdit["1. Call Edit(path, old_string, new_string)"] --> CheckUniqueness{"Target old_string unique?"}
-    
-    CheckUniqueness -- "Yes (1 match)" --> Success["✅ Commit edit successfully"]
-    
-    CheckUniqueness -- "No (Matches 3 locations)" --> ErrorResponse["MCP Tool Error: String matches 3 locations"]
-    
-    ErrorResponse --> Expansion["2. Recovery Step A: Anchor Expansion<br/>Add 2-3 lines of unique surrounding code (e.g. function header)"]
-    
-    Expansion --> RetryEdit["Call Edit with expanded anchor"]
-    RetryEdit --> RetryCheck{"Now unique?"}
-    
-    RetryCheck -- "Yes" --> Success
-    RetryCheck -- "No (Complex collision)" --> FallbackWrite["3. Recovery Step B: Read + Write Fallback<br/>Read full file -> Replace in memory -> Write entire file"]
+    CallEdit["1. Call Edit(path, old, new)"] --> CheckUniqueness{"Target String Unique?"}
+    CheckUniqueness -->|Yes: 1 Match| Success["Commit Edit"]
+    CheckUniqueness -->|No: Multiple Matches| ErrorResponse["Anchor Collision Error"]
+    ErrorResponse --> Expansion["2. Expand Surrounding Anchor"]
+    Expansion --> RetryEdit["Retry Edit with Expanded Anchor"]
+    RetryEdit --> RetryCheck{"Now Unique?"}
+    RetryCheck -->|Yes| Success
+    RetryCheck -->|No| FallbackWrite["3. Fallback: Read + Write Reconciled File"]
     FallbackWrite --> Success
 ```
 

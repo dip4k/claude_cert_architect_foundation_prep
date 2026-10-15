@@ -39,6 +39,7 @@ dev = [
     "flake8>=6.0",
     "mypy>=1.0",
     "isort>=5.12",
+    "jupyterlab>=4.0",
 ]
 lint = [
     "black>=23.0",

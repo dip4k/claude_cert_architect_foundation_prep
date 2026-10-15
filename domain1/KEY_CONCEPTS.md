@@ -5,18 +5,23 @@
 
 ## 📌 Executive Architecture & Task Statement Mapping
 
-```
-                                ┌────────────────────────────────────────────────────────┐
-                                │             DOMAIN 1 ARCHITECTURE TOPOLOGY             │
-                                └────────────────────────────────────────────────────────┘
-                                                            │
-                      ┌──────────────────────────────────────┴──────────────────────────────────────┐
-                      ▼                                                                             ▼
-         SINGLE-AGENT AUTONOMOUS LOOPS                                                 MULTI-AGENT COORDINATION
-    (TS 1.1: Loop Lifecycle, stop_reason)                                        (TS 1.2: Hub-and-Spoke Topology)
-    (TS 1.4: Programmatic Prerequisite Gates)                                    (TS 1.3: Parallel Spawning via Task)
-    (TS 1.5: Pre/Post SDK Interception Hooks)                                    (TS 1.6: Prompt Chaining Decomposition)
-    (TS 1.7: Session State & Injected Summaries)                                 (TS 1.7: fork_session Exploration)
+```mermaid
+flowchart LR
+    subgraph Single["Single-Agent Core"]
+        direction TB
+        S1["TS 1.1: stop_reason Lifecycle"]
+        S2["TS 1.4: Programmatic Gates"]
+        S3["TS 1.5: Pre/Post SDK Hooks"]
+        S4["TS 1.7: Session Resumption"]
+    end
+
+    subgraph Multi["Multi-Agent Orchestration"]
+        direction TB
+        M1["TS 1.2: Hub-and-Spoke Topology"]
+        M2["TS 1.3: Parallel Task Spawning"]
+        M3["TS 1.6: Two-Pass Decomposition"]
+        M4["TS 1.7: Session Forking"]
+    end
 ```
 
 | Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
@@ -37,44 +42,15 @@
 
 #### 1. The Autonomous Loop Lifecycle
 An autonomous agent is fundamentally a stateful client-side loop orchestrating conversational turns between the user, the Claude API, and backend tool execution environments.
-```
-                  ┌──────────────────────────────────────────────┐
-                  │ 1. Client initializes conversation history   │
-                  │    messages = [{"role": "user", ...}]       │
-                  └──────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │ 2. Call Claude API: client.messages.create() │
-                  │    (passes model, tools, system, messages)   │
-                  └──────────────────────┬───────────────────────┘
-                                         │
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │ 3. Evaluate response.stop_reason             │
-                  └──────┬────────────────────────────────┬──────┘
-                         │                                │
-            stop_reason == "tool_use"            stop_reason == "end_turn"
-                         │                                │
-                         ▼                                ▼
-       ┌───────────────────────────────────┐    ┌───────────────────────────────┐
-       │ 4. Append Assistant Response      │    │ Loop Completed Deterministically│
-       │    (contains tool_use blocks)     │    │ Return text blocks to user.   │
-       └─────────────────┬─────────────────┘    └───────────────────────────────┘
-                         │
-                         ▼
-       ┌───────────────────────────────────┐
-       │ 5. Execute each tool call         │
-       │    Gather tool_result payloads    │
-       └─────────────────┬─────────────────┘
-                         │
-                         ▼
-       ┌───────────────────────────────────┐
-       │ 6. Append User Response           │
-       │    (contains tool_result blocks)  │
-       └─────────────────┬─────────────────┘
-                         │
-                         └──────────────► Loop back to Step 2
+```mermaid
+flowchart TD
+    S1["1. Init History (messages)"] --> S2["2. Call Messages API"]
+    S2 --> S3{"stop_reason?"}
+    S3 -->|"tool_use"| S4["3. Append Assistant Turn<br/>(tool_use blocks)"]
+    S4 --> S5["4. Execute Tools Locally"]
+    S5 --> S6["5. Append User Turn<br/>(tool_result blocks)"]
+    S6 --> S2
+    S3 -->|"end_turn"| SEnd["Complete: Return Text to User"]
 ```
 
 #### 2. Deterministic Loop Control: `response.stop_reason`
@@ -140,7 +116,9 @@ A notorious trap for architects:
 - Mixing these conventions causes silent ignores or schema rejection errors across SDK adapters.
 
 #### 9. Multimodal Tool Results
-`tool_result` payloads are not limited to text strings. Tools returning visual artifacts (e.g., automated browser screenshots, rendered architecture diagrams) can return structured content blocks containing base64 images:
+> ⚠️ **CCAR-F Exam Scope Boundary**: The official CCAR-F Exam Guide (Appendix: Out-of-Scope Topics) explicitly designates **"Vision/image analysis capabilities"** as **OUT OF SCOPE**. On the exam, questions focus strictly on text and structured JSON payloads in `tool_result` blocks; candidates will not be tested on multimodal image payloads or vision models.
+
+In production runtime code, `tool_result` payloads can technically accept structured content blocks containing base64 images:
 ```python
 tool_results.append({
     "type": "tool_result",
@@ -173,20 +151,12 @@ In enterprise architectures, multi-agent systems must follow a **Hub-and-Spoke**
 - **Context Containment**: Errors or catastrophic hallucinations occurring in Subagent A cannot corrupt Subagent B, because Subagent B communicates solely through the sanitized summaries filtered by the Coordinator.
 - **Deterministic Escalation**: The coordinator enforces business policies and SLA boundaries before presenting output to the client.
 
-```
-                           ┌────────────────────────┐
-                           │      COORDINATOR       │
-                           │  (Global State Holder) │
-                           └───────────┬────────────┘
-                                       │
-                ┌──────────────────────┼──────────────────────┐
-                │                      │                      │
-                ▼                      ▼                      ▼
-        ┌───────────────┐      ┌───────────────┐      ┌───────────────┐
-        │  Web Search   │      │ Doc Extraction│      │ Fact Checker  │
-        │   Subagent    │      │   Subagent    │      │   Subagent    │
-        │ [Context: 0K] │      │ [Context: 0K] │      │ [Context: 0K] │
-        └───────────────┘      └───────────────┘      └───────────────┘
+```mermaid
+flowchart TD
+    Coord["Coordinator Agent<br/>(State & Routing Hub)"]
+    Coord -->|Prompt Injection| Sub1["Web Search Subagent<br/>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub2["Doc Extraction Subagent<br/>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub3["Fact Checker Subagent<br/>(Context: 0K)"]
 ```
 
 #### 2. The Context Isolation Contract
@@ -243,21 +213,21 @@ A critical latency optimization tested heavily on the exam:
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Coord as Coordinator Agent
-    participant Runtime as Orchestration Runtime
+    participant Coord as Coordinator
+    participant Runtime as Runtime
     participant Sub1 as Search Subagent
-    participant Sub2 as Financial Subagent
+    participant Sub2 as Finance Subagent
 
-    Coord->>Runtime: Emits Response with 2 Task calls in Turn 1
-    par Concurrent Execution
-        Runtime->>Sub1: Run prompt="Search SEC filings"
-        Sub1-->>Runtime: Return filings data + URL sources
+    Coord->>Runtime: Turn 1: Emits 2 Task calls
+    par Concurrent Subagents
+        Runtime->>Sub1: Run search prompt
+        Sub1-->>Runtime: Return filings data
     and
-        Runtime->>Sub2: Run prompt="Calculate EBITDA margins"
-        Sub2-->>Runtime: Return tabular calculations
+        Runtime->>Sub2: Run finance prompt
+        Sub2-->>Runtime: Return metrics
     end
-    Runtime->>Coord: Feed [tool_result(Sub1), tool_result(Sub2)] in Turn 2
-    Coord->>Coord: Synthesize findings into final response
+    Runtime->>Coord: Turn 2: Feed [tool_result, tool_result]
+    Coord->>Coord: Synthesize final answer
 ```
 
 #### 3. Structured Context Passing & Attribution Separation
@@ -340,26 +310,13 @@ The Claude Agent SDK provides lifecycle hooks allowing developers to execute arb
 1. `PreToolUse` (Interception Hook): Fires **before** the tool executes. Can inspect arguments, validate session tokens, enforce security boundaries, modify arguments, or abort execution.
 2. `PostToolUse` (Normalization Hook): Fires **after** the tool executes but **before** the output is added to the message array and fed back to Claude. Can redact PII, transform schemas, normalize units, or prune extraneous tokens.
 
-```
-       Claude Emits ToolCall
-                │
-                ▼
-      ┌───────────────────┐
-      │   PreToolUse Hook │──► [Policy Violation?] ──► Abort & return error to Claude
-      └─────────┬─────────┘
-                │ Allowed
-                ▼
-      ┌───────────────────┐
-      │ Tool Execution    │ (Calls external database / API)
-      └─────────┬─────────┘
-                │ Raw Payload
-                ▼
-      ┌───────────────────┐
-      │  PostToolUse Hook │──► Normalize timestamps, strip 35 redundant fields, redact PII
-      └─────────┬─────────┘
-                │ Clean Payload
-                ▼
-       Appended to Context
+```mermaid
+flowchart TD
+    Emit["Claude Emits tool_use"] --> Pre{"Policy Check Passed?"}
+    Pre -->|No: Violation| Abort["Abort & Return Error"]
+    Pre -->|Yes: Allowed| Exec["Execute Tool<br/>(API / DB Call)"]
+    Exec --> Post["PostToolUse Hook<br/>(Normalize, Trim, Redact PII)"]
+    Post --> Done["Append Clean tool_result to Context"]
 ```
 
 #### 2. Tool Call Interception for Regulatory and Financial Compliance
@@ -395,13 +352,36 @@ When an agent is presented with a complex, multi-file code review (e.g. 15 files
 
 #### 2. Two-Pass Prompt Chaining Pipeline
 The proven architectural pattern for complex multi-file tasks is **Two-Pass Prompt Chaining**:
-- **Pass 1: Local Per-File Isolation Pass**:
-  - Spawn separate, independent Claude calls (or subagents) for each changed file.
-  - Prompt focuses strictly on local invariants: syntax correctness, localized null-pointer checks, local error handling, typing, and unit test coverage.
-  - Produces a concise `LocalFindings` manifest per file.
-- **Pass 2: Cross-File Integration Pass**:
-  - A single Claude instance is provided with the aggregated `LocalFindings` manifests and the core interface signatures (not full file bodies).
-  - Evaluates cross-cutting concerns: API contract mismatches, end-to-end data flow security, transaction boundaries, and distributed state changes.
+
+```mermaid
+flowchart TD
+    PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into Per-File Tasks"]
+    
+    subgraph Pass1["Pass 1: Isolated Local Reviews"]
+        Decomp --> F1["File 1 Reviewer"]
+        Decomp --> F2["File 2 Reviewer"]
+        Decomp --> Fn["File N Reviewer"]
+        F1 --> M1["Local Manifest 1"]
+        F2 --> M2["Local Manifest 2"]
+        Fn --> Mn["Local Manifest N"]
+    end
+    
+    M1 & M2 & Mn --> Agg["Aggregate Findings + Signatures"]
+    
+    subgraph Pass2["Pass 2: System Integration Review"]
+        Agg --> Reviewer["Integration Reviewer"]
+        Reviewer --> Gate{"Contract Violations?"}
+    end
+    
+    Gate -->|Yes| Fail["Block Merge & Report Findings"]
+    Gate -->|No| Pass["Approve Merge Gate"]
+```
+
+| Review Pass | Execution Scope | Primary Invariants Audited | Context & Token Strategy | Typical Defects Caught |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pass 1: Local Per-File** | Individual modified file (isolated) | Syntax, null safety, local exception handling, unit tests | Isolated lean context ($\sim 2\text{k}$ tokens per instance) | Unhandled null dereferences, off-by-one loops, missing local try/catch |
+| **Pass 2: System Integration** | Cross-file contracts and public interfaces | Breaking public interface changes, deleted exported methods, distributed state | Ingests Pass 1 manifests + interfaces only (prevents attention dilution) | Caller-callee type mismatches, breaking API deletions, auth bypass between microservices |
+
 
 #### 3. Adaptive / Dynamic Decomposition for Open-Ended Tasks
 For investigations where the path is unknown in advance (e.g. root cause analysis of a production incident):
@@ -628,3 +608,83 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
   - Option A is incorrect because system prompts are probabilistic and fail under prompt injection, while text regex cannot redact tool result payloads that are injected directly into context.  
   - Option C is incorrect because post-execution reversal creates legal, financial, and operational liability, violating basic banking compliance.  
   - Option D is incorrect because `tool_choice` is configured when creating the request before the model has chosen the tool arguments, so it cannot dynamically evaluate whether `amount_usd > 1000`.
+
+---
+
+## ⚡ Exam Rules, Golden Architectural Rules & Anti-Patterns Reference
+
+### 📋 CCAR-F Exam Rules & Scope Boundaries for Domain 1
+
+| Aspect | In-Scope Exam Focus | Out-of-Scope Distractor (Do Not Choose) |
+|---|---|---|
+| **Loop Control** | `response.stop_reason` inspection (`"tool_use"` continues, `"end_turn"` terminates). | Parsing natural language strings ("I am done") or setting iteration caps as completion signal. |
+| **History Appending** | Strict dual alternating turns: assistant `tool_use` followed by user `tool_result` blocks with matching `tool_use_id`. | Summarizing or paraphrasing tool outputs before passing back to Claude in the loop. |
+| **Multi-Agent Topologies** | Hierarchical Hub-and-Spoke coordinator pattern; all inter-agent traffic routes through coordinator. | Peer-to-peer agent meshes, decentralized gossip protocols, or shared memory buses. |
+| **Subagent Context** | 100% Context Isolation. Subagents start with empty context; parent findings passed explicitly via prompt. | Assuming subagents inherit parent conversation history or memory automatically. |
+| **Subagent Spawning** | Emitting multiple `Task` tool calls in a single turn for concurrent parallel execution. | Sequential turn-by-turn subagent execution or spawning subagents without `"Task"` in `allowedTools`. |
+| **Workflow Enforcement** | Deterministic programmatic gates (state machines, pre-tool checks) and SDK hooks. | Relying solely on system prompt instructions for compliance, security, or financial operations. |
+| **Hook Lifecycle** | `PreToolUse` for policy/financial gating and interception; `PostToolUse` for PII redaction and payload normalization. | Modifying model weights, fine-tuning classifier heads, or prompt injection regex on raw text. |
+| **Task Decomposition** | Two-pass prompt chaining (Pass 1: per-file local checks, Pass 2: cross-file contracts); dynamic investigation plans. | Single-pass monolithic review on large diffs (causes attention dilution); hardcoded static pipelines for open-ended tasks. |
+| **Session Lifecycle** | Resuming named sessions (`--resume`), exploratory branching (`fork_session`), fresh sessions with injected summary for stale context. | Resuming 50+ turn sessions after out-of-band codebase changes (causes stale context contamination). |
+
+---
+
+### 🏆 The 8 Golden Architectural Rules of Domain 1
+
+1. **The Sole Deterministic Exit Signal (`TS 1.1`)**:  
+   `response.stop_reason == "end_turn"` is the **only deterministic signal** that an agentic loop has completed its objective. Never terminate an agentic loop based on natural language text content ("Task completed", "Here is the summary") or arbitrary turn counts.
+2. **The Dual Message Alternation Contract (`TS 1.1`)**:  
+   Every assistant turn containing `tool_use` blocks **must** be immediately followed by a user message containing a matching `tool_result` block for every requested `tool_use_id`. Omitting `tool_result` blocks or summarizing raw outputs breaks the API contract and triggers conversational hallucinations.
+3. **Hub-and-Spoke Governance (`TS 1.2`)**:  
+   All multi-agent communication, audit logging, synthesis, and error handling **must flow through the central coordinator**. Never allow subagents to communicate directly with one another.
+4. **Strict Context Isolation Contract (`TS 1.2 & 1.3`)**:  
+   Subagents operate in complete context isolation. They **do not inherit** parent conversation history, system prompts, or memory. All relevant background data, search queries, constraints, and source metadata must be explicitly injected into the subagent's prompt.
+5. **Single-Turn Concurrent Spawning (`TS 1.3`)**:  
+   When subagents perform independent research or analysis, the coordinator **must emit multiple `Task` tool calls in a single response turn**. This triggers concurrent execution and cuts end-to-end task turnaround latency by 40%–60% compared to sequential turns.
+6. **Deterministic Enforcement Over Probabilistic Prompts (`TS 1.4 & 1.5`)**:  
+   When compliance, identity verification, or financial thresholds are at stake, **enforce ordering and boundaries via deterministic programmatic gates or SDK hooks (`PreToolUse`)**. System prompts have a non-zero failure rate under conversational ambiguity and prompt injection.
+7. **Two-Pass Prompt Chaining for Attention Preservation (`TS 1.6`)**:  
+   When auditing large PRs (10+ files) or multi-file codebases, split execution into **Pass 1 (isolated per-file analysis)** followed by **Pass 2 (cross-file integration review)**. Monolithic single-pass reviews cause attention dilution, missing critical security defects in secondary files.
+8. **Stale Context Resumption Remediation (`TS 1.7`)**:  
+   If underlying source code or schemas change while a multi-turn session is active, do not continue the session via `--resume`. **Extract a structured summary of verified facts, discard the stale session, and initialize a fresh session with the summary injected.**
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Domain 1 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Natural Language Loop Parsing** | Seems intuitive: check if Claude responds with "I am done" or "The task is complete". | Model phrasing varies across temperatures and scenarios. Loops either terminate prematurely or hang indefinitely. | Inspect `response.stop_reason`: loop while `"tool_use"`, exit when `"end_turn"`. |
+| **Iteration Turn Cap as Primary Exit** | Adding `max_turns = 10` is an essential safety guardrail against infinite loops. | Using the cap as the primary completion trigger causes agents to abort complex multi-step workflows mid-execution. | Use turn caps strictly as safety timeouts; drive loop completion deterministically via `stop_reason`. |
+| **Tool Result Paraphrasing / Summarization** | Candidates assume summarizing tool outputs before feeding back to Claude saves tokens. | Claude loses exact timestamps, UUIDs, numeric balances, and raw error codes, causing hallucinated actions and math errors. | Append raw structured `tool_result` payloads directly to message context; trim verbose fields via SDK hooks. |
+| **Implicit Context Inheritance Assumption** | Expecting subagents spawned via `Task` to already know the user's prior chat history. | Subagent receives an empty context, hallucinates background context, or fails immediately with missing argument errors. | Inject all required facts, research goals, and metadata explicitly into the subagent's prompt. |
+| **Sequential Multi-Turn Spawning** | Spawning subagent A in turn 1, waiting for output in turn 2, then spawning subagent B in turn 3. | Introduces massive latency overhead (40%+ slowdown) and serializes independent API calls. | Emit all independent `Task` tool calls concurrently in Turn 1 of coordinator output. |
+| **Prompt-Only Compliance Enforcement** | Adding *"Never issue refunds over $50 without verified identity"* to the system prompt. | Probabilistic instruction following is vulnerable to jailbreaks, confusion, and hallucinated compliance. | Programmatic prerequisite gate in Python code or `PreToolUse` hook blocking tool execution. |
+| **Overly Narrow Topic Decomposition** | Coordinator breaks down "AI in Creative Industries" into only "Digital Art", "Graphic Design", and "Photography". | Subagents execute assigned tasks flawlessly, but final synthesis completely omits Music, Film, and Literature. | Coordinator prompt must include broad scope verification and iterative gap-detection refinement loops. |
+| **Resuming Stale Sessions After Code Edits** | Using `claude --resume` on a 65-turn session after pulling 40 upstream commits. | Claude reasons over outdated file representations and stale tool outputs cached in context, producing conflicting edits. | Extract key findings to a structured Markdown summary, close session, and start a fresh session with summary injected. |
+
+---
+
+### 🧠 Domain 1 Rapid Decision Matrix for Scenario Questions
+
+```mermaid
+flowchart TD
+    Q1["1. Ending an agentic loop?"] -->|Yes| A1["<b>stop_reason == 'end_turn'</b><br/>Never parse text or regex"]
+    Q1 -->|No| Q2["2. Enforcing business rules?"]
+    Q2 -->|Yes| A2["<b>Programmatic Gate / PreToolUse</b><br/>Never rely on prompts alone"]
+    Q2 -->|No| Q3["3. Spawning subagents?"]
+    Q3 -->|Yes| A3["<b>Multiple Task Calls in Turn 1</b><br/>Concurrent parallel fan-out"]
+    Q3 -->|No| Q4["4. Multi-file code review?"]
+    Q4 -->|Yes| A4["<b>Two-Pass Prompt Chaining</b><br/>Pass 1: Local / Pass 2: Integration"]
+    Q4 -->|No| A5["<b>Fresh Session + Summary</b><br/>Discard stale context on rebase"]
+```
+
+| Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Deterministically ending an agentic loop?** | **YES** | Check `response.stop_reason == "end_turn"` *(NEVER parse assistant text content)*. |
+| **Enforcing strict business/financial rules or tool sequence?** | **YES** | Programmatic Prerequisite Gate in code or `PreToolUse` SDK hook *(NEVER prompt instructions alone)*. |
+| **Spawning multiple independent subagents efficiently?** | **YES** | Emit multiple `Task` tool calls in a **SINGLE coordinator turn** *(NEVER sequential round-trips)*. |
+| **Managing multi-file reviews without missing bugs?** | **YES** | Two-Pass Prompt Chaining: Pass 1 (per-file) + Pass 2 (cross-file integration). |
+| **Source code changed out-of-band during extended session?** | **YES** | Discard stale session; inject structured summary into a fresh session. |
+
+

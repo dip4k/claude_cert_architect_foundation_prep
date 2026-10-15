@@ -5,18 +5,23 @@
 
 ## 📌 Executive Architecture & Task Statement Mapping
 
-```
-                                ┌────────────────────────────────────────────────────────┐
-                                │             DOMAIN 5 ARCHITECTURE TOPOLOGY             │
-                                └────────────────────────────────────────────────────────┘
-                                                            │
-                      ┌──────────────────────────────────────┴──────────────────────────────────────┐
-                      ▼                                                                             ▼
-            CONTEXT PRESERVATION & REDUCTION                                              RELIABILITY & PROVENANCE
-    (TS 5.1: Persistent Case Facts Layer)                                        (TS 5.2: Escalation & Ambiguity Resolution)
-    (TS 5.1: Tool Payload Trimming)                                              (TS 5.3: Error Propagation & Coverage Gaps)
-    (TS 5.4: Scratchpads & State Manifests)                                      (TS 5.5: Calibrated Human Review Sampling)
-    (TS 5.4: Explore Subagents & /compact)                                       (TS 5.6: Provenance & Conflicting Sources)
+```mermaid
+flowchart LR
+    subgraph Preservation["Context Preservation & Reduction"]
+        direction TB
+        P1["TS 5.1: Immutable Case Facts Layer"]
+        P2["TS 5.1: Tool Payload Trimming"]
+        P3["TS 5.4: scratchpad.md & /compact"]
+        P4["TS 5.4: Isolated Explore Subagents"]
+    end
+
+    subgraph Reliability["Reliability & Provenance"]
+        direction TB
+        R1["TS 5.2: Immediate Escalation on Demand"]
+        R2["TS 5.3: Structured Error Propagation"]
+        R3["TS 5.5: 5-10% Stratified QA Audit"]
+        R4["TS 5.6: Contradictory Provenance Tracking"]
+    end
 ```
 
 | Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
@@ -41,22 +46,18 @@ In long-running autonomous workflows (e.g. customer support sessions or complex 
 - **Turn 20 (Re-summarized)**: *"User asked about shipping."*
 - **Result**: Specific transactional identifiers, dollar amounts, tracking numbers, and verified constraints are washed away into vague natural language prose. When the agent later attempts to process a return, it hallucinations an order ID or fails because the ground truth was erased.
 
-```
-    ❌ Naive Progressive Summarization               ✅ Persistent "Case Facts" Layer
-    ┌─────────────────────────────────────────┐       ┌─────────────────────────────────────────┐
-    │ Turn 1-4: Raw conversation              │       │ ### IMMUTABLE CASE FACTS                │
-    │ Turn 5: "Summarize previous discussion" │       │ - Customer ID: CUST-441                 │
-    │                                         │       │ - Order ID: ORD-9921                    │
-    │ RESULT: Exact order IDs, dates, and     │       │ - Amount: $149.99                       │
-    │ monetary values washed away into vague  │       │ - Return Eligible: True                 │
-    │ phrases like "discussed an order issue" │       └────────────────────┬────────────────────┘
-    └─────────────────────────────────────────┘                            │ Injected into Prompt
-                                                                           ▼
-                                                      ┌─────────────────────────────────────────┐
-                                                      │ Compact Conversation Summary:           │
-                                                      │ "Customer called regarding a return."   │
-                                                      └─────────────────────────────────────────┘
-                                                      Transactional ground truth preserved 100%!
+```mermaid
+flowchart TD
+    subgraph Bad["Anti-Pattern: Naive Summarization"]
+        B1["Raw Turns 1-4"] --> B2["Summarize History"]
+        B2 --> B3["Order IDs & dollar amounts washed away into vague prose"]
+    end
+
+    subgraph Good["Production: Immutable Case Facts Layer"]
+        G1["Immutable Case Facts<br/>(Order ID, Amounts, Auth Status)"]
+        G2["Summarized Dialogue History"]
+        G1 & G2 --> G3["Prompt Context: 100% Ground Truth Preserved"]
+    end
 ```
 
 #### 2. The Persistent "Case Facts" Architecture
@@ -106,27 +107,13 @@ One of the most heavily tested human escalation scenarios:
   - **Failure Mode**: Directly violates customer intent, escalates customer anger, and fails enterprise SLA compliance.
 - **The Golden Rule**: **When a customer explicitly demands a human representative, escalate IMMEDIATELY without asking diagnostic or clarifying questions.** Compile a structured handoff manifest and transfer the session.
 
-```
-                              Incoming Customer Interaction
-                                            │
-                                            ▼
-                    ┌───────────────────────────────────────────────┐
-                    │        Customer explicitly demands human?     │
-                    └───────────────────────┬───────────────────────┘
-                                            │
-                     ┌──────────────────────┴──────────────────────┐
-                     ▼ YES                                         ▼ NO
-      ┌─────────────────────────────┐               ┌─────────────────────────────┐
-      │     ESCALATE IMMEDIATELY    │               │  Is policy silent / gap?    │
-      │ Do NOT attempt diagnostics! │               └──────────────┬──────────────┘
-      │ Compile handoff summary.    │                              │
-      └─────────────────────────────┘               ┌──────────────┴──────────────┐
-                                                    ▼ YES                         ▼ NO
-                                      ┌───────────────────────────┐ ┌───────────────────────────┐
-                                      │ ESCALATE ON POLICY GAP    │ │ Proceed with Autonomous   │
-                                      │ e.g. Competitor price     │ │ Resolution via Tools      │
-                                      │ match when policy is silent│ └───────────────────────────┘
-                                      └───────────────────────────┘
+```mermaid
+flowchart TD
+    Start["Customer Request"] --> Demand{"Demands Human Agent?"}
+    Demand -->|Yes| EscHuman["Escalate Immediately<br/>(Zero friction; no probing)"]
+    Demand -->|No| Policy{"Policy Silent / Gap?"}
+    Policy -->|Yes| EscGap["Escalate Policy Gap<br/>(Never invent company rules)"]
+    Policy -->|No| Resolve["Autonomous Tool Resolution"]
 ```
 
 #### 2. Escalation on Policy Gaps
@@ -152,18 +139,18 @@ When a tool query returns multiple candidate records:
 sequenceDiagram
     autonumber
     actor User as Customer
-    participant Agent as Claude Support Agent
-    participant DB as Backend Database
+    participant Agent as Support Agent
+    participant DB as Backend DB
 
-    User->>Agent: "My name is John Smith, check my account balance"
+    User->>Agent: "Check balance for John Smith"
     Agent->>DB: lookup_customer(name="John Smith")
-    DB-->>Agent: Returns 3 records: [ID: 101 (Austin), ID: 204 (Boston), ID: 509 (Seattle)]
-    Note over Agent: Multi-record collision detected! Do NOT guess!
-    Agent-->>User: "I found multiple accounts under John Smith. Could you please confirm your account number or billing zip code?"
-    User->>Agent: "My account number is #AC-204"
+    DB-->>Agent: Returns 3 matching records
+    Note over Agent: Collision detected: Never guess!
+    Agent-->>User: "Multiple accounts found. Please provide Account ID or Zip"
+    User->>Agent: "Account #AC-204"
     Agent->>DB: lookup_customer(account_id="AC-204")
-    DB-->>Agent: Returns unique record 204
-    Agent-->>User: "Thank you. Your balance is $42.50."
+    DB-->>Agent: Unique record verified
+    Agent-->>User: "Balance is $42.50"
 ```
 
 ---
@@ -249,24 +236,41 @@ A standard trap in enterprise AI evaluation:
 - **The Hidden Vulnerability**: The dataset consists of 95% standard domestic invoices (where accuracy is 99.8%) and 5% complex international customs forms. On the international customs forms, **the accuracy is only 58%**.
 - **The Production Standard**: Measure accuracy **segmented by document type, vendor, and complexity tier**.
 
-```
-    AGGREGATE METRIC (Misleading)               SEGMENTED AUDIT (Reveals Vulnerabilities)
-    ┌───────────────────────────────┐           ┌───────────────────────────────────────┐
-    │ Overall Accuracy: 98.2%       │ ──► FAIL  │ - Domestic Standard Invoices:  99.8%  │
-    │ (Hides critical failure on    │           │ - Canadian GST Invoices:       98.5%  │
-    │  rare/complex edge cases)     │           │ - Cross-Border Customs Forms:  58.2% ◄┼── SEVERE DEFECT!
-    └───────────────────────────────┘           └───────────────────────────────────────┘
-```
+| Evaluation Metric | Measured Accuracy | Operational Verdict & Breakdown |
+| :--- | :---: | :--- |
+| **Aggregate Overall Accuracy** | **98.2%** | ❌ **MISLEADING (FAIL)**: Masks disastrous defect rates on rare document categories. |
+| └─ *Domestic Standard Invoices* | 99.8% | ✅ High accuracy on standard majority segment. |
+| └─ *Canadian GST Invoices* | 98.5% | ✅ Acceptable variance on standard tax forms. |
+| └─ *Cross-Border Customs Forms* | **58.2%** | 🚨 **SEVERE DEFECT**: Critical failure rate on complex international customs declarations. |
+
 
 #### 2. Stratified Random Sampling of High-Confidence Outputs
 - Systems that only route "low confidence" items to human review suffer from **silent hallucinations**: the model fabricates a believable value with 99% self-assessed confidence, bypassing review.
 - **The Production Standard**: In addition to reviewing low-confidence items, implement a **stratified random sample (5%–10%) of high-confidence extractions** for ongoing human audit. This detects distribution drift, schema mismatches, and overconfident hallucinations.
 
 #### 3. Calibrated Routing Matrix
-- High confidence + Standard form -> Automated straight-through processing.
-- High confidence + Stratified sample (5%) -> Routed to human auditor for QA benchmarking.
-- Low confidence OR Unrecoverable validation failure -> Routed to human exception queue.
-- Financial impact > $1,000 -> Mandatory human review regardless of model confidence.
+
+| Ingestion State / Condition | Model Confidence | Financial / SLA Impact | Operational Routing Action | Architectural Rationale |
+| :--- | :---: | :---: | :--- | :--- |
+| **High Confidence Standard Form** | $\ge 95\%$ | Standard ($\le \$1,000$) | **Automated Straight-Through Processing (STP)** | High throughput, low-latency automated commit to database. |
+| **Stratified Random Sample** | $\ge 95\%$ | Standard ($\le \$1,000$) | **Route 5%–10% to Human QA Auditor** | Ongoing QA benchmark to detect silent hallucinations and concept drift. |
+| **Low Confidence / Ambiguous** | $< 95\%$ | Any | **Route to Human Exception Queue** | Mitigates errors on corrupted, low-contrast, or atypical documents. |
+| **High Financial Value Tier** | Any | High ($> \$1,000$) | **Mandatory Dual-Human Review Gate** | Enterprise risk policy: financial exposure overrides model self-confidence. |
+| **Unrecoverable Missing Fact** | N/A | Any | **Immediate Fast-Fail to Human Triage** | Closed-loop retries cannot fabricate facts physically absent from source. |
+
+```mermaid
+flowchart TD
+    Doc["Incoming Document Extraction"] --> ValueCheck{"Financial Value > $1,000?"}
+    ValueCheck -- "Yes" --> HighValReview["Mandatory Human Review<br/>(Policy threshold overrides model)"]
+    ValueCheck -- "No" --> UnrecCheck{"Missing physical source fact?"}
+    UnrecCheck -- "Yes" --> HumanTriage["Route to Human Triage<br/>(Fast-fail unrecoverable error)"]
+    UnrecCheck -- "No" --> ConfCheck{"Model Confidence >= 95%?"}
+    ConfCheck -- "No" --> HumanQueue["Route to Human Exception Queue"]
+    ConfCheck -- "Yes" --> StratCheck{"Selected in 5-10% Stratified Sample?"}
+    StratCheck -- "Yes" --> Auditor["Route to Human QA Auditor<br/>(Drift & calibration benchmark)"]
+    StratCheck -- "No" --> STP["✅ Automated Straight-Through Processing (STP)"]
+```
+
 
 ---
 
@@ -512,3 +516,83 @@ Option B is correct. In deep codebase exploration (TS 5.4), multi-turn sessions 
   - Option A is incorrect because hardware/API context windows cannot be expanded via arbitrary environment variables, and larger windows still suffer from attention dilution.  
   - Option C is incorrect because abandoning agent tooling forfeits automated architectural synthesis.  
   - Option D is incorrect because natural language meta-pleas cannot counteract transformer attention decay over extensive token sequences.
+
+---
+
+## ⚡ Exam Rules, Golden Architectural Rules & Anti-Patterns Reference
+
+### 📋 CCAR-F Exam Rules & Scope Boundaries for Domain 5
+
+| Aspect | In-Scope Exam Focus | Out-of-Scope Distractor (Do Not Choose) |
+|---|---|---|
+| **Context Window Preservation** | Immutable "Case Facts" block outside summarized history; aggressive tool payload trimming. | Unconstrained history accumulation; asking Claude to "remember everything" in prompts. |
+| **Position Effects ("Lost in Middle")**| Placing critical system rules and case facts at prompt boundaries (top/system or immediate turn). | Burying critical operational constraints in the middle of long multi-thousand-token transcripts. |
+| **Escalation Decision Logic** | Immediate escalation upon explicit customer demand; escalation on unhandled policy gaps. | Asking diagnostic questions after customer demands a human; guessing unstated policy. |
+| **Escalation Triggers** | Deterministic business rules and explicit customer intent. | Sentiment analysis models or self-reported model confidence scores (unreliable proxies). |
+| **Ambiguity Resolution** | Prompting user for unique disambiguating identifier (phone, zip, ID) on multiple candidate hits. | Selecting the first record or guessing heuristically based on location or recency. |
+| **Multi-Agent Error Flow** | Returning structured error context (`failure_type`, `attempted_query`, `partial_results`, `alternatives`). | Returning generic strings ("service unavailable"), suppressing errors, or terminating entire pipeline. |
+| **Codebase Exploration** | Persistent `scratchpad.md`, read-only Explore subagent isolation, `/compact` memory reduction. | Expanding context limits via imaginary environment variables; manual shell grep audits. |
+| **Human Review Calibration** | Segmented accuracy by document type; stratified random sampling (5–10%) of high-confidence results. | Relying on aggregate 98% accuracy; eliminating human review entirely for high confidence. |
+| **Provenance & Uncertainty** | Claim-source-date mappings; explicitly reporting conflicting figures with source attribution. | Averaging conflicting statistics into a single number; picking one number arbitrarily. |
+
+---
+
+### 🏆 The 8 Golden Architectural Rules of Domain 5
+
+1. **The Immutable Case Facts Architecture (`TS 5.1`)**:  
+   Progressive summarization washes away critical transactional specifics (dates, order IDs, tracking numbers, dollar balances). Always extract these entities into a structured, immutable "Case Facts" block maintained outside summarized conversational history and injected into every prompt.
+2. **Aggressive Tool Payload Trimming (`TS 5.1`)**:  
+   Backend databases and APIs return bloated JSON payloads (40–80 raw fields). Strip payloads down to the 4–5 attributes strictly required for the customer interaction before adding to context, mitigating "lost-in-the-middle" attention decay.
+3. **Zero-Friction Immediate Escalation on Customer Demand (`TS 5.2`)**:  
+   When a customer explicitly demands a human representative, supervisor, or manager, **escalate immediately without friction**. Never attempt to resolve the issue, ask diagnostic questions, or propose troubleshooting steps once human escalation is demanded.
+4. **Escalate Unhandled Policy Gaps Deterministically (`TS 5.2`)**:  
+   When company policy is silent or ambiguous on a specific customer request (e.g. competitor price matching when policy only mentions internal adjustments), escalate the ticket to a human supervisor. Never allow the agent to invent policy.
+5. **Prompt for Disambiguation on Multiple Matches (`TS 5.2`)**:  
+   When an entity search returns multiple matching customer records, **prompt the user for a unique disambiguating identifier** (e.g., account number, billing zip code, phone number). Never select an account heuristically or guess based on recency.
+6. **Structured Multi-Agent Error Propagation (`TS 5.3`)**:  
+   Subagents encountering failures must return structured error objects detailing `failure_type`, `attempted_query`, `partial_results`, and `recommended_alternative`. The coordinator uses this metadata to adjust queries or annotate synthesis reports with coverage gap notices.
+7. **The Flaw of Aggregate Accuracy & Stratified Auditing (`TS 5.5`)**:  
+   A high aggregate accuracy score (e.g., 98%) frequently hides a catastrophic failure rate (e.g., 45%) on rare document variants or critical financial fields. Always validate accuracy segmented by document type and continuously audit a **5%–10% stratified random sample** of high-confidence extractions.
+8. **Preserve Conflicting Statistics Without Averaging (`TS 5.6`)**:  
+   When two credible sources report contradictory statistical metrics, **NEVER average the numbers or choose one arbitrarily**. Report both values with explicit source attribution, publication dates, and methodology notes.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Domain 5 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Relying Solely on Progressive Summaries** | Summarization keeps conversations within token limits. | As turns accumulate, summarization degrades exact order IDs, numbers, and dates into vague narrative text. | Maintain a persistent, structured "Case Facts" block outside summarized history. |
+| **Appending Bloated 60-Field Tool Payloads** | Developers assume having full database records in context gives Claude maximum intelligence. | Ingests thousands of irrelevant tokens per turn, drives up latency, and triggers "lost-in-the-middle" attention loss. | Filter raw backend payloads down to 4–5 essential fields before appending to context. |
+| **Probing Customers Demanding a Human** | Asking *"I can help with that, could you tell me why you want a human?"* to attempt deflection. | Infuriates frustrated customers, damages brand trust, and directly violates enterprise customer service SLAs. | Escalate immediately with zero friction; compile a structured Case Facts handoff manifest. |
+| **Sentiment / Confidence Based Escalation** | Using sentiment analysis or model confidence (1–10) to trigger human handoffs. | Sentiment does not correlate with task complexity, and LLMs are notoriously overconfident on complex edge cases. | Drive escalations via explicit deterministic rules (customer demand, policy gaps, repeated failures). |
+| **Heuristic Collision Selection** | Picking the most recent order or first customer record when a name search returns 3 matches. | Discloses private order data to the wrong user, causing severe security, privacy, and regulatory breaches. | Pause and ask the customer for a unique disambiguating identifier (account ID, phone, zip). |
+| **Silently Suppressing Tool Errors** | Returning an empty result set marked as success when a backend database times out. | Coordinator concludes that no data exists in ground truth, producing incomplete or factually incorrect reports. | Distinguish access failures from valid empty results; propagate structured error context. |
+| **Averaging Conflicting Financial Metrics** | When source A says revenue was $4.2B and source B says $4.8B, calculating the mean ($4.5B). | Generates fabricated synthetic data that neither source reported, destroying auditability and integrity. | Annotate both figures with citations, publication dates, and accounting methodology differences. |
+| **Assuming 98% Aggregate Accuracy is Sufficient** | Trusting overall accuracy metrics without breaking down performance by category. | Rare but critical document formats (e.g. handwritten claims) fail at 50%, slipping past unmonitored. | Segment accuracy auditing by document subtype and maintain 5–10% stratified random sampling. |
+
+---
+
+### 🧠 Domain 5 Rapid Decision Matrix for Scenario Questions
+
+```mermaid
+flowchart TD
+    Q1["1. Customer demands a human?"] -->|Yes| A1["<b>Escalate Immediately</b><br/>Zero friction; compile handoff manifest"]
+    Q1 -->|No| Q2["2. Entity lookup collision?"]
+    Q2 -->|Yes| A2["<b>Prompt for Unique ID</b><br/>Never pick heuristically by recency"]
+    Q2 -->|No| Q3["3. Conflicting metric claims?"]
+    Q3 -->|Yes| A3["<b>Cite Both Figures & Dates</b><br/>Never average into synthetic mean"]
+    Q3 -->|No| Q4["4. High aggregate accuracy (98%)?"]
+    Q4 -->|Yes| A4["<b>5-10% Stratified QA Audit</b><br/>Sample high-confidence items for drift"]
+    Q4 -->|No| A5["<b>Immutable Case Facts Layer</b><br/>Store critical facts outside summary"]
+```
+
+| Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Customer explicitly demands a human agent?** | **YES** | Escalate immediately with zero friction *(NEVER probe or ask diagnostic questions)*. |
+| **Ambiguous entity lookup (e.g. 3 matching accounts)?** | **YES** | Prompt customer for unique disambiguating identifier *(NEVER guess heuristically)*. |
+| **Two credible sources report conflicting statistics?** | **YES** | Report both figures with citations, dates, and attribution *(NEVER average into synthetic mean)*. |
+| **98% aggregate accuracy in extraction pipeline?** | **YES** | Maintain **5–10% stratified random sampling** of high-confidence predictions. |
+| **Prevent loss of critical numbers across 30+ turns?** | **YES** | Maintain a persistent **Case Facts** block outside summarized history. |
+
+

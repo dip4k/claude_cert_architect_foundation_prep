@@ -19,6 +19,56 @@ We are architecting an enterprise developer productivity system using Claude Cod
 
 ---
 
+## ⚡ Scenario 2 Golden Rules & Anti-Patterns Reference
+
+### 🏆 The 5 Golden Architectural Rules for Code Generation with Claude Code
+
+1. **Hierarchical Configuration Precedence (`TS 3.1`)**:  
+   Enterprise Managed Policies override User settings (`~/.claude/CLAUDE.md`), which in turn are overridden by Project repository standards (`.claude/CLAUDE.md` or root `CLAUDE.md`). All team build commands, formatting scripts, and review checklists must be committed to the repository so all engineers and CI runners share identical environments.
+2. **Path-Scoped Monorepo Scoping (`TS 3.3`)**:  
+   In multi-tier or monorepo environments (Go backend + React frontend + Terraform), use `.claude/rules/*.md` with YAML `paths: ["..."]` frontmatter. Rules must load conditionally only when matching files are accessed, preventing 30,000+ tokens of irrelevant language standards from polluting context.
+3. **Blast-Radius Mode Gating: Plan Mode vs Direct Execution (`TS 3.4`)**:  
+   Use **Plan Mode** (`Shift+Tab`, `/plan`) for multi-file refactoring (5+ files), microservice restructuring, and schema shifts. It engages the read-only Explore subagent to map dependencies safely before asking for human approval. Reserve **Direct Execution** strictly for localized, single-file bug fixes.
+4. **The Interview Pattern for Ambiguity Resolution (`TS 3.5`)**:  
+   When a developer prompt is underspecified (*"Add caching to order lookup"*, *"Refactor authentication"*), **trigger the Interview Pattern**: instruct Claude to ask 3–5 clarifying questions with concrete technology choices (e.g. Redis vs Memcached vs in-memory) *before* writing code. Never make silent architectural assumptions.
+5. **Skill Context Isolation via `context: fork` (`TS 3.2`)**:  
+   Custom developer skills that perform repository discovery or run test suites **must declare `context: fork`** in their frontmatter. This executes the skill inside an isolated ephemeral subagent, returning only a concise summary to the main conversation window.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Scenario 2 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Monolithic Root CLAUDE.md in Monorepos** | Centralizing all Go, React, and Terraform rules in the root `CLAUDE.md` seems convenient. | Ingests thousands of irrelevant rules on every prompt, exhausting token limits and causing rule confusion. | Modularize into `.claude/rules/backend_go.md` and `frontend_react.md` with explicit path globs. |
+| **Personal Config for Team Standards** | Defining team build commands in `~/.claude/CLAUDE.md` on one developer's machine. | New team members and CI runners lack the configuration, causing broken builds and inconsistent patches. | Commit shared build rules to `.claude/CLAUDE.md` or root `CLAUDE.md` in git repository. |
+| **Direct Execution on Monolith Restructuring** | Starting coding immediately without a blueprint phase to demonstrate speed. | Claude generates conflicting patches across dozens of files, resulting in circular imports and costly rollbacks. | Enter Plan Mode (`/plan`), map dependencies safely, generate blueprint, and require human approval. |
+| **Silent Technology Assumption** | When asked to add caching, Claude immediately generates code for Redis without asking. | Repository infrastructure might be AWS ElastiCache Memcached; code is useless and must be scrapped. | Trigger the Interview Pattern: ask clarifying questions with concrete options before coding. |
+| **Running Discovery Skills in Main Session** | Omit `context: fork` from skill frontmatter so the skill runs directly in the active turn. | Floods context with 25,000+ tokens of raw AST dumps, grep logs, and compiler trails, degrading attention. | Add `context: fork` in `SKILL.md` frontmatter to isolate exploration tokens inside a subagent. |
+
+---
+
+### 🧠 Scenario 2 Rapid Exam Decision Tree
+
+```mermaid
+flowchart TD
+    Start{Code Generation Focus}
+    Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br/>(Explore & require blueprint approval)"]
+    Start -->|Ambiguous Requirements| D2["Interview Pattern<br/>(Clarify 3-5 options before coding)"]
+    Start -->|Distributed Conventions| D3[".claude/rules/*.md (paths glob)<br/>(Never duplicate CLAUDE.md)"]
+    Start -->|Verbose Skill Output| D4["context: fork in SKILL.md<br/>(Isolate tokens in subagent)"]
+```
+
+| Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **5+ files modified / service restructuring / schema migration?** | **YES** | Enter **Plan Mode** (`/plan`) to explore dependencies and get blueprint approval *(NEVER Direct Execution)*. |
+| **Request underspecified or architectural options ambiguous?** | **YES** | Trigger **Interview Pattern**: ask 3–5 clarifying questions with concrete selectable options *(NEVER guess)*. |
+| **Conventions needed for scattered test files?** | **YES** | Create `.claude/rules/*.md` with YAML `paths: ["**/*.test.*"]` *(NEVER duplicate directory `CLAUDE.md`)*. |
+| **Custom skill generates verbose logs / AST dumps?** | **YES** | Set `context: fork` in `SKILL.md` frontmatter to isolate tokens in a subagent. |
+
+
+---
+
 ## 🔑 Deep Technical Concepts & Claude Code Architecture
 
 ### 1. The Configuration Precedence Hierarchy (TS 3.1)
@@ -26,9 +76,11 @@ Enterprise developers work under multiple layers of policy. When rules conflict,
 
 ```mermaid
 flowchart TD
-    Enterprise["1. Enterprise Managed Policy<br/>(/etc/claude/CLAUDE.md or MDM)<br/>Strictly immutable; cannot be overridden by engineers"] --> User["2. Global User Profile<br/>(~/.claude/CLAUDE.md)<br/>Personal editor preferences, global keybindings"]
-    User --> Project["3. Project Root Config<br/>(.claude/CLAUDE.md)<br/>Team-wide build commands, architecture guidelines"]
-    Project --> PathScoped["4. Path-Scoped Rules<br/>(.claude/rules/*.md)<br/>Folder/extension-specific rules loaded on match"]
+    Enterprise["1. Enterprise Policy<br/>(/etc/claude/CLAUDE.md - Immutable)"]
+    User["2. Global User Profile<br/>(~/.claude/CLAUDE.md - Personal)"]
+    Project["3. Project Root<br/>(.claude/CLAUDE.md - Team standards)"]
+    PathScoped["4. Path-Scoped Rules<br/>(.claude/rules/*.md - Glob match)"]
+    Enterprise --> User --> Project --> PathScoped
 ```
 
 - **Conflict Resolution Rule**: Higher tiers always override lower tiers. An enterprise policy stating *"Never disable SSL certificate verification"* overrides a project-level `.claude/CLAUDE.md` rule attempting to bypass SSL for testing.

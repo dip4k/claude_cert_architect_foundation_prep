@@ -5,17 +5,21 @@
 
 ## 📌 Executive Architecture & Task Statement Mapping
 
-```
-                                ┌────────────────────────────────────────────────────────┐
-                                │             DOMAIN 3 ARCHITECTURE TOPOLOGY             │
-                                └────────────────────────────────────────────────────────┘
-                                                            │
-                      ┌──────────────────────────────────────┴──────────────────────────────────────┐
-                      ▼                                                                             ▼
-            CONFIGURATION & EXTENSIONS                                                    EXECUTION & AUTOMATION
-    (TS 3.1: CLAUDE.md Scoping Hierarchy)                                        (TS 3.4: Plan Mode vs Direct Execution)
-    (TS 3.2: Custom Slash Commands & Skills)                                     (TS 3.5: Iterative Refinement & Interview)
-    (TS 3.3: Path-Specific Rules in .claude/rules/)                              (TS 3.6: Non-Interactive CI/CD Pipelines)
+```mermaid
+flowchart LR
+    subgraph Config["Configuration & Extensions"]
+        direction TB
+        C1["TS 3.1: 4-Tier CLAUDE.md Hierarchy"]
+        C2["TS 3.2: Commands & Skills (fork)"]
+        C3["TS 3.3: Path-Specific Rules (Glob)"]
+    end
+
+    subgraph Exec["Execution & Automation"]
+        direction TB
+        E1["TS 3.4: Plan Mode vs Direct Execution"]
+        E2["TS 3.5: Iterative Refinement & Interview"]
+        E3["TS 3.6: Headless Non-Interactive CI/CD"]
+    end
 ```
 
 | Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
@@ -36,29 +40,15 @@
 #### 1. The 4-Tier Configuration Resolution Hierarchy
 Claude Code enforces a strict, hierarchical inheritance model when loading configuration instructions:
 
-```
-                       ┌───────────────────────────────────────────────┐
-                       │ 1. User-Level: ~/.claude/CLAUDE.md            │
-                       │    (Personal dev preferences, never in git)   │
-                       └───────────────────────┬───────────────────────┘
-                                               │ Overridden / Merged with
-                                               ▼
-                       ┌───────────────────────────────────────────────┐
-                       │ 2. Project-Level: .claude/CLAUDE.md or root   │
-                       │    (Universal team coding standards in git)   │
-                       └───────────────────────┬───────────────────────┘
-                                               │ Overridden / Merged with
-                                               ▼
-                       ┌───────────────────────────────────────────────┐
-                       │ 3. Directory-Level: <subdir>/CLAUDE.md        │
-                       │    (Package-specific standards, e.g. /backend)│
-                       └───────────────────────┬───────────────────────┘
-                                               │ Overridden / Merged with
-                                               ▼
-                       ┌───────────────────────────────────────────────┐
-                       │ 4. Path-Scoped Rules: .claude/rules/*.md      │
-                       │    (Conditionally loaded via YAML glob paths) │
-                       └───────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    L1["1. User-Level: ~/.claude/CLAUDE.md<br/>(Personal defaults, unversioned)"]
+    L2["2. Project-Level: .claude/CLAUDE.md<br/>(Team standards, in git)"]
+    L3["3. Directory-Level: &lt;subdir&gt;/CLAUDE.md<br/>(Subtree specific)"]
+    L4["4. Path-Scoped Rules: .claude/rules/*.md<br/>(Conditionally loaded by glob)"]
+    L1 -->|Overridden by| L2
+    L2 -->|Overridden by| L3
+    L3 -->|Overridden by| L4
 ```
 
 #### 2. Precedence and Merging Rules
@@ -134,18 +124,16 @@ One of the most critical architectural patterns on the certification exam:
 sequenceDiagram
     autonumber
     actor Dev as Developer
-    participant Main as Main Claude Session
-    participant Sub as Forked Subagent (context: fork)
+    participant Main as Main Session
+    participant Sub as Forked Subagent
 
-    Dev->>Main: Invokes /audit-deps
-    Note over Main: Skill frontmatter specifies "context: fork"
-    Main->>Sub: Spawns ephemeral subagent with task prompt
+    Dev->>Main: Invoke /audit-deps (context: fork)
+    Main->>Sub: Spawn isolated subagent
     loop Heavy Exploration
-        Sub->>Sub: Reads 30 package.json & lockfiles (25,000 tokens)
+        Sub->>Sub: Scans 30 files (25k tokens)
     end
-    Sub-->>Main: Returns 150-token summary: "3 vulnerable packages found"
-    Main-->>Dev: Presents clean executive findings
-    Note over Main: Main conversation context remains 100% clean!
+    Sub-->>Main: Return 150-token summary
+    Main-->>Dev: Present clean findings (Main context protected)
 ```
 
 ---
@@ -274,6 +262,24 @@ Using `--output-format json` with `--json-schema` guarantees that Claude's revie
 }
 ```
 Downstream CI steps can parse this JSON with `jq` to post automated PR comments or block merging if `findings` contains `HIGH` or `CRITICAL` severity issues.
+
+```mermaid
+flowchart TD
+    Event["CI Trigger (PR Event)"] --> Sandbox["Ephemeral Container Sandbox"]
+    Sandbox --> Exec["Run claude -p --dangerously-skip-permissions<br/>(--output-format json)"]
+    Exec --> Parse["Parse JSON Output"]
+    Parse --> Check{"Critical / High Findings?"}
+    Check -->|Yes| Block["Exit Code 1: Block Merge Gate"]
+    Check -->|No| Pass["Exit Code 0: Approve Merge"]
+```
+
+| CI Flag / Setting | Operational Purpose in CI Runners | Failure Consequence if Omitted | Security & Sandboxing Requirement |
+| :--- | :--- | :--- | :--- |
+| **`-p` / `--print`** | Headless non-interactive batch mode | Runner hangs indefinitely on stdin awaiting user keystroke | Mandatory in all automated CI runner scripts |
+| **`--dangerously-skip-permissions`** | Bypasses interactive terminal tool confirmation prompts | Runner freezes on stdin awaiting human approval | Mandatory ephemeral container sandbox; zero write access |
+| **`--output-format json`** | Enforces machine-readable JSON on stdout | Conversational prose output breaks downstream CI parsers | Pair with `--json-schema` for deterministic schema enforcement |
+| **`--json-schema <path>`** | Constrains output grammar to strict JSON schema | Output drifts into unstructured text or missing fields | Commit validation schema into repository under version control |
+
 
 #### 4. Self-Review Bias Mitigation
 An engineer must never instruct the same Claude session that authored a pull request to review that pull request.
@@ -474,3 +480,86 @@ Option B is correct. In TS 3.5 (Iterative Refinement), a core architectural rule
   - Option A is incorrect because running 3 uncoordinated terminal sessions guarantees race conditions and git merge conflicts.  
   - Option C is incorrect because increasing temperature increases randomness, worsening type errors.  
   - Option D is incorrect because Message Batches API runs offline without interactivity and does not coordinate interdependent code modifications.
+
+---
+
+## ⚡ Exam Rules, Golden Architectural Rules & Anti-Patterns Reference
+
+### 📋 CCAR-F Exam Rules & Scope Boundaries for Domain 3
+
+| Aspect | In-Scope Exam Focus | Out-of-Scope Distractor (Do Not Choose) |
+|---|---|---|
+| **CLAUDE.md Hierarchy** | Enterprise > User (`~/.claude/CLAUDE.md`) > Project (`.claude/CLAUDE.md`) > Directory > Path rules. | Storing team repo standards in user home directories; using unversioned files for CI. |
+| **Modular Rules** | `@import ./path/to/rule.md` syntax for modular organization; `.claude/rules/` directory. | Creating single monolithic 2,000-line CLAUDE.md files that load unconditionally. |
+| **Configuration Inspection** | The `/memory` slash command to inspect loaded memory, active rules, and token usage. | Running non-existent commands like `/config list` or inspect raw binary caches. |
+| **Custom Slash Commands** | Project-scoped in `.claude/commands/*.md` (git-shared); user-scoped in `~/.claude/commands/`. | Hardcoding commands in CLAUDE.md text or relying on manual prompt copy-pasting. |
+| **Agent Skills Frontmatter** | YAML frontmatter: `context: fork`, `allowed-tools`, and `argument-hint`. | Running verbose exploration skills in main session without `context: fork`. |
+| **Path-Scoped Rules** | `.claude/rules/*.md` with YAML `paths: ["**/*.test.ts"]` for multi-directory glob matches. | Duplicating identical CLAUDE.md files in 50 separate unit test subdirectories. |
+| **Execution Mode Selection** | Plan Mode (`/plan`) for multi-file migrations (5+ files), microservices; Direct for single-file fixes. | Direct execution on multi-service architecture changes without explore/plan phase. |
+| **Iterative Refinement** | 2–3 concrete I/O examples; Test-Driven Iteration; The Interview Pattern (clarifying questions). | Vague abstract adjectives ("make it clean"); guessing requirements blindly. |
+| **Coupled Changes** | Interacting issues provided in a single prompt; independent issues addressed sequentially. | Splitting coupled DB schema + API client changes across separate ungrounded turns. |
+| **CI/CD Execution** | Mandatory `-p` (or `--print`) flag for non-interactive execution; `--output-format json` + `--json-schema`. | Relying on stdin redirection (`< /dev/null`) or non-existent flags (`CLAUDE_HEADLESS`). |
+| **Self-Review Mitigation** | Spawning a second independent Claude instance with clean context to review generated code. | Having the generating Claude session review its own pull request code. |
+
+---
+
+### 🏆 The 8 Golden Architectural Rules of Domain 3
+
+1. **Project-Scoped Hierarchy Governs Team Consistency (`TS 3.1`)**:  
+   Instructions in project-level `.claude/CLAUDE.md` and `.claude/rules/` override user-level `~/.claude/CLAUDE.md`. Universal team standards, build scripts, and linting rules must be version-controlled in the repository so all developers and CI pipelines share identical standards.
+2. **The `/memory` Command is the Official Audit Standard (`TS 3.1`)**:  
+   Use `/memory` as the authoritative command to inspect active memory files, verify `@import` hierarchy resolution, and diagnose instruction conflicts across sessions.
+3. **Isolate Verbose Skills with `context: fork` (`TS 3.2`)**:  
+   Skills that generate verbose exploratory logs (code audits, test runs, AST parsing) **must declare `context: fork`** in their YAML frontmatter. This executes the skill inside an ephemeral subagent, returning only a compact summary to the main conversation window.
+4. **Path-Scoped Rules Eliminate Token Bloat (`TS 3.3`)**:  
+   Use `.claude/rules/*.md` with `paths: ["pattern"]` for conventions that apply across distributed folders (e.g. `**/*.test.tsx`). Path-scoped rules load conditionally only when matching files are edited, preserving 30,000+ tokens compared to monolithic configurations.
+5. **Blast-Radius Mode Gating: Plan Mode vs Direct Execution (`TS 3.4`)**:  
+   Enter **Plan Mode** (`Shift+Tab`, `/plan`) for tasks with high blast radius: microservice extractions, multi-file refactors (5+ files), and irreversible schema shifts. Reserve **Direct Execution** strictly for localized, well-scoped single-file changes with clear stack traces.
+6. **The Interview Pattern for Ambiguity Resolution (`TS 3.5`)**:  
+   When a task has multiple valid architectural paths or underspecified requirements, instruct Claude to ask 3–5 clarifying questions with concrete options *before* writing code. Never allow the agent to guess architectural choices.
+7. **Atomic Specification for Interacting Issues (`TS 3.5`)**:  
+   Interacting code modifications sharing state, schema columns, or API contracts **must be specified together in a single prompt turn**. Splitting coupled changes across turns forces downstream turns to make blind assumptions, leading to broken contracts.
+8. **Headless CI Automation & Clean Review Instances (`TS 3.6`)**:  
+   In CI/CD pipelines, **always pass the `-p` (or `--print`) flag** to prevent runner hangs on interactive stdin, and pair with `--output-format json` and `--json-schema`. To prevent **self-review bias**, always spawn a fresh, independent Claude review instance rather than asking the generating session to audit its own code.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Domain 3 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Personal Config for Team Standards** | Placing company coding standards in `~/.claude/CLAUDE.md` because it's already set up. | New hires and CI runners don't have the user's home directory config, causing severe build inconsistencies. | Commit project standards to `.claude/CLAUDE.md` or root `CLAUDE.md` in git repository. |
+| **Monolithic 2,000-Line CLAUDE.md** | Putting all backend, frontend, database, and devops rules into a single root file. | Floods context on every single query, wasting tokens, raising costs, and diluting model attention. | Split into modular files using `@import` and path-scoped rules in `.claude/rules/*.md`. |
+| **Executing Verbose Skills in Main Context** | Running codebase-wide grep/find skills directly without subagent isolation. | Ingests 20,000+ tokens of raw file paths and noise into the main conversation, exhausting token limits. | Configure `context: fork` in `SKILL.md` frontmatter to run skill in an isolated subagent. |
+| **Directory Rule Duplication** | Creating identical `CLAUDE.md` files in 40 separate test directories across the repo. | Impossible to maintain; updating a testing standard requires editing 40 separate files. | Create a single `.claude/rules/testing.md` with frontmatter `paths: ["**/*.test.*"]`. |
+| **Direct Execution on Monolith Restructuring** | Jumping straight into coding a microservice split without preliminary exploration. | Claude makes irreversible edits across dozens of files, resulting in syntax breakage, circular dependencies, and costly rework. | Enter Plan Mode (`/plan`), explore dependencies safely, generate a blueprint, and obtain approval before editing. |
+| **Guessing Technology Choices on Ambiguity** | When a user says "Add caching", Claude immediately generates a Redis client. | Project may use Memcached, DynamoDB DAX, or in-memory LRU; incorrect guess requires full rewrite. | Trigger the Interview Pattern: ask 3–5 clarifying questions with concrete technology options. |
+| **Splitting Coupled Changes Across Turns** | Prompting Turn 1: "Add column to DB", Turn 2: "Update API handler", Turn 3: "Update UI". | Turn 2 does not know the exact column type chosen in Turn 1, producing type errors and broken builds. | Group interacting issues into a single prompt turn with concrete input/output contracts. |
+| **Running Claude in CI Without `-p`** | Running `claude "audit PR"` in a GitHub Action or GitLab CI pipeline script. | Claude launches interactive terminal UI waiting for user keystrokes; CI runner hangs until timeout (6 hours). | Pass `-p` (or `--print`) flag: `claude -p "audit PR" --output-format json`. |
+| **Author Self-Review Bias** | Asking the same Claude session that wrote a pull request to review the pull request. | The session retains its generative reasoning context and rationalizes its own bugs and hallucinations. | Spawn a separate, independent Claude instance with a clean context to perform an objective review. |
+
+---
+
+### 🧠 Domain 3 Rapid Decision Matrix for Scenario Questions
+
+```mermaid
+flowchart TD
+    Q1["1. Team standards or slash commands?"] -->|Yes| A1["<b>Repository Root: .claude/</b><br/>Never personal ~/.claude/"]
+    Q1 -->|No| Q2["2. Verbose exploration skill?"]
+    Q2 -->|Yes| A2["<b>Set context: fork in SKILL.md</b><br/>Isolates tokens in subagent"]
+    Q2 -->|No| Q3["3. Rules across scattered paths?"]
+    Q3 -->|Yes| A3["<b>.claude/rules/*.md with paths glob</b><br/>Never duplicate directory CLAUDE.md"]
+    Q3 -->|No| Q4["4. Multi-file refactor (5+ files)?"]
+    Q4 -->|Yes| A4["<b>Plan Mode (/plan)</b><br/>Explore & blueprint before editing"]
+    Q4 -->|No| A5["<b>Pass -p / --print Flag</b><br/>Non-interactive headless CI execution"]
+```
+
+| Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Team-wide slash commands or build standards location?** | **YES** | Store in repository: `.claude/commands/` and `.claude/CLAUDE.md` *(NEVER user home `~/.claude/`)*. |
+| **Prevent verbose exploration skill from polluting session?** | **YES** | Configure `context: fork` in `SKILL.md` frontmatter *(NEVER run directly in main session)*. |
+| **Apply conventions to test files across 50+ packages?** | **YES** | Create `.claude/rules/testing.md` with `paths: ["**/*.test.*"]` *(NEVER duplicate `CLAUDE.md`)*. |
+| **Restructuring monolith across 40+ files?** | **YES** | Enter **Plan Mode** (`/plan`) to explore and blueprint before editing *(NEVER Direct Execution)*. |
+| **CI runner hangs indefinitely on Claude invocation?** | **YES** | Pass `-p` (or `--print`) non-interactive flag with `--output-format json`. |
+
+

@@ -15,11 +15,11 @@ flowchart TD
     
     Validator -- "Invalid (Schema / Constraint)" --> ErrorType{"Is Error Fixable?"}
     
-    ErrorType -- "Source text lacks required data" --> FastFail["❌ Stop Retrying Immediately!<br/>Flag as 'MISSING_SOURCE_DATA' / Nullable Field"]
+    ErrorType -- "Missing source fact" --> FastFail["Stop Retrying Immediately<br/>Flag MISSING_SOURCE_DATA / Nullable Field"]
     
-    ErrorType -- "Formatting / Logic mismatch" --> RetryCount{"Retry Count < Max (3)?"}
+    ErrorType -- "Formatting / Math mismatch" --> RetryCount{"Retry Count < 3?"}
     
-    RetryCount -- "Yes" --> FeedBack["Inject Validation Error Feedback:<br/>'Field [discount] cannot exceed [subtotal]. Got: 120 > 100.'"]
+    RetryCount -- "Yes" --> FeedBack["Inject Targeted Feedback<br/>'Field discount cannot exceed subtotal'"]
     FeedBack --> Extracted
     
     RetryCount -- "No (Exhausted)" --> Fallback["Escalate to Human Review"]

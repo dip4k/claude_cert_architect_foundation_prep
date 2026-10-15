@@ -11,14 +11,14 @@ Understand how to apply the Interview Pattern to resolve underspecified requirem
 flowchart TD
     UserReq["User Prompt: 'Build an authentication service'"] --> Analyzer["Ambiguity & Scope Analyzer"]
     
-    Analyzer --> AmbiguityCheck{"Is Scope Underspecified?<br/>(Ambiguity Score > 0.4)"}
+    Analyzer --> AmbiguityCheck{"Scope Underspecified?"}
     
-    AmbiguityCheck -- "Yes (Missing tokens, DB choice, auth type)" --> Interview["Interview Mode Activated"]
-    Interview --> Ask["Clarifying Questions + Concrete Options:<br/>1. JWT vs Session cookies?<br/>2. PostgreSQL vs SQLite?<br/>3. Passwordless vs OAuth?"]
+    AmbiguityCheck -- "Yes: Ambiguity Score > 0.4" --> Interview["Interview Mode Activated"]
+    Interview --> Ask["Clarifying Questions (2-3 Options)<br/>Auth Type, DB & Session Model"]
     Ask --> UserFeedback["User Selects Exact Architecture"]
     
     UserFeedback --> ConcreteIO["Provide 2-3 Concrete Input/Output Examples"]
-    AmbiguityCheck -- "No (Fully specified)" --> ConcreteIO
+    AmbiguityCheck -- "No: Fully Specified" --> ConcreteIO
     
     ConcreteIO --> TestCases["Generate Test Suite First (TDD)"]
     TestCases --> CodeGen["Implement Targeted Solution"]

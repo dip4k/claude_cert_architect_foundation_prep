@@ -9,14 +9,14 @@ Understand how to construct structured claim-source mappings, maintain provenanc
 
 ```mermaid
 flowchart TD
-    SourceA["Source A (Earnings Call, Oct 1)<br/>Claim: 'Q3 Cloud Revenue was $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
-    SourceB["Source B (10-Q SEC Filing, Oct 15)<br/>Claim: 'Q3 Cloud Revenue was $1.4B'"] --> Synthesizer
+    SourceA["Source A (Earnings Call, Oct 1)<br/>'Q3 Cloud Revenue was $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
+    SourceB["Source B (10-Q SEC Filing, Oct 15)<br/>'Q3 Cloud Revenue was $1.4B'"] --> Synthesizer
     
-    Synthesizer --> ConflictDetector{"Do Claims Conflict on Metric?"}
+    Synthesizer --> ConflictDetector{"Do Claims Conflict?"}
     
-    ConflictDetector -- "Yes (Different Values for Same Metric)" --> PreserveConflict["⚠️ Conflict Preservation Protocol"]
+    ConflictDetector -- "Yes" --> PreserveConflict["Conflict Preservation Protocol"]
     
-    PreserveConflict --> Out["Structured Claim Matrix:<br/>• Metric: Q3 Cloud Revenue<br/>• Source A: $1.2B (Preliminary, Oct 1)<br/>• Source B: $1.4B (Audited 10-Q, Oct 15)<br/>• Resolution: Disclose both with timeline context; never average!"]
+    PreserveConflict --> Out["Structured Claim Matrix<br/>Disclose both figures with citations<br/>(Never average into artificial mean)"]
 ```
 
 ---

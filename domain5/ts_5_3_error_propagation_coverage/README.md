@@ -21,11 +21,11 @@ flowchart TD
     ResB --> Synthesizer
     ResC --> Synthesizer
     
-    Synthesizer --> Decision{"Was Any Data Source Incomplete?"}
+    Synthesizer --> Decision{"Any Data Source Incomplete?"}
     
-    Decision -- "Subagent B Failed (Timeout)" --> Partial["⚠️ Synthesis Annotated as PARTIAL_COVERAGE:<br/>'Market trends omitted due to upstream source outage.'"]
+    Decision -- "Subagent B Failed (Timeout)" --> Partial["Annotate PARTIAL_COVERAGE<br/>Omit missing trends with warning"]
     
-    Decision -- "Subagent C Empty Result" --> Legitimate["Valid Finding:<br/>'Internal policy verified: No existing restrictions.'"]
+    Decision -- "Subagent C Empty Result" --> Legitimate["Valid Finding<br/>No existing restrictions"]
 ```
 
 ---

@@ -5,18 +5,23 @@
 
 ## 📌 Executive Architecture & Task Statement Mapping
 
-```
-                                ┌────────────────────────────────────────────────────────┐
-                                │             DOMAIN 4 ARCHITECTURE TOPOLOGY             │
-                                └────────────────────────────────────────────────────────┘
-                                                            │
-                      ┌──────────────────────────────────────┴──────────────────────────────────────┐
-                      ▼                                                                             ▼
-            PROMPT PRECISION & OUTPUT ENFORCEMENT                                          HIGH-THROUGHPUT PIPELINES
-    (TS 4.1: Explicit Criteria vs Vague Directives)                              (TS 4.5: Message Batches API Strategy)
-    (TS 4.2: Targeted Few-Shot Prompting)                                        (TS 4.5: custom_id Failure Handling)
-    (TS 4.3: Guaranteed JSON via tool_use & Schemas)                             (TS 4.6: Multi-Instance Independent Reviews)
-    (TS 4.4: Validation-Retry Feedback Loops)                                    (TS 4.6: Multi-Pass PR Review Pass 1 & 2)
+```mermaid
+flowchart LR
+    subgraph Precision["Precision & Enforcement"]
+        direction TB
+        P1["TS 4.1: Explicit Criteria & Boundaries"]
+        P2["TS 4.2: Targeted Diverse Few-Shot"]
+        P3["TS 4.3: Guaranteed JSON via tool_use"]
+        P4["TS 4.4: Validation & Retry Loops"]
+    end
+
+    subgraph Pipelines["High-Throughput Pipelines"]
+        direction TB
+        H1["TS 4.5: Message Batches API (50% Off)"]
+        H2["TS 4.5: custom_id Correlation"]
+        H3["TS 4.6: Multi-Instance Reviews"]
+        H4["TS 4.6: Two-Pass Review Pipeline"]
+    end
 ```
 
 | Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
@@ -44,21 +49,11 @@ A common failure mode in LLM prompting is attempting to tune precision using sub
   - *"Report a comment discrepancy ONLY when the documented parameter type, return type, or raised exception explicitly contradicts executed code logic."*
   - *"Do not flag comments for grammatical style, brevity, or missing punctuation."*
 
-```
-                             PROMPT PRECISION SPECTRUM
-                                         │
-            ┌────────────────────────────┴────────────────────────────┐
-            ▼                                                         ▼
-     VAGUE PROMPT DIRECTIVE                                    EXPLICIT CATEGORICAL CRITERIA
-   - "Be conservative and report                              - "Report comments ONLY when the documented
-      only high-confidence issues."                             behavior contradicts executed logic."
-   - "Check that all comments are accurate."                  - "Classify Severity as CRITICAL only when
-                                                                unhandled exception leads to data loss;
-                                                                otherwise classify as MINOR."
-            │                                                         │
-            ▼                                                         ▼
-     ❌ High False Positive Rate                               ✅ Low False Positive Rate
-     (Erodes developer trust across all categories)            (Calibrated, reproducible, high trust)
+```mermaid
+flowchart TD
+    Spectrum["Prompt Precision Spectrum"]
+    Spectrum -->|Vague Directives| Vague["Vague: 'Be conservative'<br/>High false positives; erodes trust"]
+    Spectrum -->|Explicit Criteria| Explicit["Explicit: Negative boundaries & rubrics<br/>Low false positives; reproducible"]
 ```
 
 #### 2. Negative Boundaries (Defining What NOT to Flag)
@@ -134,20 +129,11 @@ When extracting structured data, prompting Claude to *"Return raw valid JSON"* i
 - **The Production Standard**: Define the target output schema as the `input_schema` of a custom tool (e.g., `record_extracted_data`), and set `tool_choice: {"type": "tool", "name": "record_extracted_data"}`.
 - **Architectural Guarantee**: Output delivered via `tool_use` is parsed and validated directly by Anthropic's streaming JSON parser at the API layer, guaranteeing **100% syntactically valid JSON**.
 
-```
-                          STRUCTURED DATA EXTRACTION TECHNIQUES
-                                            │
-                    ┌───────────────────────┴───────────────────────┐
-                    ▼                                               ▼
-          PROMPT TO MARKDOWN / JSON                         ENFORCE VIA tool_use
-    - Prompt: "Output raw valid JSON..."            - Schema defined as tool input_schema
-    - Output: Plain text string                     - Forced via `tool_choice: {"type": "tool"}`
-    - Parsed by: json.loads() or regex              - Output: Parsed structured arguments
-             │                                               │
-             ▼                                               ▼
-      ❌ Non-Zero Syntax Errors                       ✅ 100% Guaranteed Syntax Validity
-      (Unescaped quotes, trailing commas,             (Zero JSON syntax errors; guaranteed
-       markdown backticks break parsers)               schema structure)
+```mermaid
+flowchart TD
+    Tech["Structured Data Extraction"]
+    Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br/>Syntax errors & non-zero parse failures"]
+    Tech -->|Forced tool_use| ToolMode["tool_use with JSON Schema<br/>100% Valid syntax via tool_choice"]
 ```
 
 #### 2. Hallucination Prevention via Nullable Schema Fields
@@ -205,22 +191,11 @@ A crucial architectural concept on the certification exam:
   - *Anti-Pattern*: Retrying 3 times when data does not exist. Claude will eventually hallucinate a fake SSN to satisfy the validator!
   - *Remedy*: Detect that missing required data cannot be resolved, break the retry loop immediately, and return a structured failure manifest for human exception handling.
 
-```
-                             Validation Error Occurs
-                                        │
-                                        ▼
-                        ┌───────────────────────────────┐
-                        │ Is data present in document?  │
-                        └───────────────┬───────────────┘
-                                        │
-                     ┌──────────────────┴──────────────────┐
-                     ▼ YES                                 ▼ NO
-       ┌─────────────────────────────┐       ┌─────────────────────────────┐
-       │      RECOVERABLE ERROR      │       │     UNRECOVERABLE ERROR     │
-       │ (Formatting / Arithmetic)   │       │ (Data missing from source)  │
-       │ Send targeted feedback for  │       │ Break retry loop immediately│
-       │ self-correction (Turn 2)    │       │ Escalate to human exception │
-       └─────────────────────────────┘       └─────────────────────────────┘
+```mermaid
+flowchart TD
+    Start["Validation Error Occurs"] --> Check{"Is data present in document?"}
+    Check -- "YES" --> Rec["Recoverable Error<br/>(Formatting / Arithmetic)<br/>Send targeted feedback for self-correction"]
+    Check -- "NO" --> Unrec["Unrecoverable Error<br/>(Data missing from source)<br/>Break loop & escalate to human exception"]
 ```
 
 #### 3. Semantic Cross-Validation
@@ -292,13 +267,39 @@ for result in client.messages.batches.results(batch.id):
 
 #### 2. Two-Pass Review Pipeline for Enterprise PRs
 For pull requests spanning multiple files:
-- **Pass 1: Isolated Local Per-File Review**:
-  - Spawns independent parallel instances for each file.
-  - Analyzes local logic, null safety, exception handling, and edge cases.
-  - Outputs a structured `FileFinding` JSON array.
-- **Pass 2: Systemic Cross-File Integration Review**:
-  - Aggregates the `FileFinding` arrays along with shared interface schemas and data models.
-  - Analyzes cross-cutting concerns: API contract mismatches, distributed race conditions, authorization token leakage across service boundaries.
+
+```mermaid
+flowchart TD
+    PR["Multi-File PR (5+ Files)"] --> Split["Split Files into Isolated Contexts"]
+    
+    subgraph Pass1["Pass 1: Local Correctness (Parallel)"]
+        Split --> P1A["Reviewer: models.py"]
+        Split --> P1B["Reviewer: views.py"]
+        Split --> P1C["Reviewer: controllers.py"]
+        P1A --> R1["Findings: Local Logic & Nulls"]
+        P1B --> R2["Findings: Local Validation"]
+        P1C --> R3["Findings: Edge Cases"]
+    end
+    
+    R1 & R2 & R3 --> Agg["Aggregated FileFindings Manifest"]
+    
+    subgraph Pass2["Pass 2: Cross-File Integration"]
+        Agg --> Integration["Independent Integration Reviewer"]
+        Integration --> Eval{"Contract Violations?"}
+    end
+    
+    Eval -->|Critical Defects| BlockGate["Exit Code 1: Block PR Gate"]
+    Eval -->|Verified| PassGate["Exit Code 0: Approve PR"]
+```
+
+| Review Dimension | Pass 1: Local Per-File Review | Pass 2: Systemic Cross-File Integration Review |
+| :--- | :--- | :--- |
+| **Primary Invariant** | Local syntactic correctness, null safety, local exception handling | Cross-module API contracts, data model compatibility, security boundaries |
+| **Instance Isolation** | Isolated parallel Claude instances per file | Single independent Claude instance with clean conversational memory |
+| **Input Context** | Diff of single file + local test file ($\sim 2\text{k}$ tokens) | Aggregated `FileFinding` JSON + public interface signatures ($\sim 6\text{k}$ tokens) |
+| **Typical Defects Caught** | Unhandled null dereference, array index out of bounds, SQL string concat | Public method deletion, schema mismatch between caller/callee, auth token leak |
+| **Attentional Risk Avoided**| Monolithic review diluting attention across 15 files simultaneously | Model fixating on trivial style in file 1 while missing security flaw in file 14 |
+
 
 ---
 
@@ -509,3 +510,84 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
   - Option A is incorrect because `max_tokens` controls generation output length; it does not solve attention dilution over large prompt inputs.  
   - Option C is incorrect because dumping entire repositories floods context with tens of thousands of irrelevant tokens, worsening attention dilution.  
   - Option D is incorrect because forcing 1-file PRs breaks atomic multi-service deployments and slows developer velocity.
+
+---
+
+## ⚡ Exam Rules, Golden Architectural Rules & Anti-Patterns Reference
+
+### 📋 CCAR-F Exam Rules & Scope Boundaries for Domain 4
+
+| Aspect | In-Scope Exam Focus | Out-of-Scope Distractor (Do Not Choose) |
+|---|---|---|
+| **Precision Improvement** | Explicit categorical criteria, concrete code examples, negative boundaries (what NOT to flag). | Vague guidance ("be conservative"), filtering by self-reported model confidence scores. |
+| **High False Positive Management** | Temporarily disable noisy categories entirely while refining criteria to preserve trust. | Relying on confidence score thresholds; instructing Claude to "think harder". |
+| **Few-Shot Prompting** | 2–4 targeted examples demonstrating diverse document layouts and explicit reasoning steps. | Providing 15+ homogeneous tabular examples; string-matching regex post-processors. |
+| **Structured Output Format** | Strict JSON schemas enforced via `tool_use` with forced `tool_choice`. | Asking for markdown ```json``` blocks; parsing free text with regex or `json.loads`. |
+| **Missing Document Data** | Nullable schema types (`type: ["string", "null"]`) so Claude returns `null`. | Marking all fields required and hoping Claude doesn't hallucinate missing data. |
+| **Extensible Categorization** | Enum values with `"OTHER"` plus a companion string field (`other_description`). | Open-ended free-text categories without enum validation. |
+| **Validation-Retry Boundaries** | Retries fix format and math mismatches; retries FAIL on fundamentally absent data. | Retrying endlessly on missing source data; treating unrecoverable missing data as a model failure. |
+| **Semantic Cross-Checking** | Extracting `calculated_total` alongside `stated_total` to catch arithmetic inconsistencies. | Assuming strict JSON schema validation catches semantic mathematical errors. |
+| **Message Batches API** | 50% cost savings for 24h non-blocking jobs (overnight debt audits, test gen); `custom_id` correlation. | Using Batches API for blocking pre-merge CI checks; expecting multi-turn tool use in batch. |
+| **Review Architecture** | Independent Claude instance (no self-review bias); Two-Pass Review (Pass 1 per-file + Pass 2 integration). | Having the generating session review its own code; single-pass review on 20-file PRs. |
+
+---
+
+### 🏆 The 8 Golden Architectural Rules of Domain 4
+
+1. **Explicit Categorical Criteria Over Vague Adjectives (`TS 4.1`)**:  
+   Always define concrete categorical rubrics, code examples, and explicit negative boundaries (what to ignore). Vague instructions like *"be conservative"* or *"only report high-confidence issues"* fail to improve precision because LLMs lack an objective benchmark for subjectivity.
+2. **Preserve Developer Trust via Selective Category Disablement (`TS 4.1`)**:  
+   When a review or extraction category produces unacceptable false positives, **temporarily disable that category entirely** while engineering better prompts. Relying on self-reported confidence thresholds fails because models are often highly confident in false-positive findings.
+3. **Structural Diversity in Few-Shot Examples (`TS 4.2`)**:  
+   Provide 2–4 few-shot examples featuring **structurally varied layouts** (e.g., one tabular invoice, one dense narrative paragraph, one key-value receipt). Identical layouts cause structural overfitting, causing the model to extract null when format varies.
+4. **Guaranteed Valid Schemas via Tool Use (`TS 4.3`)**:  
+   Always enforce structured output by defining tools with JSON schemas and setting `tool_choice: "any"` or `{"type": "tool", "name": "..."}`. Tool use leverages the model's native constrained decoding, guaranteeing 100% syntactically valid JSON and eliminating markdown parsing crashes.
+5. **The Nullable Schema Rule for Missing Data (`TS 4.3`)**:  
+   Define non-guaranteed attributes as nullable (`type: ["string", "null"]`). When a field is marked required but absent from the source document, Claude is forced to either hallucinate a plausible value or fail. Nullable fields allow Claude to return `null` truthfully.
+6. **The Limits of Validation Retries (`TS 4.4`)**:  
+   Validation-retry loops with specific error feedback easily resolve syntax errors, field placement, and arithmetic mismatches. However, **retries fail when data is fundamentally absent from the source document**. Stop retrying and immediately escalate unrecoverable missing data to human triage.
+7. **The Message Batches API Qualification Rule (`TS 4.5`)**:  
+   The Message Batches API provides a **50% cost discount** with a processing window up to 24 hours and no latency SLA. Use Batches strictly for non-blocking, latency-tolerant workloads (overnight technical debt audits, offline test generation). **NEVER use Batches API for blocking pre-merge CI checks.** Use deterministic `custom_id` values to correlate results and resubmit failed documents.
+8. **Multi-Instance Two-Pass Review Pipeline (`TS 4.6`)**:  
+   To eliminate **self-review bias**, always use an independent Claude review instance that lacks the authoring session's reasoning history. For large code reviews, execute a two-pass pipeline: Pass 1 evaluates local per-file correctness; Pass 2 evaluates cross-file integration and interface contracts to prevent attention dilution.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Domain 4 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Vague Prompt Directives ("Be Conservative")** | Simple to add to prompt: *"Be conservative and only report critical issues."* | Precision does not improve; model continues flagging noisy stylistic issues based on subjective interpretation. | Define explicit categorical criteria, concrete severity tiers, and negative boundaries (what to ignore). |
+| **Filtering by Self-Reported Confidence** | Asking Claude to return a confidence score (1–10) and filtering below 8. | LLMs are notoriously poorly calibrated; models frequently report 9/10 confidence on hallucinated bugs. | Validate accuracy against labeled benchmark datasets; disable noisy categories while improving prompts. |
+| **Homogeneous Few-Shot Layouts** | Providing 5 tabular invoice examples because all training data looks like tables. | Model overfits to table borders; extraction drops to 40% when encountering narrative service invoices. | Curate 2–4 structurally diverse examples (tabular, narrative, receipt) with reasoning steps. |
+| **Markdown Free-Text JSON Extraction** | Asking Claude to output a JSON codeblock (````json ... ````) and parsing with `json.loads`. | Markdown wrapping, missing commas, preamble text, or token cutoffs cause fatal syntax parsing crashes. | Enforce structured output via `tool_use` with strict JSON schema and forced `tool_choice`. |
+| **Strict Non-Nullable Required Fields** | Marking all 20 schema fields as required to ensure complete database records. | When source documents omit optional fields (e.g. PO Number), Claude fabricates plausible strings to satisfy schema. | Mark missing-prone fields as nullable (`type: ["string", "null"]`) so Claude returns `null`. |
+| **Endless Retries on Missing Source Facts** | Looping retry prompts when a required field like Tax ID cannot be found in the document. | Burns tokens and API costs; Claude eventually hallucinates a fake Tax ID on retry turn 3. | Detect unrecoverable missing information; abort retries and route directly to human exception queue. |
+| **Batch API for Blocking CI/CD Workflows** | Proposing Message Batches API for pull request merge checks to save 50% on API costs. | PR checks take up to 24 hours to return results, grinding developer velocity and deployment pipelines to a halt. | Use synchronous real-time API for blocking PR checks; reserve Batches API for overnight debt audits. |
+| **Monolithic Single-Pass Multi-File Review** | Submitting a 20-file unified diff in a single prompt to save API round-trips. | Causes attention dilution: model focuses on trivial syntax in file 1 and completely misses authorization flaws in file 18. | Two-Pass Review Pipeline: Pass 1 isolates per-file checks; Pass 2 audits cross-file integration contracts. |
+
+---
+
+### 🧠 Domain 4 Rapid Decision Matrix for Scenario Questions
+
+```mermaid
+flowchart TD
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["<b>tool_use with forced tool_choice</b><br/>Guaranteed valid JSON schema"]
+    Q1 -->|No| Q2["2. Document attributes missing?"]
+    Q2 -->|Yes| A2["<b>Mark Nullable: type ['string', 'null']</b><br/>Prevents hallucinated values"]
+    Q2 -->|No| Q3["3. Missing physical source facts?"]
+    Q3 -->|Yes| A3["<b>Fast-Fail to Human Review</b><br/>Retries cannot invent absent data"]
+    Q3 -->|No| Q4["4. Message Batches for PR checks?"]
+    Q4 -->|Yes| A4["<b>Reject: Use Real-Time API</b><br/>Batches have 24h SLA; use for audits"]
+    Q4 -->|No| A5["<b>Two-Pass Review Pipeline</b><br/>Pass 1 Local + Pass 2 Integration"]
+```
+
+| Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Eliminate JSON syntax parsing errors in extraction?** | **YES** | Enforce schema via `tool_use` and forced `tool_choice` *(NEVER parse markdown text)*. |
+| **Prevent hallucinating absent document attributes?** | **YES** | Mark schema fields as **nullable**: `type: ["string", "null"]` *(NEVER required)*. |
+| **Validation fails due to physically absent source facts?** | **YES** | Fast-fail and abort retries immediately; route to human review *(retries cannot invent data)*. |
+| **Message Batches API for pre-merge PR blocking checks?** | **YES** | Reject: Batches have up to 24h turnaround *(reserve Batches for overnight non-blocking jobs)*. |
+| **Auditing multi-file PRs without attention dilution?** | **YES** | Two-Pass Review: Pass 1 (local per-file) + Pass 2 (cross-file integration). |
+
+

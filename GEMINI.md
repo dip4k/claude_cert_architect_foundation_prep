@@ -3,10 +3,10 @@
 ## 🛡️ Policy & Execution Safety
 Strictly follow [no_claude_api_execution.md](file:///.agents/rules/no_claude_api_execution.md).
 - **Prohibited**: Automated execution of live Claude/Anthropic API or Agent SDK scripts.
-- **User Execution**: Manual in WSL Ubuntu (`uv run <script_path>`).
-- **Offline Automation**: Unit tests, linting, formatting (`pytest`, `black`, `flake8`, `mypy`) in WSL Ubuntu:
+- **User Execution**: Manual in WSL Ubuntu-26.04 (`uv run <script_path>`).
+- **Offline Automation**: Unit tests, linting, formatting (`pytest`, `black`, `flake8`, `mypy`) in WSL Ubuntu-26.04:
   ```powershell
-  wsl -d Ubuntu bash -c "~/.local/bin/uv run pytest tests/"
+  wsl -d Ubuntu-26.04 bash -c "~/.local/bin/uv run pytest tests/"
   ```
 
 ## 🎯 Architecture & Interview Preparation

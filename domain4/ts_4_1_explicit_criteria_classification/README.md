@@ -9,14 +9,14 @@ Understand how to replace vague prompt heuristics with concrete categorical crit
 
 ```mermaid
 flowchart TD
-    subgraph AntiPattern["❌ Anti-Pattern (High False Positive Rate)"]
-        Vague["'Be conservative. Flag any code that looks risky or unsafe.'"]
-        ResultA["Flags mock passwords in test files<br/>Flags parameterized queries<br/>Flags benign helper functions"]
+    subgraph AntiPattern["Anti-Pattern (High False Positive Rate)"]
+        Vague["'Be conservative. Flag any code that looks risky.'"]
+        ResultA["Flags mock passwords in tests<br/>Flags benign helper functions"]
     end
 
-    subgraph Recommended["✅ Explicit Rubric Pattern (Calibrated Precision)"]
-        Explicit["Concrete Category Rules + Boundary Examples:<br/>1. Hardcoded Secret: Active API key pattern in non-test file.<br/>2. SQL Injection: Raw string concatenation into DB execute().<br/>3. Negative Boundaries: Do NOT flag test fixtures or 'mock_*'."]
-        ResultB["Zero False Positives on Test Fixtures<br/>100% Precision on Production Vulnerabilities"]
+    subgraph Recommended["Explicit Rubric Pattern (Calibrated Precision)"]
+        Explicit["Concrete Category Rules + Negative Boundaries<br/>(Exclude test mocks and fixtures)"]
+        ResultB["Zero false positives on test fixtures<br/>High precision on production vulnerabilities"]
     end
 ```
 

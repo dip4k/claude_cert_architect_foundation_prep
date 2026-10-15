@@ -11,7 +11,7 @@ Understand how to design tiered routing based on calibrated confidence threshold
 flowchart TD
     Pred["Claude Extraction / Classification Result<br/>(confidence: score)"] --> Router{"Confidence Threshold Check"}
     
-    Router -- "Score >= 0.90 (High Confidence)" --> SamplingCheck{"Stratified Random Audit?<br/>(e.g., 5% - 10% rate)"}
+    Router -- "Score >= 0.90 (High Confidence)" --> SamplingCheck{"Selected in 5-10% Audit?"}
     
     SamplingCheck -- "Sampled (Audit)" --> HumanAudit["Human Audit Queue<br/>(Monitors Drift & ECE)"]
     SamplingCheck -- "Not Sampled" --> AutoApprove["Straight-Through Processing (STP)<br/>Immediate Auto-Approval"]

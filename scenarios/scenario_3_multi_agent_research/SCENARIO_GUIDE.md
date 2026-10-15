@@ -19,6 +19,56 @@ We are architecting an autonomous, institutional-grade market and financial due-
 
 ---
 
+## ⚡ Scenario 3 Golden Rules & Anti-Patterns Reference
+
+### 🏆 The 5 Golden Architectural Rules for Multi-Agent Research Systems
+
+1. **Hub-and-Spoke Governance & Context Isolation (`TS 1.2`)**:  
+   All task decomposition, subagent delegation, synthesis, and error handling **must route through the central coordinator**. Subagents operate in 100% context isolation with empty starting contexts. Subagents are strictly prohibited from direct peer-to-peer communication.
+2. **Concurrent Single-Turn Spawning (`TS 1.3`)**:  
+   The coordinator **must emit multiple `Task` tool calls in a single response turn** for independent research subtasks (e.g., market search + patent analysis + financial filings). This triggers parallel execution, reducing latency by 40%–60% compared to sequential turns.
+3. **Preserve Conflicting Data Without Averaging (`TS 5.6`)**:  
+   When credible intelligence sources report conflicting statistics (e.g. Morgan Stanley reports 14% growth while Goldman Sachs reports 18%), **never average the figures or choose one arbitrarily**. Report both figures with explicit source attribution, publication dates, and methodology notes.
+4. **Distinguish Valid Empty Results from Upstream Failures (`TS 2.2 & 5.3`)**:  
+   A search query returning 0 records is a ground-truth factual finding (`VALID_EMPTY`, `isError: false`); an API timeout, rate limit, or auth failure is an `UPSTREAM_FAILURE` (`isError: true`). Treating empty matches as failures triggers wasteful retries.
+5. **Annotate Research Coverage Boundaries (`TS 5.3`)**:  
+   When subagents experience unrecoverable upstream failures, the coordinator must not crash or terminate the pipeline. Proceed with available findings and annotate the final synthesis report with explicit **coverage boundaries** identifying missing data sources.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Scenario 3 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Overly Narrow Task Decomposition** | Coordinator decomposes "AI in Creative Industries" into only visual art subtasks. | Subagents execute correctly, but final research report completely misses music, literature, and film. | Coordinator prompts must include domain taxonomy checks and iterative gap-detection passes. |
+| **Sequential Multi-Turn Spawning** | Coordinator invokes Web Search in Turn 1, waits for result in Turn 2, then invokes SEC Analysis in Turn 3. | Adds 40%+ latency overhead, serializes independent network requests, and violates the 20s SLA. | Emit all independent `Task` tool calls concurrently in Turn 1 of coordinator response. |
+| **Peer-to-Peer Subagent Communication** | Allowing research subagents to query each other directly to "share context". | Creates circular deadlocks, unobservable error states, race conditions, and exponential token inflation. | Route all inter-subagent communication strictly through the central coordinator (Hub-and-Spoke). |
+| **Averaging Conflicting Financial Metrics** | Calculating the arithmetic mean ($16%) when two analyst reports give different market estimates ($14% and $18%). | Fabricates synthetic data that neither source stated; destroys auditability and fact provenance. | Report both values side-by-side with source attribution, timestamps, and methodology notes. |
+| **Treating Zero Matches as Failure** | Marking a patent search with 0 hits as an MCP error (`isError: true`). | Coordinator assumes patent database is down and triggers futile retries against a healthy service. | Return `isError: false`, `count: 0`, and treat "no patents found" as ground-truth research finding. |
+
+---
+
+### 🧠 Scenario 3 Rapid Exam Decision Tree
+
+```mermaid
+flowchart TD
+    Start{Research Inquiry Focus}
+    Start -->|Spawn 3 Subagents| D1["Multiple Task Calls in Turn 1<br/>(Concurrent parallel fan-out)"]
+    Start -->|Conflicting Metrics| D2["Cite Both Numbers & Dates<br/>(Never average into synthetic mean)"]
+    Start -->|Subagent Timeout / Error| D3["Structured Error Propagation<br/>(Add coverage gap notice)"]
+    Start -->|0 Matching Records| D4["Valid Empty: isError false, count 0<br/>(Ground truth finding)"]
+```
+
+| Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Spawning multiple independent subagents?** | **SINGLE TURN** | Emit multiple `Task` calls in a **single coordinator turn** *(NEVER sequential turns)*. |
+| **Conflicting statistics from credible sources?** | **CITE BOTH** | Report both figures with source citations, dates, and methodology notes *(NEVER average)*. |
+| **Subagent failure or timeout on secondary topic?** | **PARTIAL COVERAGE** | Return structured error context; coordinator notes coverage gap in report *(NEVER abort entire run)*. |
+| **Query returns 0 matching records?** | **VALID EMPTY** | `isError: false, count: 0` is ground truth finding *(NEVER mark as failure)*. |
+
+
+---
+
 ## 🔑 Deep Technical Concepts & Anthropic API Structures
 
 ### 1. Hub-and-Spoke Coordinator Topology (TS 1.2)
@@ -27,20 +77,17 @@ In complex multi-domain intelligence gathering, allowing subagents to communicat
 
 ```mermaid
 flowchart TD
-    UserQuery["User Request: 'Analyze Acme Corp'"] --> Hub["Coordinator Agent (The Hub)"]
-    
-    subgraph IsolatedSpokes["Independent Subagent Workers (Zero P2P Communication)"]
-        Hub -- "Task 1 (Turn 1)" --> SpokeSEC["SEC Filings Analyst<br/>Context: [Entity: Acme]"]
-        Hub -- "Task 2 (Turn 1)" --> SpokePatent["Patent Analyst<br/>Context: [Entity: Acme]"]
-        Hub -- "Task 3 (Turn 1)" --> SpokeNews["Market News Analyst<br/>Context: [Entity: Acme]"]
+    UserQuery["User Request"] --> Hub["Coordinator Hub"]
+    subgraph IsolatedSpokes["Isolated Subagents (Zero P2P Traffic)"]
+        Hub -->|Task 1| SpokeSEC["SEC Filings Analyst"]
+        Hub -->|Task 2| SpokePatent["Patent Analyst"]
+        Hub -->|Task 3| SpokeNews["Market News Analyst"]
     end
-    
     SpokeSEC --> Hub
     SpokePatent --> Hub
     SpokeNews --> Hub
-    
-    Hub --> Synthesizer["Synthesis Agent<br/>(Lightweight verification tool only)"]
-    Synthesizer --> Report["Final Verified Due-Diligence Report"]
+    Hub --> Synthesizer["Final Synthesis"]
+    Synthesizer --> Report["Due Diligence Report"]
 ```
 
 ### 2. Single-Turn Parallel Spawning (TS 1.3)

@@ -5,17 +5,21 @@
 
 ## 📌 Executive Architecture & Task Statement Mapping
 
-```
-                                ┌────────────────────────────────────────────────────────┐
-                                │             DOMAIN 2 ARCHITECTURE TOPOLOGY             │
-                                └────────────────────────────────────────────────────────┘
-                                                            │
-                      ┌──────────────────────────────────────┴──────────────────────────────────────┐
-                      ▼                                                                             ▼
-             TOOL INTERFACES & EXECUTION                                                  MCP INTEGRATION
-    (TS 2.1: Tool Descriptions & Boundaries)                                     (TS 2.4: Project vs User Scoping)
-    (TS 2.2: MCP Structured Error Protocol)                                      (TS 2.4: MCP Resources for Catalogs)
-    (TS 2.3: Least Privilege Distribution & tool_choice)                         (TS 2.5: Built-in Tool Selection)
+```mermaid
+flowchart LR
+    subgraph Tools["Tool Interfaces & Execution"]
+        direction TB
+        T1["TS 2.1: Descriptions & Boundaries"]
+        T2["TS 2.2: MCP Structured Errors"]
+        T3["TS 2.3: Least Privilege & tool_choice"]
+    end
+
+    subgraph MCP["MCP Integration & Scoping"]
+        direction TB
+        M1["TS 2.4: Project vs User Scoping"]
+        M2["TS 2.4: MCP Resources for Catalogs"]
+        M3["TS 2.5: Built-in Tool Selection & Edit"]
+    end
 ```
 
 | Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
@@ -40,26 +44,11 @@ In LLM-based agent systems, the language model does not see backend database tab
 
 Minimal, vague, or overlapping descriptions (e.g. `description: "Finds stuff"`) cause an immediate **50%+ tool selection misrouting rate**, triggering hallucinated arguments or infinite tool-hopping loops.
 
-```
-                                      User Intent:
-                           "Lookup status of shipment #8812"
-                                            │
-                                            ▼
-                    ┌───────────────────────────────────────────────┐
-                    │       Claude Evaluates Tool Declarations      │
-                    └───────────────────────┬───────────────────────┘
-                                            │
-                    ┌───────────────────────┴───────────────────────┐
-                    ▼                                               ▼
-       Ambiguous / Minimal Description                 Differentiated Boundary Description
-    order_tool: "Gets order details."               lookup_shipment: "Retrieves real-time carrier
-    shipping_tool: "Handles shipping."                               tracking for tracking numbers matching
-           │                                                         1Z-XXXX or TRK-XXXX.
-           ▼                                                         Boundary: Do NOT call for order invoices
-    ❌ 50% Misrouting Rate                                           or billing disputes; use query_billing."
-    (Model guesses blindly between                                           │
-     similar tools)                                                          ▼
-                                                                    ✅ 100% Deterministic Routing
+```mermaid
+flowchart TD
+    Intent["User Intent:<br/>'Lookup status of shipment #8812'"] --> Eval["Claude Evaluates Tool Declarations"]
+    Eval -->|Minimal Description| Ambiguous["Ambiguous: order_tool vs shipping_tool<br/>50% Misrouting (Guesses blindly)"]
+    Eval -->|Boundary Description| Clear["Differentiated: lookup_shipment<br/>100% Deterministic Routing"]
 ```
 
 #### 2. The 4 Essential Components of Production Tool Descriptions
@@ -136,20 +125,17 @@ Providing an agent with 15–25 tools degrades performance:
 - Increases the risk of unintended side-effects (e.g. an informational support bot calling a destructive `delete_user` tool).
 - **The Standard**: Restrict agents to **4–5 specialized tools** strictly aligned with their core role. If an agent requires more capabilities, decompose the workflow into a coordinator with specialized subagents.
 
-```
-       ❌ ANTI-PATTERN: MONOLITHIC AGENT            ✅ PRODUCTION: LEAST PRIVILEGE TOPOLOGY
-    ┌──────────────────────────────────────┐                ┌──────────────────────────────┐
-    │          Monolithic Support          │                │         Coordinator          │
-    │  Tools: [get_user, update_user,      │                │   allowedTools: ["Task"]     │
-    │          delete_user, lookup_order,  │                └──────────────┬───────────────┘
-    │          cancel_order, refund_order, │                               │
-    │          reset_pwd, query_billing,   │            ┌──────────────────┴──────────────────┐
-    │          charge_card, search_kb,     │            ▼                                     ▼
-    │          escalate, log_audit...]     │    ┌────────────────────────┐         ┌────────────────────────┐
-    │                                      │    │  Billing Subagent      │         │ Order Support Subagent │
-    │ (High confusion, accidental charges, │    │ Tools: [query_billing, │         │ Tools: [lookup_order,  │
-    │  frequent tool selection errors)     │    │         process_refund]│         │         track_shipment]│
-    └──────────────────────────────────────┘    └────────────────────────┘         └────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph AntiPattern["Anti-Pattern: Monolithic Agent"]
+        Mono["Single Agent with 15+ Tools<br/>High confusion & context pollution"]
+    end
+
+    subgraph BestPractice["Production: Least Privilege (4-5 Tools/Agent)"]
+        Coord["Coordinator (allowedTools: Task)"]
+        Coord --> Sub1["Billing Subagent<br/>[query_billing, process_refund]"]
+        Coord --> Sub2["Order Support Subagent<br/>[lookup_order, track_shipment]"]
+    end
 ```
 
 #### 2. Configuring `tool_choice`
@@ -253,28 +239,13 @@ The `Edit` tool relies on finding an exact, unique `old_string` anchor in the ta
   2. Invoke `Read` on the target file (or file slice) to get the exact current line numbers and surrounding context.
   3. Formulate a replacement with expanded unique anchor context, OR use `Write` with the fully reconciled content.
 
-```
-       Attempt surgical Edit
-                 │
-                 ▼
-       ┌───────────────────┐
-       │ Did Edit succeed? │──► YES ──► Modification Complete
-       └─────────┬─────────┘
-                 │ NO (Ambiguous / Non-unique anchor)
-                 ▼
-       ┌───────────────────┐
-       │ 1. Invoke Read    │ (Retrieve exact current text & offsets)
-       └─────────┬─────────┘
-                 │
-                 ▼
-       ┌───────────────────┐
-       │ 2. Reconcile text │ (Determine exact modifications)
-       └─────────┬─────────┘
-                 │
-                 ▼
-       ┌───────────────────┐
-       │ 3. Invoke Write   │ (Write reconciled full file safely)
-       └───────────────────┘
+```mermaid
+flowchart TD
+    Start["Attempt Surgical Edit"] --> Check{"Edit Succeeded?"}
+    Check -->|Yes| Done["Edit Applied"]
+    Check -->|No: Anchor Collision| Read["1. Invoke Read<br/>(Inspect exact lines & context)"]
+    Read --> Reconcile["2. Expand Anchor Context"]
+    Reconcile --> Fallback["3. Retry Edit OR Fallback to Write"]
 ```
 
 ---
@@ -450,3 +421,84 @@ Option B is correct. Claude models support parallel tool use by default, emittin
   - Option A is incorrect because prompt instructions cannot guarantee deterministic API-level tool calling behavior when the model's parallel tool calling heuristic is active.  
   - Option C is incorrect because running unvalidated shell commands creates security and idempotency risks, abandoning structured error handling.  
   - Option D is incorrect because `max_tokens` controls generation length, not parallel tool execution scheduling.
+
+---
+
+## ⚡ Exam Rules, Golden Architectural Rules & Anti-Patterns Reference
+
+### 📋 CCAR-F Exam Rules & Scope Boundaries for Domain 2
+
+| Aspect | In-Scope Exam Focus | Out-of-Scope Distractor (Do Not Choose) |
+|---|---|---|
+| **Tool Selection Mechanism** | Detailed, boundary-differentiated descriptions and schemas; LLM performs semantic routing. | Custom regex pre-routing parsers, fine-tuned intent classifiers, or routing proxy microservices. |
+| **Tool Splitting** | Splitting monolithic multi-purpose tools into granular, single-purpose tools with tight contracts. | Consolidating all APIs into a single generic `call_api(endpoint, payload)` tool. |
+| **MCP Error Schema** | `CallToolResult(isError=True)` with `errorCategory`, `isRetryable: bool`, and actionable messages. | Throwing raw Python exceptions, returning HTTP 500 status strings, or returning generic `"Operation failed"`. |
+| **Empty Results** | A successful query returning 0 records is ground truth (`isError: false`, `count: 0`). | Flagging 0 matches as `isError: true`, which triggers wasteful and confusing retries. |
+| **Tool Distribution** | Least privilege: 4–5 specialized tools per subagent. | Provisioning 15–20 tools per agent or granting subagents tools outside their core specialization. |
+| **`tool_choice` Configuration** | `auto` for dialogue; `any` to force tool use; `{"type": "tool"}` for mandatory step 1; `disable_parallel_tool_use: True`. | Setting temperature to 0.0 to prevent parallel calls; relying on system prompt to forbid parallel calls. |
+| **MCP Scoping** | Project `.mcp.json` (git-tracked) with `${ENV_VAR}` expansion; user `~/.claude.json` (personal). | Hardcoding API tokens in `.mcp.json`; deploying MCP servers on Kubernetes clusters or managing OAuth servers. |
+| **MCP Resources** | Exposing passive catalogs (database schemas, API indexes, doc trees) as MCP Resources (`resources/read`). | Wrapping large schemas in active tools (`get_schema`) that waste tokens across exploratory loops. |
+| **Built-in Tool Selection** | `Glob` for file paths; `Grep` for contents; `Read` for viewing; `Write` for whole file; `Edit` for unique anchor replacement. | Bulk reading all files upfront; using raw terminal `sed`/`awk` scripts for file edits. |
+| **Edit Fallback** | When `Edit` encounters ambiguous anchor collisions, call `Read` to inspect context and fall back to `Write`. | Retrying the exact same `Edit` call blindly, or aborting the entire workflow on anchor failure. |
+
+---
+
+### 🏆 The 8 Golden Architectural Rules of Domain 2
+
+1. **Semantic Description Quality Governs Routing (`TS 2.1`)**:  
+   Claude relies on semantic clarity in tool descriptions to route queries accurately. Descriptions must include the specific capability contract, parameter regex formats, explicit boundary statements (*"Use X instead of Y when..."*), and 2–3 authentic user query examples.
+2. **Granular Single-Responsibility Tool Design (`TS 2.1`)**:  
+   Split monolithic "Swiss Army Knife" tools into focused, single-purpose interfaces (e.g., split `manage_user` into `create_user`, `update_user_role`, and `deactivate_user`). Single-purpose tools minimize parameter ambiguity and reduce invocation errors.
+3. **Structured MCP Error Responses (`TS 2.2`)**:  
+   Always return `isError: true` inside `CallToolResult` upon execution failure, accompanied by structured metadata: `errorCategory` (`transient`, `validation`, `business`, `permission`), `isRetryable: bool`, and human-readable guidance.
+4. **The Ground-Truth Empty Match Rule (`TS 2.2`)**:  
+   A query that completes successfully but finds 0 matching records is a **valid ground-truth result** (`isError: false`, `count: 0`), NOT an error. Treating empty search results as errors causes wasteful retry loops and misinforms coordinator reasoning.
+5. **Least Privilege Tool Distribution (`TS 2.3`)**:  
+   Restrict agent tool access to **4–5 specialized tools** tailored to the agent's specific role. Provisioning 15+ tools degrades tool selection accuracy, increases latency, and causes subagents to misuse tools outside their domain.
+6. **Enforce Sequential Tool Chains via `disable_parallel_tool_use` (`TS 2.3`)**:  
+   When Step 2 has an absolute data dependency on Step 1 (e.g., `provision_subnet` $\rightarrow$ `deploy_db(subnet_id)`), configure `tool_choice: {"type": "auto", "disable_parallel_tool_use": True}` to prevent Claude from emitting concurrent calls with hallucinated placeholder IDs.
+7. **Expose Passive Catalogs as MCP Resources (`TS 2.4`)**:  
+   Use **MCP Resources** (`resources/read`) for read-only reference data (database schemas, API catalogs, issue summaries). Exposing catalogs as active tools triggers unnecessary model invocations and exploratory context churn.
+8. **The Edit Failure Fallback Protocol (`TS 2.5`)**:  
+   When surgical `Edit` fails due to ambiguous or non-unique anchor text, execute `Read` to retrieve the current file state, expand the anchor block with unambiguous context, or fall back to `Write` with the fully reconciled file content.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Domain 2 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Minimal / 1-Line Tool Descriptions** | Seems clean and concise: `"lookup_order: Retrieves order details"`. | Claude cannot distinguish between similar tools (e.g. `lookup_order` vs `get_customer`), causing a 50%+ misrouting rate. | Expand description with capabilities, parameter formats, boundary statements, and example queries. |
+| **External Regex / Classifier Routing Layer** | Engineers attempt to bypass LLM routing by writing custom keyword parsers or classifier models. | Brittle, fails on natural phrasing, creates heavy maintenance overhead, and bypasses Claude's natural reasoning. | Refine tool descriptions and schemas to let Claude perform native zero-shot semantic routing. |
+| **Uniform Generic Error Strings** | Returning `isError: true` with `"Operation failed"` or throwing raw exceptions. | Model lacks context to understand what failed, whether the failure is transient, or how to formulate a recovery plan. | Return structured JSON with `errorCategory`, `isRetryable`, and specific remediation guidance. |
+| **Flagging 0 Matching Records as Error** | Developers treat 0 search results as a failure (`isError: true`, `"No orders found"`). | Coordinator misinterprets the message as an API outage and initiates futile retry loops against healthy backends. | Return `isError: false` with `count: 0` and `results: []` as ground-truth fact. |
+| **Tool Over-Provisioning (15+ Tools per Agent)** | Providing all backend enterprise tools to every agent to ensure maximum capability. | Causes severe attention dilution, degraded tool selection accuracy, high token costs, and cross-specialization misuse. | Apply Least Privilege: partition tools across specialized subagents (4–5 tools each). |
+| **Exposing Passive Catalogs as Active Tools** | Wrapping static API specs or database DDL in a tool (`get_database_schema()`). | Forces the agent into exploratory tool-calling loops, consuming context and adding 2–3 unnecessary turns. | Expose read-only schemas and catalogs as MCP Resources (`resources/read`). |
+| **Committing Plaintext API Keys in `.mcp.json`** | Hardcoding tokens directly in `.mcp.json` for rapid local testing. | Credentials leak to version control and team repositories, violating enterprise security compliance. | Use environment variable expansion in `.mcp.json` (`${GITHUB_TOKEN}`, `${DB_PASSWORD}`). |
+| **Blind `Edit` Retrying Without `Read`** | Retrying the identical `Edit` tool call when it fails on anchor text matching. | Deterministic string mismatch will fail every single retry until turn limit is exhausted. | Call `Read` to inspect exact line context, expand anchor boundaries, or overwrite via `Write`. |
+
+---
+
+### 🧠 Domain 2 Rapid Decision Matrix for Scenario Questions
+
+```mermaid
+flowchart TD
+    Q1["1. Model picks wrong tool?"] -->|Yes| A1["<b>Refine Tool Description & Boundaries</b><br/>Never build custom classifier"]
+    Q1 -->|No| Q2["2. Zero records returned?"]
+    Q2 -->|Yes| A2["<b>Valid Empty: isError: false</b><br/>Zero matches is ground truth"]
+    Q2 -->|No| Q3["3. Backend failure / timeout?"]
+    Q3 -->|Yes| A3["<b>Structured MCP Error</b><br/>Include errorCategory & isRetryable"]
+    Q3 -->|No| Q4["4. Read-only schemas / catalogs?"]
+    Q4 -->|Yes| A4["<b>MCP Resources</b><br/>Use resources/read, not active tools"]
+    Q4 -->|No| A5["<b>Read + Expand Anchor</b><br/>Fall back to Write on collision"]
+```
+
+| Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Agent frequently picks wrong tool between similar tools?** | **YES** | Refine tool descriptions with boundaries & input formats *(NEVER add external classifier routing)*. |
+| **Query returning 0 records from healthy database?** | **YES** | Valid empty result: `isError: false, count: 0` *(NEVER isError: true)*. |
+| **Backend network timeout vs invalid UUID error contract?** | **YES** | Return structured MCP error: `errorCategory` (`"transient"` vs `"validation"`) & `isRetryable`. |
+| **Exposing read-only schemas and API catalogs?** | **YES** | Expose as **MCP Resources** (`resources/read`) *(NEVER active tools)*. |
+| **Edit tool fails due to non-unique anchor text collision?** | **YES** | Call `Read` to inspect context, expand anchor lines, or fall back to `Write`. |
+
+

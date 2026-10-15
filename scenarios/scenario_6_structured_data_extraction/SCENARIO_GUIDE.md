@@ -20,6 +20,57 @@ We are architecting an enterprise data ingestion and document processing pipelin
 
 ---
 
+## ⚡ Scenario 6 Golden Rules & Anti-Patterns Reference
+
+### 🏆 The 5 Golden Architectural Rules for Structured Data Extraction
+
+1. **Guaranteed Schema Validity via Tool Use (`TS 4.3`)**:  
+   Always enforce JSON extraction by defining schemas as tools in the `tools` array and setting `tool_choice: "any"` or `{"type": "tool", "name": "extract_invoice"}`. Native constrained decoding guarantees 100% syntactically valid JSON, eliminating markdown fence formatting errors and `json.loads` crashes.
+2. **The Nullable Schema Rule for Missing Data (`TS 4.3`)**:  
+   Attributes that may be omitted in source documents (e.g. Purchase Order Number, Tax ID) **must be marked nullable** (`type: ["string", "null"]`). Marking missing-prone fields as required forces Claude to hallucinate or fabricate values to pass schema validation.
+3. **Extensible Categorization via Enum + Other (`TS 4.3`)**:  
+   When categorizing invoice line items or expense categories, use an enum with `"OTHER"` accompanied by a companion string field `other_description`. This validates standard categories while gracefully capturing novel edge cases.
+4. **The Limits of Validation Retries (`TS 4.4`)**:  
+   Validation-retry loops with targeted feedback effectively resolve calculation mismatches (`sum(line_items) != total`) and formatting errors. However, **retries fail when data is fundamentally absent from the source document**. Abort retries immediately and route missing-source items directly to human triage.
+5. **Stratified Random Auditing Over Aggregate Metrics (`TS 5.5`)**:  
+   An aggregate accuracy score of 98% can mask a 40%+ error rate on rare document formats (e.g. handwritten receipts or foreign freight bills). Continuously audit a **5%–10% stratified random sample** of high-confidence predictions across all document segments to detect silent model drift.
+
+---
+
+### 🚫 Architectural Anti-Patterns to Reject in Scenario 6 (Exam Distractor Teardown)
+
+| Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
+|---|---|---|---|
+| **Markdown Free-Text JSON Extraction** | Asking Claude to output ```json { ... } ``` in conversational text. | Markdown formatting drifts, token limits truncate JSON, or preamble crashes downstream parsers. | Define JSON schema inside `tools` and force invocation via `tool_choice`. |
+| **Strict Non-Nullable Schema Fields** | Marking all 20 fields as required to ensure complete database records. | When source documents omit optional fields, Claude fabricates plausible strings to avoid failing validation. | Mark missing-prone fields as nullable (`type: ["string", "null"]`) so Claude returns `null`. |
+| **Endless Retries on Missing Data** | Looping retry prompts when a field like Tax ID is completely absent from a scanned receipt. | Burns token budget and API costs; model eventually hallucinates a fake Tax ID on retry turn 3. | Detect unrecoverable missing information; abort retries and route directly to human triage. |
+| **Trusting Aggregate Accuracy (98%)** | Assuming a 98% overall accuracy score means the system is ready for 100% automated straight-through processing. | Rare document types fail at 50%, silently slipping through to finance and causing audit failure. | Implement stratified random sampling (5–10%) across document subtypes and vendor tiers. |
+| **Using Batch API for Real-Time Workflows** | Proposing Message Batches API for interactive user checkout extraction to save 50%. | Processing latency can take up to 24 hours, completely breaking synchronous user experiences. | Use synchronous real-time API for interactive extraction; reserve Batch API for overnight backfills. |
+
+---
+
+### 🧠 Scenario 6 Rapid Exam Decision Tree
+
+```mermaid
+flowchart TD
+    Start{Extraction Scenario Focus}
+    Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br/>(Forced tool_choice, never regex/text)"]
+    Start -->|Missing Optional Fields| D2["Nullable Schema: type ['string', 'null']<br/>(Never strictly required)"]
+    Start -->|Arithmetic Mismatch| D3["Closed-Loop Retry<br/>(Targeted math error feedback)"]
+    Start -->|Physically Absent Data| D4["Fail-Fast to Human Review<br/>(Retries cannot invent absent data)"]
+    Start -->|Audit 98% Accurate Pipeline| D5["5-10% Stratified Sampling<br/>(Across document subtypes & vendors)"]
+```
+
+| Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
+| :--- | :---: | :--- |
+| **Guaranteeing 100% valid JSON output?** | **TOOL_USE GRAMMAR** | Enforce schema via `tool_use` and forced `tool_choice` *(NEVER parse markdown text or regex)*. |
+| **Document lacks optional field (e.g. PO Number)?** | **NULLABLE SCHEMA** | Define field as nullable: `type: ["string", "null"]` *(NEVER strictly required, which forces hallucination)*. |
+| **Arithmetic mismatch (line total $\neq$ price $\times$ qty)?** | **CLOSED-LOOP RETRY** | Closed-loop retry with targeted mathematical error feedback to Claude. |
+| **Data physically absent from original source document?** | **FAIL-FAST TO HUMAN** | Abort retries immediately and route to human review *(Retries cannot invent absent data)*. |
+| **Auditing high aggregate accuracy (98%) pipeline?** | **STRATIFIED SAMPLING** | Maintain a 5–10% stratified random sample across document subtypes and vendor tiers. |
+
+---
+
 ## 🔑 Deep Technical Concepts & Anthropic API Structures
 
 ### 1. Guaranteed JSON via Tool Use (TS 4.3)
@@ -126,14 +177,14 @@ When deterministic validation fails, the orchestrator must decide whether to ret
 
 ```mermaid
 flowchart TD
-    ValidationError["Validation Failure Triggered"] --> FailureType{"What caused the failure?"}
+    ValidationError["Validation Failure Triggered"] --> FailureType{"Failure Root Cause"}
     
-    FailureType -- "Mathematical Invariant Mismatch<br/>(subtotal + tax != total)" --> RetryCheck{"Retry count < 2?"}
+    FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count < 2?"}
     
-    RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry Turn:<br/>Send exact mathematical error back as tool_result:<br/>'subtotal ($100) + tax ($10) != total ($120)'"]
+    RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br/>Send targeted math error via tool_result"]
     RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human Exception Queue"]
     
-    FailureType -- "Fact Fundamentally Absent<br/>(Tax ID / PO number missing on paper)" --> FastFail["Fast-Fail Immediately:<br/>Abort retries! Set field = null<br/>Route to Human Verification"]
+    FailureType -- "Fact Fundamentally Absent (missing on paper)" --> FastFail["Fast-Fail to Human Queue<br/>Abort retries; keep field null"]
 ```
 
 - **Why Retrying Missing Facts Fails**: Repeating retries on text that was physically never printed cannot summon the text into existence. It merely applies pressure on the model to hallucinate a fake Tax ID to satisfy the validator.
