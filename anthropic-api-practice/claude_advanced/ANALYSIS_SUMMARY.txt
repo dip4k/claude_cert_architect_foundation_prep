@@ -1,0 +1,128 @@
+================================================================================
+                 CHURN ANALYSIS - EXECUTIVE SUMMARY
+                        Streaming Service
+================================================================================
+
+OVERVIEW
+--------
+Dataset: 500 customers
+Overall Churn Rate: 38.6% (193 churned customers)
+Analysis Method: Statistical Testing + Random Forest Feature Importance
+
+================================================================================
+TOP 8 CHURN DRIVERS (RANKED)
+================================================================================
+
+1. TOTAL VIEWING HOURS (22.7% importance) ⭐⭐⭐
+   • Churned: 66.6 hrs vs Not Churned: 83.2 hrs (-20%)
+   • Statistical significance: p < 0.000001
+   • ACTION: Target users with <70 hrs/month for re-engagement
+
+2. AVERAGE SESSION DURATION (21.1% importance) ⭐⭐⭐
+   • Churned: 49.4 min vs Not Churned: 57.8 min (-14%)
+   • Statistical significance: p < 0.000001
+   • ACTION: Improve content stickiness and autoplay features
+
+3. UNIQUE TITLES WATCHED (16.1% importance) ⭐⭐⭐
+   • Churned: 19.5 titles vs Not Churned: 23.7 titles (-18%)
+   • Statistical significance: p < 0.000001
+   • ACTION: Promote content discovery and exploration
+
+4. BINGE WATCHING SESSIONS (11.6% importance) ⭐⭐
+   • Churned: 6.2 sessions vs Not Churned: 7.7 sessions (-20%)
+   • Statistical significance: p < 0.000001
+   • ACTION: Promote binge-worthy series and complete season releases
+
+5. TOP GENRE (11.4% importance) ⭐⭐
+   • Horror & Thriller fans have highest churn (52% & 48%)
+   • Documentary & Comedy fans have lowest churn (26% & 33%)
+   • ACTION: Strengthen Horror/Thriller content library
+
+6. CUSTOMER SERVICE INTERACTIONS (9.7% importance) ⚠️ WARNING SIGN
+   • Churned: 3.2 vs Not Churned: 2.5 (+28%)
+   • This is the ONLY metric higher for churned customers
+   • Statistical significance: p < 0.000001
+   • ACTION: Flag users with 4+ interactions for immediate retention efforts
+
+7. SUBSCRIPTION TIER (3.4% importance) ⭐
+   • Premium: 24% churn | Standard: 40% | Basic: 44%
+   • Statistical significance: p = 0.009
+   • ACTION: Incentivize upgrades to Premium tier
+
+8. MONTHLY COST (4.1% importance)
+   • Churned: $11.18 vs Not Churned: $12.11 (-8%)
+   • Statistical significance: p = 0.005
+   • ACTION: Focus on value delivery over price competition
+
+================================================================================
+KEY INSIGHTS
+================================================================================
+
+✓ ENGAGEMENT IS EVERYTHING
+  Low engagement (viewing hours, session duration, content exploration) 
+  is the PRIMARY driver of churn, not price or service issues.
+
+✓ CUSTOMER SERVICE = RED FLAG
+  High CS interactions are a leading indicator of churn. Users with 4+
+  interactions need proactive retention intervention.
+
+✓ PREMIUM USERS STAY LONGER
+  Premium tier has 45% lower churn than Basic tier, suggesting value
+  and features drive retention more than price.
+
+✓ RISK SEGMENTATION WORKS
+  - High Risk (low engagement): 57% churn rate
+  - Medium Risk: 37% churn rate
+  - Low Risk (high engagement): 19% churn rate
+
+================================================================================
+IMMEDIATE ACTION ITEMS
+================================================================================
+
+1. BUILD EARLY WARNING SYSTEM
+   Flag users with:
+   • <70 hours viewing/month
+   • <50 min average session
+   • 4+ customer service interactions
+   • <20 unique titles watched
+
+2. LAUNCH RE-ENGAGEMENT CAMPAIGNS
+   • Personalized content recommendations
+   • "We miss you" messages with exclusive offers
+   • Premium feature trials for Basic users
+
+3. IMPROVE CUSTOMER SERVICE
+   • Reduce need for multiple interactions
+   • Proactive follow-up after service contacts
+   • Fix systemic issues causing repeat calls
+
+4. ENHANCE CONTENT DISCOVERY
+   • Better recommendation algorithms
+   • Curated collections and themed lists
+   • "New for You" personalized sections
+
+5. PROMOTE BINGE-WATCHING
+   • Release complete seasons
+   • "Binge This Weekend" campaigns
+   • Improve autoplay and "Up Next" features
+
+================================================================================
+FILES GENERATED
+================================================================================
+
+1. churn_analysis_dashboard.png - Comprehensive visual dashboard
+2. churn_correlation_analysis.png - Correlation matrix and risk analysis
+3. churn_analysis_report.txt - Detailed written report with all findings
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Churn is driven by LOW ENGAGEMENT, not price sensitivity. The solution is to
+increase content consumption through better recommendations, content discovery,
+and creating binge-worthy experiences. Customer service interactions are a
+critical warning sign requiring immediate intervention.
+
+Focus on engagement metrics to predict and prevent churn.
+
+================================================================================
