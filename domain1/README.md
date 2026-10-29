@@ -3,6 +3,8 @@
 Domain 1 is the biggest part of the **Claude Certified Architect - Foundations (CCAR-F)** exam. It covers how to build agents that loop, delegate, follow rules, and keep state.
 
 > Deep dive: [KEY_CONCEPTS.md](KEY_CONCEPTS.md) has the long explanations and extra practice scenarios. Each task statement folder below has a short study guide with a worked example and exam-style questions.
+>
+> Quick revision: [CHEATSHEET.md](CHEATSHEET.md) (question wording to answer, look-alike pairs, exact values, elimination filters).
 
 ---
 

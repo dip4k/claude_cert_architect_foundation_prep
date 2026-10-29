@@ -1,5 +1,7 @@
 # Task Statement 4.4: Validation, Retry and Feedback Loops
 
+> Scenario: Scenario 6 (Structured Data Extraction); also Scenario 5 for finding feedback.
+
 ## In One Minute
 - **What**: Validate every extraction in code. If it fails, decide whether a retry can help.
 - **Why**: A retry fixes format and structure mistakes. It cannot create information that is not in the document.
@@ -9,26 +11,28 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
-- **Scenario**: Scenario 6 (Structured Data Extraction); also Scenario 5 for finding feedback.
-- **Goal**: Recover from fixable errors, stop on unfixable ones, and learn from dismissals.
-- **Exam focus**: Spot when a retry will work and when it will not.
+**The picture:** A teacher marking homework. "Wrong, try again" teaches nothing. "Question 3: you wrote 03/04/26, we need YYYY-MM-DD. Here is the worksheet again" does. And if the answer is not in the textbook at all, ten more tries will not help, the student will just guess.
+
+**In plain steps:**
+1. Validate in code (format, sums, required info).
+2. On a fixable error, retry with: the original document, the failed output, and the exact error.
+3. Cap the retries (for example 2).
+4. If the info is not in the source, stop: keep `null` or ask a human.
+
+**Tiny example:** `po_number: null` and the document has no PO number. Retrying three times invites a made-up PO number.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Validation is a second opinion in code. If the extraction is wrong in a way the model can fix by looking again, send it back. If the thing is not in the document at all, looking again changes nothing.
-
-### 2. Why it matters
+### 1. Why it matters
 - Retrying without feedback repeats the same mistake.
 - Retrying for absent data teaches the model to guess.
 - Unbounded retries waste tokens.
 
-### 3. How it works
+### 2. How it works
 
 **a. Two kinds of validation error**
 
@@ -122,41 +126,43 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Goal | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Fix a format error | Retry with the specific error | "Invalid, try again" | No signal about what to fix |
-| Missing source info | Stop and route to human | Retry three times | Invites hallucination |
-| Check arithmetic | Recompute and compare totals | Trust the schema | Schema checks shape only |
-| Learn from dismissals | Record `detected_pattern` | Delete dismissed findings | No data to improve prompts |
-| Retry content | Document + failed output + error | Error only | Model lacks the source |
+### Trap 1: "That was invalid, try again"
 
-### Common Mistakes
-- Retrying when the data is not in the document.
-- Sending a generic "try again".
-- Leaving out the original document in the retry.
-- No retry limit.
-- Counting a correct `null` as a failure.
+```text
+ANTI-PATTERN retry message: "Your output was invalid. Try again."
+  -> The model has no idea what to change and often repeats the same output.
 
----
+PATTERN retry message (everything needed to fix it):
+  1. The original document
+  2. The failed output
+  3. The specific error: "date_issued '03/04/26' is not ISO 8601 (YYYY-MM-DD).
+                           Line items sum to 480.00 but total is 840.00."
+```
 
-## 💡 Quick Decision Rules
+Sending only the error leaves out the source. The model cannot correct a value it cannot see.
 
-| Error | Decision |
+### Trap 2: Retrying when the information is not in the source
+
+**Exam scenario**: Extraction returns `po_number: null`. A validation rule says the field is required, so the pipeline retries three times.
+
+Each retry pushes the model to produce *something*, so the likely outcome is a hallucinated PO number. Retry fixes **format and arithmetic** errors (the info exists, the output is wrong). It does not fix absent data.
+
+| Error type | Action |
 |---|---|
-| Wrong format or shape | Retry with feedback |
+| Wrong date format, bad enum, malformed shape | Retry with specific feedback |
 | Totals disagree | Retry with both totals, or flag `conflict_detected` |
-| Value not in source | No retry, keep `null` or escalate |
-| Retries used up | Escalate to human |
-| Many dismissals on one pattern | Rewrite or disable that category |
+| Value is not in the document | No retry. Keep `null` or route to a human |
+| Retry budget used up | Escalate to a human |
 
----
+Always set a retry limit (for example 2).
 
-## 🧠 Claude 4.5 Notes
+### Trap 3: Trusting that valid-looking means correct
 
-- `claude-haiku-4-5` for extraction attempts; `claude-sonnet-4-5` if a hard case needs more reasoning.
-- If a retry call uses thinking: omit `temperature`; leave `top_k`/`top_p` unset; `tool_choice` only `auto`/`none`; echo thinking blocks and signatures unchanged.
-- A forced-tool extraction retry should run without thinking.
-- In a live loop, branch on `stop_reason`: `tool_use` validate, `end_turn` without a tool stop, `max_tokens` and `refusal` stop, `pause_turn` continue.
+A schema-valid object with the wrong sum passes shape checks. Recompute totals in code and compare them. Semantic checks belong in your validator, not in the schema.
+
+### Trap 4: Throwing away dismissed findings
+
+When reviewers dismiss findings, store each finding with a `detected_pattern` (the code pattern that triggered it). If 80% of dismissals share `detected_pattern: "unused_variable_in_test"`, you know exactly which criterion to rewrite or disable. Deleting dismissals removes that data.
 
 ---
 

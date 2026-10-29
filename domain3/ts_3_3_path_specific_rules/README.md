@@ -1,5 +1,7 @@
 # Task Statement 3.3: Apply Path-Specific Rules for Conditional Convention Loading
 
+> Scenarios: Scenario 2 (Code Generation).
+
 ## In One Minute
 
 - **What**: a path-scoped rule is a file in `.claude/rules/` with a `paths:` list of globs in its frontmatter.
@@ -7,17 +9,22 @@
 - **Best for**: conventions spread across many folders, such as tests that sit next to the code.
 - **Exam answer in one line**: tests co-located across the repo means glob-pattern path-scoped rules. Not root `CLAUDE.md` inference, not a skill, not a `CLAUDE.md` in every directory.
 
-## Overview
+---
 
-- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
-- **Scenarios**: Scenario 2 (Code Generation).
-- **Goal**: load the right conventions at the right time.
-- **Exam focus**: the `paths:` frontmatter, and why it beats directory-level `CLAUDE.md` for scattered files.
+## Explain Like I'm 13
+
+**The picture:** "Whenever you wear a lab coat, also wear goggles." The rule follows the **clothing** (the file pattern), not the **room** (the folder). Test files live in many folders, but one rule can follow them all.
+
+**In plain steps:**
+1. Create `.claude/rules/testing.md` with `paths: ["**/*.test.tsx"]`.
+2. Claude loads the rule only when working on a matching file.
+3. Check the glob: `**/*.md` matches everywhere, `*.md` only the root.
+
+**Tiny example:** Copying a `CLAUDE.md` into 20 folders means 20 copies to keep in sync, and the next new folder forgets it. One path rule covers all of them.
+
+---
 
 ## Concepts Explained
-
-### Simple idea
-A rule says "when you touch files that look like this, follow these conventions."
 
 ### Why it matters
 A directory-level `CLAUDE.md` only covers its own folder. A test convention for `**/*.test.tsx` applies in dozens of folders. One glob rule covers all of them with one file.
@@ -49,12 +56,16 @@ paths:
 
 `*` stays inside one folder; `**` crosses folders.
 
+---
+
 ## Key Terms
 
 - **Path-scoped rule**: a `.claude/rules/*.md` file with a `paths:` frontmatter list.
 - **Glob**: a pattern like `**/*.test.tsx`.
 - **Conditional loading**: loading a rule only when a matching file is being worked on.
 - **Universal rule**: a rule with no `paths:`.
+
+---
 
 ## Architecture
 
@@ -69,6 +80,8 @@ flowchart TD
     Check -->|"No"| Skip["Rule stays out<br>(tokens saved)"]
     Rules[".claude/rules/*.md"] --> Check
 ```
+
+---
 
 ## Worked Example
 
@@ -93,36 +106,53 @@ my-repo/
 
 This repo uses the same mechanism: `.claude/rules/python_quality.md` has `paths: ["**/*.py"]` and `.claude/rules/mermaid_standards.md` has `paths: ["**/*.md", "**/*.ipynb"]`. The `main.py` here reads those real files with `RuleEngine.register_rules_from_dir`.
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Concept | Correct | Trap | Why the trap fails |
-|---|---|---|---|
-| Tests next to code | One path-scoped rule with a glob | `CLAUDE.md` in each directory | Duplicated files drift apart and cannot match by file type |
-| Conditional conventions | `.claude/rules/` with `paths:` | Root `CLAUDE.md` and hoping Claude infers when to apply | Loads always; inference is unreliable |
-| Rare workflow vs file-type convention | Path-scoped rule for file patterns | A skill | Skills are invoked on demand; they do not load by file path |
-| Token cost | Conditional rules | Everything in root `CLAUDE.md` | Pays for every rule in every session |
+### Trap 1: A `CLAUDE.md` in every folder for a cross-cutting convention
 
-## Common Mistakes
+**Exam scenario**: Test files sit next to code across `src/billing/`, `src/auth/`, `src/reports/` (`*.test.tsx`). All need the same testing conventions.
 
-- Creating a `CLAUDE.md` in every folder for one cross-cutting convention.
-- Writing `paths` as a bare folder name instead of a glob (`terraform` instead of `terraform/**/*`).
-- Forgetting that `*.md` matches only the repo root, while `**/*.md` matches everywhere.
-- Using a skill when the real trigger is "which file am I editing."
-- Leaving `paths:` off a rule that should be conditional (it will load always).
+```text
+ANTI-PATTERN: copy a CLAUDE.md into each directory.
+  Problems: 3+ copies drift apart. New folders miss it. A directory file applies to every file
+  in that folder, not only the tests.
 
-## Quick Decision Rules
+PATTERN: one path-scoped rule.
+```
 
-| Situation | Choice |
-|---|---|
-| Convention tied to a file pattern across many folders | Path-scoped rule |
-| Convention for one subtree only | Directory-level `CLAUDE.md` |
-| Standard for every task | Project `CLAUDE.md` |
-| Workflow you invoke by name | Skill |
+```markdown
+---
+paths:
+  - "**/*.test.tsx"
+---
+# Testing conventions
+- Use React Testing Library, not enzyme.
+```
 
-## Claude 4.5 Notes
+The rule loads only when Claude is working with files matching the glob, wherever they are.
 
-- Models in this repo: `claude-sonnet-4-5`, `claude-haiku-4-5`.
-- With extended thinking in API code: leave `temperature` and `top_k`/`top_p` unset; only `tool_choice` `auto` or `none`; keep thinking blocks and signatures unchanged.
+### Trap 2: Hoping Claude infers when to apply a rule
+
+A root `CLAUDE.md` line like "for Terraform files, use these tags" is loaded every session and relies on inference. A rule with `paths: ["terraform/**/*"]` is loaded because of the file match, and costs nothing in other sessions.
+
+### Trap 3: Using a skill for a file-type convention
+
+Skills are invoked on demand. They do not load because you opened a `.tf` file. Use a skill for "run this workflow", a path rule for "when editing these files, follow these conventions".
+
+### Trap 4: Glob mistakes
+
+| Written | Matches | Problem |
+|---|---|---|
+| `terraform` | Nothing useful (bare name) | Not a glob |
+| `terraform/**/*` | Everything under `terraform/` | Correct |
+| `*.md` | Root-level markdown only | Misses `docs/guide.md` |
+| `**/*.md` | Markdown anywhere | Correct |
+
+A rule with no `paths:` loads always, so it is not conditional at all.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -164,6 +194,8 @@ This repo uses the same mechanism: `.claude/rules/python_quality.md` has `paths:
 - C fails: user-level files do not reach CI or teammates.
 - D fails: running a skill on every PR adds work and still does not load by path.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I know rules live in `.claude/rules/` and use `paths:` globs.
@@ -173,6 +205,8 @@ This repo uses the same mechanism: `.claude/rules/python_quality.md` has `paths:
 - [ ] I can tell a path-scoped rule from a skill.
 
 **Memory hook**: *Same pattern in many places means a glob rule.*
+
+---
 
 ## Hands-on Workbook Guide
 

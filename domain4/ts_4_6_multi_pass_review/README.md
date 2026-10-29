@@ -1,5 +1,7 @@
 # Task Statement 4.6: Multi-Instance and Multi-Pass Review
 
+> Scenario: Scenario 5 (Claude Code for Continuous Integration).
+
 ## In One Minute
 - **What**: Review code with a *separate* Claude instance, and split big reviews into passes.
 - **Why**: The model that wrote the code keeps its own reasoning in context, so it tends to defend it. A fresh reviewer sees only the code.
@@ -9,26 +11,29 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
-- **Scenario**: Scenario 5 (Claude Code for Continuous Integration).
-- **Goal**: Catch bugs the author misses, including cross-file ones, without overloading one prompt.
-- **Exam focus**: Why self-review is weak and why one big prompt misses integration bugs.
+**The picture:** Proofreading. You miss your own typos because your brain fills in what you meant. A friend sees them. For a big report, check each chapter alone, then do a final read for places where chapters disagree. Not sure about a finding? Show it to a teacher, do not throw it away.
+
+**In plain steps:**
+1. A different Claude instance reviews (it never saw the author's reasoning).
+2. Pass 1: each file alone.
+3. Pass 2: signatures and call sites across files.
+4. Low-confidence findings go to a human.
+5. Return findings through a schema so they are easy to parse.
+
+**Tiny example:** `format_total` now takes cents but `report.py` passes dollars. Only the cross-file pass can see that.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Do not mark your own homework. A reviewer who has not seen the author's reasoning is more likely to challenge it.
-
-### 2. Why it matters
+### 1. Why it matters
 - **Self-review**: the author's reasoning ("I chose a 60-minute cache because it is fast") stays in context and tends to be repeated, not tested.
 - **One big prompt for 20 files**: attention spreads thin. Style nits get caught; a signature mismatch between two files does not.
 - **Extended thinking is not a fix**: more thinking in the same session still starts from the same reasoning. A separate instance is the stronger remedy.
 
-### 3. How it works
+### 2. How it works
 
 **a. Independent instance.** A new conversation whose only input is the code and a checklist.
 - `build_self_review_messages()`: three messages, including the author's reasoning.
@@ -116,43 +121,38 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Goal | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Find author's blind spots | Independent instance | "Review your own code" | Reasoning stays in context |
-| Same, with more effort | Independent instance | Self-review with extended thinking | Same starting reasoning |
-| Large PR | Per-file passes + integration pass | One prompt with all files | Attention dilution |
-| Cross-file bugs | Pass 2 with signatures and call sites | Only per-file review | Local passes cannot see the mismatch |
-| Use confidence | Route to human review | Drop low-confidence findings | Calibration is poor; real bugs vanish |
-| Parse findings | Findings through a tool schema | Regex over free text | Fragile |
+### Trap 1: Asking the author to review its own output
 
-### Common Mistakes
-- Letting the generator review its own output.
-- Sending all files to one reviewer.
-- Giving Pass 2 only one file.
-- Filtering by confidence instead of routing.
-- Forcing the findings tool while thinking is enabled.
+**Exam scenario**: The model writes a function, then "review your code" in the same conversation finds nothing. A fresh instance finds an off-by-one.
 
----
+The generating session keeps its own reasoning in context and tends to agree with it. Adding extended thinking to the same session does not change that starting point. Use an **independent instance** that sees only the code (and requirements), not the author's reasoning.
 
-## 💡 Quick Decision Rules
+### Trap 2: One reviewer for a large PR, or only per-file review
 
-| Situation | Choose |
-|---|---|
-| Single small script | One independent reviewer |
-| 2-5 related files | Per-file passes + one integration pass |
-| Large PR | Chunked per-file passes + integration pass |
-| Nightly audit | Batch the passes (TS 4.5) |
-| Low-confidence findings | Human review, not deletion |
+```text
+PASS 1 (per file): each file reviewed alone -> local bugs.
+PASS 2 (integration): all changed signatures + call sites + data contracts -> cross-file bugs.
+```
 
----
+Example bug visible only in pass 2: `format_total(cents)` now takes cents, but `report.py` still passes dollars. Each file looks fine alone.
 
-## 🧠 Claude 4.5 Notes
+When pass 2 sees only one file, it is not an integration pass. Give it signatures and call sites from several files.
 
-- `claude-haiku-4-5` for the per-file passes; `claude-sonnet-4-5` for the integration pass.
-- Thinking: omit `temperature`; leave `top_k`/`top_p` unset; `budget_tokens` at least 1024 and below `max_tokens`.
-- With thinking, only `tool_choice` `auto`/`none`. Without thinking you can force the findings tool with `any`.
-- In tool loops echo assistant content, including thinking blocks and signatures, unchanged.
-- The loop in `main.py` handles `tool_use`, `end_turn`, `max_tokens`, `pause_turn`, and `refusal` explicitly.
+### Trap 3: Filtering by confidence
+
+```text
+ANTI-PATTERN: drop every finding with confidence < 0.7.
+  Calibration is poor, so real bugs with a low number vanish silently.
+PATTERN: route low-confidence findings to human review; keep them visible.
+```
+
+### Trap 4: Regex over free-text findings
+
+Return findings through a tool schema (`file`, `line`, `severity`, `category`, `evidence`). Regex over prose breaks when wording changes. If the findings tool is forced with `tool_choice`, do not enable extended thinking on that call.
+
+### Trap 5: Doing everything synchronously for audits
+
+A nightly audit with many passes is a good batch candidate (TS 4.5). A blocking pre-merge review is not.
 
 ---
 

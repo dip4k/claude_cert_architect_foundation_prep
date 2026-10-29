@@ -3,6 +3,8 @@
 Domain 2 is **18%** of the **Claude Certified Architect – Foundations (CCAR-F)** exam. Exam weights: D1 27%, **D2 18%**, D3 20%, D4 20%, D5 15%. Format: 60 multiple-choice questions, 4 of 6 scenarios, pass at 720/1000.
 
 > 📖 Deeper notes, diagrams and anti-patterns: [KEY_CONCEPTS.md](KEY_CONCEPTS.md).
+>
+> ⚡ Quick revision: [CHEATSHEET.md](CHEATSHEET.md) (question wording to answer, look-alike pairs, exact values, elimination filters).
 
 ---
 

@@ -13,12 +13,19 @@
 
 ---
 
-## Overview
+## Explain Like I'm 13
 
-- **Domain:** 5 - Context Management and Reliability (15% of the exam; D1 27%, D2 18%, D3 20%, D4 20%).
-- **Task statement:** 5.1 - manage conversation context to preserve critical information across long interactions.
-- **Scenario fit:** Scenario 1 (support agent with SLAs). Also seen in Scenario 3 (research subagents).
-- **Folder note:** The folder name says "context preservation". It matches official TS 5.1 exactly.
+**The picture:** A telephone game. If each person re-tells the story in their own words, "$47.83" slowly becomes "about fifty". Keep a **facts card** on the desk that is never retold, and let only the rest of the chat be summarised. Also, do not copy a 47-field form into your notes when you only need 4 boxes.
+
+**In plain steps:**
+1. Put IDs, amounts and dates in a facts block and send it with every request.
+2. Trim tool results to needed fields **before** they enter the history.
+3. Key points first, headers on sections, question at the end.
+4. Always send the full (managed) history. The API remembers nothing.
+
+**Tiny example:** After 30 turns, "refund about $50" in a summary versus `item_price: 47.83` on the facts card.
+
+---
 
 ## Concepts Explained
 
@@ -43,6 +50,8 @@ Each API request must include the full conversation history (or its safe, trimme
 ### 6. Subagents return structured data
 Upstream agents should return **key facts, citations, relevance scores and dates**, not long reasoning. This keeps the downstream context small and checkable.
 
+---
+
 ## Worked Example
 
 **Scenario:** A customer writes on turn 1: *"Refund ORD-2026-9921. I paid $149.99 on 2026-09-28."*
@@ -56,6 +65,8 @@ Upstream agents should return **key facts, citations, relevance scores and dates
 
 Run `main.py` to see this offline: `lossy_summary()` shows the drift, `facts_survive()` proves the facts block protects the numbers.
 
+---
+
 ## Key Terms
 
 - **Case facts:** Structured, persistent block of exact transactional facts kept outside summarised history.
@@ -63,6 +74,8 @@ Run `main.py` to see this offline: `lossy_summary()` shows the drift, `facts_sur
 - **Trimming (PostToolUse):** Keeping only needed fields from a tool result before it joins the history.
 - **Lost in the middle:** Weaker use of information placed in the middle of a long input.
 - **Structured subagent output:** Facts + citations + relevance + dates instead of verbose reasoning.
+
+---
 
 ## Architecture
 
@@ -82,39 +95,55 @@ flowchart TD
     History --> Prompt
 ```
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap to reject |
-|---|---|---|
-| Keeping exact values | Case facts block re-sent every turn | "Summarise harder" or "ask the summary to keep numbers" |
-| Bloated tool output | Trim to needed fields before it enters context | Append the whole 47-field record "just in case" |
-| Long aggregated input | Key findings first, section headers | Bury the key result in the middle |
-| History | Send complete history each request | Send only the last user message |
-| Subagent output | Structured facts, citations, scores, dates | Pass full reasoning chains downstream |
+### Trap 1: Summarising harder to keep exact values
 
-## Common Mistakes
+**Exam scenario**: After 30 turns, the support agent says the refund is "about $50" and the order was "last week". Turn 3 had `$47.83` and order `ORD-2026-9912` placed `2026-10-14`.
 
-- Trusting an LLM summary to keep numbers exact.
-- Trimming **after** the raw result is already in history (too late).
-- Putting policy and facts in the middle of a long transcript.
-- Dropping the history and keeping only a summary of it.
-- Asking subagents for "full detail" and then flooding the coordinator.
+Progressive summarisation rewrites facts in prose each time, and exact numbers erode. Asking the summary to "keep numbers" helps a little and still fails over many rounds.
 
-## Quick Decision Rules
+```text
+PATTERN: Case facts block, outside the summarised history, re-sent every turn
+  <case_facts>
+    customer_id: CUST-88319
+    order_id: ORD-2026-9912   placed: 2026-10-14
+    item_price: 47.83 USD     refund_status: pending
+  </case_facts>
+  <summary>Customer reports a damaged item; photos received...</summary>
+  <recent_turns>...</recent_turns>
+```
 
-| Situation | Do this |
-|---|---|
-| Exact IDs, amounts or dates matter across many turns | Case facts block |
-| Tool returns many unused fields | Allow-list trim before context |
-| Many sources feed one summary | Key findings first + headers per source |
-| Subagent output is long | Change the subagent to return structured data |
-| Need cheaper repeated prompts | Prompt caching is a cost tool; it does not fix lost facts |
+Transactional values live in structured data that is never paraphrased.
 
-## Claude 4.5 Notes
+### Trap 2: Trimming after the raw output is already in context
 
-- `claude-sonnet-4-5` for reasoning and coordination; `claude-haiku-4-5` for workers and summaries.
-- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` must be at least 1024 and below `max_tokens`.
-- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
+```python
+# ANTI-PATTERN: raw 47-field order record appended, "trim later"
+messages.append(tool_result(raw_record))   # 2,000 tokens, now in every future request
+
+# PATTERN: allow-list in a PostToolUse step BEFORE it enters context
+KEEP = ("order_id", "status", "total", "delivered_at")
+messages.append(tool_result({k: raw_record[k] for k in KEEP}))
+```
+
+Once raw output is in the history, you pay for it on every later turn.
+
+### Trap 3: Key finding buried in the middle
+
+In long inputs, content in the middle gets less attention than the start and end. Put the key findings first, label sections with headers, and place the question or most recent turns at the end.
+
+### Trap 4: Dropping history
+
+The API is stateless. Sending only the last user message loses all prior turns. Send the complete (or properly managed) history with each request. Prompt caching lowers cost, it does not restore dropped facts.
+
+### Trap 5: Subagents that return full reasoning
+
+If each of five research subagents returns 4,000 tokens of reasoning, the coordinator receives 20,000 tokens. Change the subagent output contract to structured facts: claim, source, date, score.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -145,6 +174,8 @@ flowchart TD
 - **Q2: B.** A fails: bloats context and attention. C fails: the raw record already sits in history. D fails: repeating fields adds tokens and still keeps the raw record.
 - **Q3: A.** B fails: the middle is the weakest position. C fails: it removes the provenance needed later. D fails: verbose reasoning adds noise; ask for structured facts instead.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can explain why summaries lose numbers, dates and expectations.
@@ -154,6 +185,8 @@ flowchart TD
 - [ ] I know subagents should return structured data, not reasoning.
 
 **Memory hook:** *"Facts in a box, trim before the stack, key points at the top."*
+
+---
 
 ## Hands-on Workbook Guide
 

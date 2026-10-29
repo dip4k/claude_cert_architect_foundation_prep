@@ -14,11 +14,20 @@
 
 ---
 
-## Overview
+## Explain Like I'm 13
 
-- **Domain:** 5 (15% of the exam).
-- **Task statement:** 5.2 - design effective escalation and ambiguity resolution patterns.
-- **Scenario fit:** Scenario 1 (support agent). The exam often shows a low first-contact resolution rate.
+**The picture:** A help desk. Someone says "I want the manager": you get the manager, you do not quiz them. Two customers named Jordan Lee: you ask for an ID, you do not pick one. The rule book says nothing about price matching: you ask the manager, you do not invent a rule.
+
+**In plain steps:**
+1. Asked for a human? Escalate now, with a short summary.
+2. Angry but easy to fix? Acknowledge, fix, escalate only if they repeat the request.
+3. Several matches? Ask for another identifier.
+4. Policy silent? Escalate as a gap.
+5. Too many wrong escalations? Write clear criteria with examples.
+
+**Tiny example:** Mood is not difficulty. A calm customer asking for something outside policy needs a person. An angry one with a late parcel may not.
+
+---
 
 ## Concepts Explained
 
@@ -43,6 +52,8 @@ A lookup returns several customers. Ask for **more identifiers** (email, order I
 ### 5. Fix with explicit criteria and few-shot examples
 Write the criteria in the prompt. Add examples that show the boundary, such as "standard damage replacement: resolve" and "competitor price match: escalate".
 
+---
+
 ## Worked Example
 
 **Situation (sample-question style):** First-contact resolution is **55%**. The agent escalates easy damaged-item replacements but tries policy exceptions on its own.
@@ -54,6 +65,8 @@ Write the criteria in the prompt. Add examples that show the boundary, such as "
 | Fix | Add criteria to the prompt: resolve standard damage and replacement; escalate exceptions and policy gaps. | Add 4-5 few-shot examples (see `ESCALATION_FEW_SHOT_EXAMPLES`). |
 | Result | Easy cases resolve, edge cases reach humans. | Rate rises without extra infrastructure. |
 
+---
+
 ## Key Terms
 
 - **Explicit escalation criteria:** Written rules, in the prompt, for when to hand off.
@@ -61,6 +74,8 @@ Write the criteria in the prompt. Add examples that show the boundary, such as "
 - **Disambiguation:** Asking for identifiers to select one record.
 - **First-contact resolution (FCR):** Share of issues solved without a handoff or follow-up.
 - **Handoff summary:** Short structured note (customer, issue, steps taken) for the human.
+
+---
 
 ## Architecture
 
@@ -81,39 +96,57 @@ flowchart TD
     Prog -->|"Yes"| Fix["Resolve<br>(acknowledge frustration if present)"]
 ```
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap to reject |
-|---|---|---|
-| Customer asks for a human | Escalate at once | "Let me just check your order first" |
-| Frustrated but solvable | Acknowledge, offer fix, escalate if they repeat the request | Escalate on emotion alone |
-| Several matches | Ask for more identifiers | Pick the most recent or closest match |
-| Policy silent | Escalate | Guess a reasonable policy |
-| Poor FCR from wrong escalations | Explicit criteria + few-shot examples | Confidence score, sentiment model, separate classifier |
+### Trap 1: Investigating when the customer asks for a human
 
-## Common Mistakes
+**Exam scenario**: Customer: "Stop. I want to talk to a human."
 
-- Treating a polite request for "a manager" as something to investigate first.
-- Using negative sentiment as a hard escalation rule.
-- Choosing a customer record "to save the customer time".
-- Reading "policy does not mention it" as "policy says no".
-- Adding a confidence threshold when the real issue is missing criteria.
+```text
+ANTI-PATTERN reply: "Let me just check your order status first."
+  -> The customer asked once and was ignored. This is how conversations get worse.
 
-## Quick Decision Rules
+PATTERN reply: "Of course. I'm connecting you with a person now. I'm passing along your
+  case so you don't have to repeat it."  + structured handoff (customer, order, issue, attempts)
+```
 
-| Signal | Action |
+Explicit request for a human means escalate immediately.
+
+### Trap 2: Escalating on emotion alone
+
+| Message | Right action |
 |---|---|
-| "I want a human / supervisor" | Escalate immediately |
-| Request outside written policy | Escalate (policy gap) |
-| Angry tone, issue solvable | Acknowledge, resolve |
-| Multiple customer hits | Ask for identifiers |
-| Low FCR with mixed errors | Criteria + few-shot examples |
+| "This is ridiculous! My order is late again!" and the order is trackable | Acknowledge the frustration, give the status, offer a fix. Escalate if they repeat the request for a human |
+| "This is ridiculous, I want a manager" | Escalate |
 
-## Claude 4.5 Notes
+Sentiment is not difficulty. An angry customer with a solvable problem should be solved. A calm customer asking for something outside policy needs escalation.
 
-- `claude-sonnet-4-5` for the support agent; `claude-haiku-4-5` for cheap workers.
-- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
-- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
+### Trap 3: Guessing among multiple matches
+
+```text
+lookup_customer("Jordan Lee") -> 3 matches
+ANTI-PATTERN: pick the most recent "to save time" -> refund goes to the wrong person.
+PATTERN: ask for another identifier: email, phone, or order number.
+```
+
+### Trap 4: Policy silence is not "no" and not "yes"
+
+Customer asks for price matching against a competitor. The policy covers only the company's own price drops. The agent must not invent a rule either way. This is a policy gap, so escalate.
+
+### Trap 5: Fixing poor first-contact resolution with scores
+
+**Exam scenario**: Resolution is low. The agent escalates simple cases and handles complex ones.
+
+| Option | Verdict |
+|---|---|
+| Self-reported confidence threshold | Confidence is poorly calibrated, so it sorts cases badly |
+| Sentiment model | Measures mood, not complexity |
+| Separate classifier | Heavy. Still needs the criteria it lacks |
+| **Explicit escalation criteria with few-shot examples** | Gives the agent the missing boundary. Correct |
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -144,6 +177,8 @@ flowchart TD
 - **Q2: C.** A fails: self-reported confidence is unreliable. B fails: sentiment does not track complexity. D fails: it discards the cases the agent resolves well.
 - **Q3: C.** A fails: recency is a guess. B fails: arbitrary choice risks the wrong account. D fails: it exposes other customers' data.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can name the three escalation triggers.
@@ -153,6 +188,8 @@ flowchart TD
 - [ ] I can describe how criteria plus few-shot examples fix a low FCR.
 
 **Memory hook:** *"Ask for human? Go. Policy gap? Go. Many matches? Ask. Angry but solvable? Fix."*
+
+---
 
 ## Hands-on Workbook Guide
 

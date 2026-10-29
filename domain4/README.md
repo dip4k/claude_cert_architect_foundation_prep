@@ -3,6 +3,8 @@
 Domain 4 represents **20%** of the **Claude Certified Architect – Foundations (CCAR-F)** exam (D1 27%, D2 18%, D3 20%, D4 20%, D5 15%). It focuses on explicit categorical criteria, few-shot prompting, reliable structured output via `tool_use`, validation-retry feedback loops, the cost-saving Message Batches API, and multi-pass review architectures.
 
 > 📖 **Deep Dive Master Guide**: For exhaustive technical explanations, architecture diagrams, sequence flows, gotchas, to-remember points, and practical scenario questions & answers, see [KEY_CONCEPTS.md](KEY_CONCEPTS.md).
+>
+> ⚡ **Quick revision**: [CHEATSHEET.md](CHEATSHEET.md) (question wording to answer, look-alike pairs, exact values, elimination filters).
 
 ---
 
@@ -17,7 +19,7 @@ flowchart LR
     T1["4.1 Criteria"] --> T2["4.2 Few-shot"] --> T3["4.3 Schema output"] --> T4["4.4 Validate and retry"] --> T5["4.5 Batches"] --> T6["4.6 Multi-pass review"]
 ```
 
-Each study guide starts with "In One Minute", then a worked example, common mistakes, three exam-style questions with answers, and a self-check checklist.
+Each study guide starts with "In One Minute" and an "Explain Like I'm 13" picture, then a worked example, exam traps with examples, three exam-style questions with answers, and a self-check checklist.
 
 | Task | What it tests | Key trap | Start here |
 |---|---|---|---|

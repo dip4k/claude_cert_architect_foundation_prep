@@ -2,7 +2,7 @@
 
 Domain 3 is **20%** of the **Claude Certified Architect - Foundations (CCAR-F)** exam. Scenarios 2 (Code Generation) and 5 (CI) lean on it heavily. Weights: D1 27%, D2 18%, **D3 20%**, D4 20%, D5 15%.
 
-Deeper reference: [KEY_CONCEPTS.md](KEY_CONCEPTS.md). Other domains: [Domain 1](../domain1/README.md) | [Domain 2](../domain2/README.md) | [Domain 4](../domain4/README.md) | [Domain 5](../domain5/README.md).
+Deeper reference: [KEY_CONCEPTS.md](KEY_CONCEPTS.md). Quick revision: [CHEATSHEET.md](CHEATSHEET.md). Other domains: [Domain 1](../domain1/README.md) | [Domain 2](../domain2/README.md) | [Domain 4](../domain4/README.md) | [Domain 5](../domain5/README.md).
 
 ## Study-Order Map
 
@@ -23,7 +23,7 @@ flowchart LR
 
 ## Task Statements at a Glance
 
-Each guide has: In One Minute, Worked Example, Common Mistakes, 3 practice questions with answers, a self-check, and an offline workbook.
+Each guide has: In One Minute, Explain Like I'm 13, Worked Example, Exam Traps with examples, 3 practice questions with answers, a self-check, and an offline workbook.
 
 | TS | What it tests | Key trap | Guide |
 |---|---|---|---|

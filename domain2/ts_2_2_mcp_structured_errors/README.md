@@ -1,5 +1,7 @@
 # Task Statement 2.2: Implement Structured Error Responses for MCP Tools
 
+> Scenario alignment: Scenario 1 (Customer Support), also Scenario 3 (error propagation in research)
+
 ## In One Minute
 
 - **What**: When a tool fails, return a **structured error**, not just "Operation failed".
@@ -10,24 +12,25 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 2: Tool Design & MCP Integration (**18%** of the exam)
-- **Scenario alignment**: Scenario 1 (Customer Support), also Scenario 3 (error propagation in research)
-- **What the exam tests**: Choosing the right error design. Telling an access failure from an empty result.
-- **Study order**: [2.1](../ts_2_1_tool_interface_design/README.md) → 2.2 (this file) → [2.3](../ts_2_3_tool_distribution_and_choice/README.md). Back to the [Domain 2 map](../README.md).
+**The picture:** A car dashboard. One light saying "PROBLEM" is useless. Real dashboards say *low fuel* (refill), *door open* (close it), *engine hot* (stop). Tool errors need the same: **what kind** of problem, **can I try again**, and **what do I tell the customer**.
+
+**In plain steps:**
+1. Return `isError: true` with a category: `transient` (try again), `validation` (fix the input), `business` (a rule says no), `permission` (not allowed).
+2. Add `isRetryable` and a human message.
+3. If the search simply found nothing, that is **not** an error: `isError: false`, `count: 0`.
+
+**Tiny example:** An empty fridge is not a broken fridge. "No orders in January" is a good answer, not a failure.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-A good error is a note to the agent. It says what went wrong and what to do about it.
-
-### 2. Why it matters
+### 1. Why it matters
 A uniform `"Operation failed"` hides the cause. The agent cannot tell a timeout from a policy block. It may retry something that can never work, or give up on something that would work on retry.
 
-### 3. How it works: the four categories
+### 2. How it works: the four categories
 
 | `errorCategory` | Typical cause | `isRetryable` | What the agent does |
 |---|---|---|---|
@@ -48,13 +51,13 @@ Every error carries a **human-readable message** that the agent can pass on. For
 }
 ```
 
-### 4. Access failure vs valid empty result
+### 3. Access failure vs valid empty result
 - **Access failure**: the tool could not reach or read the data. This is an error.
 - **Valid empty result**: the tool searched fine and found nothing. This is **not** an error. Return `isError: false` with `count: 0` or `stock_count: 0`.
 
 If you flag "no orders found" as an error, the agent retries a healthy system and may tell the customer the wrong thing.
 
-### 5. Recovery in multi-agent systems
+### 4. Recovery in multi-agent systems
 - A **subagent recovers locally** from transient errors (retry with a small limit).
 - It **propagates only unresolved errors** to the coordinator.
 - The propagated error includes **what was attempted** and any **partial results**. The coordinator can then decide with full facts.
@@ -115,45 +118,50 @@ Code: `create_mcp_error()`, `validate_error_payload()`, `recovery_action()` and 
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Situation | Correct pattern | Trap | Why the trap fails |
+### Trap 1: One generic error for every failure
+
+**Exam scenario**: Every failure returns `"Operation failed"`. The agent retries a rule violation three times and tells the user "a temporary issue occurred".
+
+The agent needs three things to choose a recovery step: **what kind** of failure, **whether retrying can help**, and **what to tell the customer**.
+
+```json
+{
+  "isError": true,
+  "content": [{"type": "text", "text": "{\"errorCategory\": \"business\", \"isRetryable\": false, \"message\": \"Refunds over $500 need supervisor approval.\", \"customerMessage\": \"I need a supervisor to approve this refund.\"}"}]
+}
+```
+
+| Category | Example | `isRetryable` | Agent action |
 |---|---|---|---|
-| Tool fails for any reason | Structured error with category, `isRetryable`, message | Return "Operation failed" | The agent cannot choose a recovery step |
-| Refund above the limit | `business`, `isRetryable: false`, customer-friendly message | Mark it `transient` or retryable | The agent retries a rule that never changes |
-| Search finds nothing | `isError: false`, `count: 0` | `isError: true`, "Not found" | Triggers pointless retries and false alarms |
-| Subagent hits a timeout | Retry locally, propagate only if unresolved | Send every error to the coordinator | Floods the coordinator and wastes turns |
-| Subagent gives up | Send error with attempts and partial results | Send only "failed" | The coordinator loses facts it needs |
+| `transient` | Timeout, 503 | true | Retry with backoff |
+| `validation` | Bad order id format | false (until the input is fixed) | Correct the argument, call again |
+| `business` | Over refund limit | false | Explain or escalate. Never retry |
+| `permission` | Not authorised | false | Stop. Do not retry |
 
----
+### Trap 2: Marking a business rule as retryable
 
-## ❌ Common Mistakes
+A policy block does not change between attempts. If it is marked `transient` or `isRetryable: true`, the agent loops on a rule that will never pass, burning turns and confusing the customer. Retryable means "the same call may succeed later".
 
-- Using one generic error for every failure.
-- Treating zero results as an error.
-- Marking policy blocks as retryable.
-- Writing messages for developers only, not for the agent or customer.
-- Hiding partial results when a multi-step job fails halfway.
+### Trap 3: Treating "no results" as an error
 
----
+```json
+// ANTI-PATTERN: valid empty result reported as a failure
+{"isError": true, "content": [{"type": "text", "text": "Not found"}]}
 
-## 💡 Quick Decision Rules
+// PATTERN: the query worked, the answer is zero
+{"isError": false, "content": [{"type": "text", "text": "{\"count\": 0, \"orders\": []}"}]}
+```
 
-| If you see... | Do this |
-|---|---|
-| Timeout, outage | `transient`, `isRetryable: true`, retry locally |
-| Bad input format | `validation`, `isRetryable: false`, fix input |
-| Policy limit | `business`, `isRetryable: false`, explain or escalate |
-| Not allowed | `permission`, `isRetryable: false`, stop |
-| Zero matches, healthy query | Valid empty result, `isError: false` |
+With the anti-pattern the agent retries and may tell the customer something broke. With the pattern it says "you have no orders in January". Opposite also matters: if the search **could not run**, that is an error. Never return an empty list for it, or the failure looks like evidence of absence.
 
----
+### Trap 4: Where recovery happens
 
-## 🧠 Claude 4.5 Notes
+| Situation | Right | Wrong |
+|---|---|---|
+| Subagent gets a timeout | Retry locally two times | Escalate to the coordinator at once. Floods it with transient noise |
+| Retries exhausted | Propagate: category, what was attempted, partial results, alternatives | Propagate only "failed". The coordinator loses the facts it needs to decide |
 
-- `claude-sonnet-4-5` for the coordinator that reads errors, `claude-haiku-4-5` for subagents.
-- With extended thinking: `budget_tokens` ≥ 1024 and below `max_tokens`. **Omit `temperature`**. Leave `top_k` and `top_p` unset. `tool_choice` may be only `auto` or `none`.
-- Return thinking blocks and signatures unchanged in tool loops.
-- The loop reacts to `stop_reason` (`tool_use`, `end_turn`, `max_tokens`, `pause_turn`, `refusal`). The iteration limit is a **safety cap**.
-- In the Messages API a failed `tool_result` can set `is_error: true`. [main.py](main.py) sets it and also puts the structured JSON in `content`.
+MCP uses camelCase `isError`. The Anthropic Messages API `tool_result` block uses snake_case `is_error`. Mixing them is silently ignored by some adapters.
 
 ---
 

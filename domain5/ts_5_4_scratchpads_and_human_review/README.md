@@ -14,11 +14,19 @@
 
 ---
 
-## Overview
+## Explain Like I'm 13
 
-- **Domain:** 5 (15% of the exam).
-- **Task statement:** 5.4 - manage context effectively in large codebase exploration.
-- **Scenario fit:** Scenario 4 (exploring and mapping a large codebase).
+**The picture:** A detective's case notebook. After many days the detective forgets details unless they are written down. So: write specifics in the notebook (`scratchpad.md`), send a scout (Explore subagent) to read piles of files and bring back a summary, and save a checkpoint so a crash does not mean starting again.
+
+**In plain steps:**
+1. Write exact findings to a scratchpad as you go.
+2. Delegate heavy reading to a subagent.
+3. After each phase, summarise it and start the next phase from that summary.
+4. Keep a manifest of what is done so a resume runs only what is left.
+
+**Tiny example:** At turn 40 Claude talks about "typical patterns" and forgets `LedgerService`. A line in the scratchpad would have kept it.
+
+---
 
 ## Concepts Explained
 
@@ -40,6 +48,8 @@ Each agent **exports its state** to a known file. A coordinator keeps a **manife
 ### 6. `/compact`
 In Claude Code, `/compact` condenses the conversation to free context during a long session. Use it with a scratchpad, not instead of one.
 
+---
+
 ## Worked Example
 
 **Scenario:** Mapping an old monolith. By turn 40 Claude suggests a PostgreSQL syntax. The team found MySQL on turn 6.
@@ -54,6 +64,8 @@ In Claude Code, `/compact` condenses the conversation to free context during a l
 
 `explore_subagent()`, `CodebaseScratchpadManager`, and `CrashRecoveryManifest` in `main.py` do this offline.
 
+---
+
 ## Key Terms
 
 - **Context degradation:** Specific details fade and generic patterns replace them in long sessions.
@@ -61,6 +73,8 @@ In Claude Code, `/compact` condenses the conversation to free context during a l
 - **Explore subagent:** A subagent that reads a lot and returns a compact summary.
 - **Manifest:** A coordinator file that records each agent's phase and state file for resume.
 - **`/compact`:** Claude Code command that condenses the conversation.
+
+---
 
 ## Architecture
 
@@ -79,39 +93,51 @@ flowchart TD
     Resume --> P2
 ```
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap to reject |
-|---|---|---|
-| Model gives generic patterns | Scratchpad of specific findings | "Remind the model to remember" |
-| Verbose file reading | Subagent returns a summary | Read all 40 files in the main session |
-| Multi-phase work | Summarise phase, then spawn next | Pass all raw output forward |
-| Interrupted run | Manifest + state exports, load on resume | Restart the whole exploration |
-| Context getting full | `/compact` plus scratchpad | Rely on `/compact` alone for exact facts |
+### Trap 1: Telling the model to "remember"
 
-## Common Mistakes
+**Exam scenario**: 40 turns into mapping a legacy codebase, Claude talks about "typical repository patterns" and misses the `LedgerService` class it found at turn 6.
 
-- Keeping findings only in the conversation.
-- Letting subagents return full file contents.
-- Writing no state until the end, so a crash loses everything.
-- Forgetting to load the manifest into the coordinator's prompt on resume.
-- Treating `/compact` as a guarantee that exact details survive.
+Context degrades over long sessions: early specifics fade into generalities. A reminder does not bring back detail that is no longer well attended to.
 
-## Quick Decision Rules
+```markdown
+# scratchpad.md  (Claude writes this as it goes, re-reads it periodically)
+- LedgerService (src/ledger/service.py): all balance writes go through apply_entry()
+- Retry logic lives in src/common/retry.py, used by 3 callers
+- Open question: who calls reconcile()? (not found yet)
+```
 
-| Situation | Do this |
-|---|---|
-| Specific names fade in long session | Scratchpad |
-| One question needs many files | Explore subagent |
-| Moving to next phase | Summarise, then spawn |
-| Run may be interrupted | Per-agent state + manifest |
-| Context nearly full in Claude Code | `/compact` |
+Exact findings in a file survive any context compaction.
 
-## Claude 4.5 Notes
+### Trap 2: Reading 40 files in the main session
 
-- `claude-sonnet-4-5` for the coordinator; `claude-haiku-4-5` for fast Explore-style workers.
-- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
-- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
+Send a verbose question such as "which modules touch payments?" to an **Explore subagent**. It reads in its own context and returns a short answer. The main session keeps its room.
+
+### Trap 3: Passing raw phase output to the next phase
+
+```text
+ANTI-PATTERN: phase 1 produced 60k tokens of notes -> pasted into phase 2's subagents.
+PATTERN: summarise phase 1 into key findings (a page), spawn phase 2 from that summary.
+```
+
+### Trap 4: Restarting from scratch after a crash
+
+Write per-agent state as it works and a manifest of what is done:
+
+```json
+{"completed": ["auth", "billing"], "pending": ["reports"], "state_files": {"auth": "state/auth.json"}}
+```
+
+On resume, load the manifest into the coordinator's prompt and run only the pending work.
+
+### Trap 5: `/compact` alone for exact facts
+
+`/compact` summarises history. Summaries paraphrase. Keep identifiers, signatures, and decisions in the scratchpad so exact values survive compaction.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -142,6 +168,8 @@ flowchart TD
 - **Q2: B.** A fails: it floods the main context. C fails: it cannot fit and dilutes attention. D fails: guessing invents callers.
 - **Q3: C.** A fails: it wastes completed work. B fails: history may be lost or too large. D fails: a larger window does not recover lost state.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can describe context degradation in a long exploration.
@@ -151,6 +179,8 @@ flowchart TD
 - [ ] I know what `/compact` does and its limit.
 
 **Memory hook:** *"Write it down, delegate the noise, save your place."*
+
+---
 
 ## Hands-on Workbook Guide
 

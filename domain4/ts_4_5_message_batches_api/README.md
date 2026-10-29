@@ -1,5 +1,7 @@
 # Task Statement 4.5: Batch Processing with the Message Batches API
 
+> Scenarios: Scenario 5 (CI) and Scenario 6 (Structured Data Extraction).
+
 ## In One Minute
 - **What**: The Message Batches API runs many requests asynchronously.
 - **Why**: **50% cheaper**, but results can take **up to 24 hours** and there is **no latency SLA**.
@@ -9,25 +11,28 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
-- **Scenarios**: Scenario 5 (CI) and Scenario 6 (Structured Data Extraction).
-- **Goal**: Cut cost for work that can wait, without breaking SLAs.
-- **Exam focus**: Which workload goes in a batch, how to meet an SLA, and what a batch cannot do.
+**The picture:** Post. **Express** (normal API) arrives now at full price. **Bulk freight** (Batches API) costs 50% less but may take up to 24 hours. Boxes can arrive in any order, so each one needs a **label** (`custom_id`).
+
+**In plain steps:**
+1. Is a person or a merge waiting? Use the normal call.
+2. Can it wait overnight? Use a batch.
+3. Match results using `custom_id`, never position.
+4. If some failed, resubmit only those.
+5. Check the SLA: waiting time before you submit counts too.
+
+**Tiny example:** 30-hour SLA. Submit every 4 hours: worst case 4 + 24 = 28 hours. One big batch at the deadline can miss.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Batches trade speed for price. You hand Anthropic a list of requests and come back later for the answers.
-
-### 2. Why it matters
+### 1. Why it matters
 - Half price on large, non-urgent jobs.
 - Wrong fit for blocking work: a PR that waits up to a day for its review stalls the team.
 
-### 3. How it works
+### 2. How it works
 
 **a. Shape of a batch**
 ```python
@@ -116,43 +121,51 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Goal | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Save cost on overnight work | Batch it | Run it synchronously | Pays full price |
-| Pre-merge check | Synchronous | Batch it to save 50% | Merge waits up to 24 h |
-| Match results | `custom_id` | Assume same order | Order is not guaranteed |
-| Some items failed | Resubmit those ids (chunk large ones) | Resubmit everything | Pays twice, duplicates work |
-| Meet a 30 h SLA | Submit every 4 h | One big batch at the deadline | Window alone can exceed the SLA |
-| Tool use | New request after running the tool | Expect the batch to loop | No mid-request tool execution |
+### Trap 1: Batch versus synchronous
 
-### Common Mistakes
-- Treating the 24 hours as a guaranteed time instead of an upper bound with no latency SLA.
-- Batching a blocking check.
-- Forgetting the submission interval in the SLA.
-- Resubmitting the full batch.
-- Launching a huge batch before checking the prompt on a sample.
+| Workload | Choice | Reason |
+|---|---|---|
+| Nightly audit of 50,000 documents | Batch | 50% cheaper. Nobody waits |
+| Pre-merge PR check | Synchronous | Developers wait. A batch may take up to 24 hours and has no latency SLA |
+| Interactive chat | Synchronous | Needs a reply now |
 
----
+"Save 50%" is the bait. If a person or a merge is waiting, the answer is not batch.
 
-## 💡 Quick Decision Rules
+### Trap 2: Assuming results come back in request order
 
-| Question | Answer |
-|---|---|
-| Does a person or merge wait on it? | Synchronous |
-| Can it wait up to 24 h? | Batch it |
-| SLA is shorter than the window? | Do not batch |
-| Results failed for some ids? | Resubmit those ids only |
-| Need tool loops? | Not inside a batch |
-| New prompt? | Test on a sample first |
+```python
+# ANTI-PATTERN
+for doc, result in zip(docs, batch_results): ...   # order is not guaranteed
 
----
+# PATTERN: match on custom_id
+requests = [{"custom_id": f"doc-{d.id}", "params": {...}} for d in docs]
+by_id = {r.custom_id: r for r in batch_results}
+```
 
-## 🧠 Claude 4.5 Notes
+`custom_id` is 1 to 64 characters of letters, digits, `_`, `-`.
 
-- `claude-haiku-4-5` for bulk extraction; `claude-sonnet-4-5` for reports that need reasoning.
-- Batch items follow the same parameter rules as normal requests: omit `temperature` when `thinking` is on; leave `top_k`/`top_p` unset; `budget_tokens` at least 1024 and below `max_tokens`.
-- A forced tool (`any` or named) cannot be combined with `thinking`.
-- Batch limits (maximum requests or size per batch) change; check the current docs rather than hard-coding them.
+### Trap 3: Resubmitting the whole batch after partial failure
+
+If 120 of 10,000 requests failed (for example some exceeded the context limit), read each result's type, collect the failed `custom_id`s, fix the cause (chunk the large documents), and resubmit **only those**. Rerunning all 10,000 pays twice and duplicates work.
+
+### Trap 4: SLA arithmetic
+
+**Exam scenario**: results are needed within 30 hours of the data arriving. Batch window is up to 24 hours.
+
+```text
+One big batch submitted at the deadline: wait up to 24h + wait for submission -> can exceed 30h.
+Submit every 4 hours: worst case 4h waiting for the next submission + 24h = 28h <= 30h. OK.
+```
+
+Include the time before submission in the calculation. If the SLA is shorter than the window, do not batch.
+
+### Trap 5: Expecting a tool loop inside a batch
+
+A batch request is one message. It cannot pause, run your tool, and continue. If the model returns `tool_use`, run the tool yourself and submit a **new** request, or use a synchronous agent loop.
+
+### Trap 6: Launching the full batch first
+
+Test the prompt on a small sample synchronously. A prompt bug found after 50,000 batch requests costs the whole batch.
 
 ---
 

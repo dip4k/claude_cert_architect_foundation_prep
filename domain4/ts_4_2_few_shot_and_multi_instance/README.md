@@ -1,5 +1,7 @@
 # Task Statement 4.2: Few-Shot Prompting for Consistent Output
 
+> Scenarios: Scenario 6 (Structured Data Extraction) and Scenario 5 (CI review).
+
 ## In One Minute
 - **What**: Put 2-4 short, targeted examples in the prompt.
 - **Why**: Examples show Claude the exact output format and how to handle ambiguous cases. Rules alone often leave room to guess.
@@ -9,26 +11,28 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
-- **Scenarios**: Scenario 6 (Structured Data Extraction) and Scenario 5 (CI review).
-- **Goal**: Consistent format, fewer false positives, and good behaviour on layouts you did not list.
-- **Exam focus**: Questions ask what kind of examples fix an inconsistent or over-eager prompt.
+**The picture:** Teaching a new helper to fill in forms. Two or three filled-in forms in **different styles** teach more than a page of rules. Include one where a box is empty and the right answer is "leave blank", or the helper will invent something.
+
+**In plain steps:**
+1. Pick 2 to 4 examples that sit on the tricky boundary.
+2. Show input, output, and the **reason**.
+3. Mix layouts (table, paragraph, receipt).
+4. Include a "not present, so `null`" example and an "acceptable, do not flag" example.
+
+**Tiny example:** Five invoices that all have the total at the bottom right will make Claude fail when the total is at the top.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Show, do not only tell. One good example of "this is fine, skip it" next to one of "this is a real bug, report it" teaches a boundary faster than a paragraph of rules.
-
-### 2. Why it matters
+### 1. Why it matters
 - Without examples, output format drifts: sometimes prose, sometimes a table, sometimes missing fields.
 - Without examples of acceptable code, the model flags everything that looks unusual.
 - Without layout variety, extraction works on one document style and returns nulls on the next.
 
-### 3. How it works
+### 2. How it works
 1. **Pick 2-4 examples**, aimed at the cases where the model is unsure.
 2. **State the reason** in each example ("ACCEPTABLE: mock key in a test file").
 3. **Show the exact format**: for reviews, `location | issue | severity | suggested_fix`.
@@ -38,7 +42,7 @@ Show, do not only tell. One good example of "this is fine, skip it" next to one 
 
 Why reasons matter: the model learns the *principle* ("test mocks are not live secrets"), so it generalises to a mock it has never seen.
 
-### 4. Where more examples stop helping
+### 3. Where more examples stop helping
 Five or six near-identical examples add cost and make the model copy their surface form. A small, varied set generalises better.
 
 ---
@@ -110,40 +114,46 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Goal | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Handle ambiguous cases | 2-4 examples with reasons | Long list of rules only | Rules do not show the boundary |
-| Stable output format | Show the exact format in the examples | "Return JSON" with no example | Field names and shape drift |
-| Fewer false positives | Include acceptable patterns | Only show bugs | The model learns that everything odd is a bug |
-| Varied documents | Examples with different layouts | Five invoices with one layout | Overfits to that layout |
-| Missing data | An example that returns `null` | No example of absence | The model fills in a guess |
+### Trap 1: A long rule list instead of examples for ambiguous cases
 
-### Common Mistakes
-- Using many near-identical examples.
-- Showing the output without the reason.
-- Showing only positive (buggy) examples.
-- Using only easy cases instead of the ambiguous ones.
-- Forgetting an example with an empty or null field.
+**Exam scenario**: Classify support tickets into `billing`, `bug`, `feature_request`. "Your invoice page crashes when I click download" gets different labels on different runs, even though the prompt has 14 rules.
 
----
+Rules describe a boundary in words. An example shows where the boundary is. Add 2 to 4 examples for the **ambiguous** cases, with the reason:
 
-## 💡 Quick Decision Rules
+```text
+<examples>
+  Ticket: "Invoice page crashes on download"
+  Label: bug
+  Why: the user-visible failure is a crash. Billing is only where it happens.
 
-| Symptom | Fix |
+  Ticket: "I was charged twice"
+  Label: billing
+  Why: money amount is wrong; no software malfunction is described.
+</examples>
+```
+
+### Trap 2: Asking for JSON with no example of the exact shape
+
+"Return JSON" produces `{"total": 12}` in one run and `{"invoice_total": "$12.00"}` in another. Show the exact output in every example. For a guaranteed syntax, use a tool schema (TS 4.3). Examples guide the content, the schema guards the structure.
+
+### Trap 3: Only showing bugs
+
+If every example contains a defect, the model learns "unusual means defective" and flags harmless patterns.
+
+```text
+Include an ACCEPTABLE example:
+  code: for i in range(len(items)): ...   # index needed for the log message below
+  verdict: no issue. Why: the index is used. Do not flag index loops that use the index.
+```
+
+### Trap 4: One layout, and no example of absence
+
+| Gap in examples | Failure on real input |
 |---|---|
-| Output format changes between runs | Add examples that show the exact format |
-| Too many false positives | Add an acceptable-pattern example with the reason |
-| Nulls on a new document layout | Add an example with that layout |
-| Invented values for absent fields | Add an example that returns `null` |
+| Five invoices, all with the total at the bottom right | Fails on invoices with the total at the top, returns null |
+| No example where a field is missing | Model fills the field with a plausible guess |
 
----
-
-## 🧠 Claude 4.5 Notes
-
-- Examples go inside the prompt, inside clear tags such as `<examples>`; this is a prompt change, not a model setting.
-- If you use thinking, omit `temperature`; leave `top_k` and `top_p` unset.
-- For guaranteed JSON shape, combine examples with a tool schema (TS 4.3). Examples guide the content; the schema guards the syntax.
-- `claude-haiku-4-5` for extraction workers, `claude-sonnet-4-5` for review reasoning.
+Fix: examples with different layouts, and at least one that returns `"po_number": null` with the reason "not present in the document".
 
 ---
 

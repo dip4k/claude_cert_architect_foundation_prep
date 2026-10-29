@@ -3,6 +3,8 @@
 Domain 5 is **15%** of the **Claude Certified Architect - Foundations (CCAR-F)** exam. Weights: D1 27%, D2 18%, D3 20%, D4 20%, **D5 15%**. It tests how to keep context accurate in long work, hand off to humans well, survive failures in multi-agent systems, and keep sources traceable.
 
 > Deep dive: [KEY_CONCEPTS.md](KEY_CONCEPTS.md) (diagrams, traps, 7 long scenario questions).
+>
+> Quick revision: [CHEATSHEET.md](CHEATSHEET.md) (question wording to answer, look-alike pairs, exact values, elimination filters).
 
 ---
 

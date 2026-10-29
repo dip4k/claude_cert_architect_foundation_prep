@@ -1,5 +1,7 @@
 # Task Statement 2.4: Integrate MCP Servers into Claude Code and Agent Workflows
 
+> Scenario alignment: Scenario 3 (Multi-Agent Research) and Scenario 4 (Developer Productivity)
+
 ## In One Minute
 
 - **What**: MCP servers add tools and resources to Claude Code. You decide **where** they are configured and **how secrets** are handled.
@@ -11,26 +13,29 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 2: Tool Design & MCP Integration (**18%** of the exam)
-- **Scenario alignment**: Scenario 3 (Multi-Agent Research) and Scenario 4 (Developer Productivity)
-- **What the exam tests**: Choosing the right config scope, handling credentials safely, using resources, and getting the agent to prefer a capable MCP tool over built-in Grep.
-- **Study order**: [2.3](../ts_2_3_tool_distribution_and_choice/README.md) → 2.4 (this file) → [2.5](../ts_2_5_builtin_tools_usage/README.md). Back to the [Domain 2 map](../README.md).
+**The picture:** A shared class wifi setup sheet versus your private notes. `.mcp.json` lives in the repo, so every teammate gets it. `~/.claude.json` is only yours. Passwords never go on the sheet. The sheet says "ask the locker" (`${GITHUB_TOKEN}`) and each person keeps the real key in their own locker (environment variable).
+
+**In plain steps:**
+1. Team server: put it in `.mcp.json` and commit.
+2. Personal experiment: `~/.claude.json`.
+3. Secrets: `${ENV_VAR}`.
+4. A big catalog to browse: expose it as a **resource** (a library shelf), not 20 search calls.
+5. If Claude prefers `Grep`, improve the MCP tool's description.
+
+**Tiny example:** A token pasted into `.mcp.json` is now in git history forever, even if the repo is private.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-An MCP server is a plug-in. `.mcp.json` says which plug-ins the **team** uses. `~/.claude.json` holds the ones only **you** use.
-
-### 2. Why it matters
+### 1. Why it matters
 - If team servers sit only in one person's home config, nobody else gets them.
 - If a token is written in `.mcp.json` and committed, it leaks.
 - If the agent must explore a large catalog with tool calls, it wastes turns.
 
-### 3. How it works
+### 2. How it works
 
 **Scopes**
 
@@ -115,45 +120,44 @@ Code: `load_mcp_config()`, `expand_env()`, `find_hardcoded_secrets()`, `discover
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Situation | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Whole team needs a server | Project `.mcp.json` | `~/.claude.json` on each laptop | Not shared, drifts between people |
-| Server needs a token | `${GITHUB_TOKEN}` expansion | Paste the token in the file | Leaks into version control |
-| Personal experiment | `~/.claude.json` | Commit it to `.mcp.json` | Pushes experiments on the team |
-| Agent keeps using Grep instead of the MCP tool | Richer MCP tool description | Remove or hide Grep | Wrong lever. The description is the selector |
-| Standard Jira integration | Community MCP server | Build a custom one | Needless work and upkeep |
-| Large catalog to browse | MCP resource | Many exploratory tool calls | Slow and costly |
+### Trap 1: Putting a team server in a personal file
 
----
+| Config | Location | Who gets it |
+|---|---|---|
+| Project | `.mcp.json` in the repo (committed) | Every teammate and CI after clone |
+| User | `~/.claude.json` | Only you |
 
-## ❌ Common Mistakes
+**Exam scenario**: The whole team needs the GitHub MCP server. Putting it in `~/.claude.json` on each laptop means onboarding steps, drift, and CI that never has it. Use `.mcp.json`.
 
-- Thinking secrets in `.mcp.json` are fine for private repos.
-- Believing only one server's tools are visible at a time. All are discovered at connection.
-- Wrapping a read-only catalog in a tool when a resource fits.
-- Leaving MCP tool descriptions short, so built-in Grep wins.
-- Writing a custom MCP server for something a community server already does.
+Reverse trap: committing a personal experiment to `.mcp.json` pushes it onto everyone.
 
----
+### Trap 2: Secrets inside the config file
 
-## 💡 Quick Decision Rules
+```json
+// ANTI-PATTERN: token committed to git history
+{"mcpServers": {"github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"],
+  "env": {"GITHUB_TOKEN": "ghp_abc123..."}}}}
 
-| If you see... | Do this |
-|---|---|
-| Shared, team-wide server | `.mcp.json` |
-| Personal or experimental | `~/.claude.json` |
-| Credential in config | `${ENV_VAR}` |
-| Agent explores a catalog blindly | Expose it as a resource |
-| Agent prefers Grep over MCP tool | Expand the MCP tool description |
-| Standard SaaS integration | Community server first |
+// PATTERN: expansion from the environment
+{"mcpServers": {"github": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-github"],
+  "env": {"GITHUB_TOKEN": "${GITHUB_TOKEN}"}}}}
+```
 
----
+"The repo is private" is not a defence: tokens in history outlive access changes and forks.
 
-## 🧠 Claude 4.5 Notes
+### Trap 3: The agent keeps using Grep instead of the MCP tool
 
-- `claude-sonnet-4-5` for the coordinator, `claude-haiku-4-5` for workers.
-- With extended thinking: `budget_tokens` ≥ 1024 and below `max_tokens`. **Omit `temperature`**. Leave `top_k` and `top_p` unset. `tool_choice` only `auto` or `none`.
-- Return thinking blocks with signatures unchanged in tool loops.
+**Exam scenario**: A Jira MCP server is connected. Asked "what is PROJ-481 about?", Claude runs `Grep` over the repo.
+
+- Anti-pattern: remove or hide `Grep`. That damages every other task.
+- Pattern: the description is the selector. Make the MCP tool say "Searches Jira issues by key (PROJ-123), status, or text. Use this instead of Grep for ticket questions."
+
+All configured servers' tools are discovered at connection time and are available together. Capability is not the issue. Selection is.
+
+### Trap 4: Tool where a resource fits, custom where community exists
+
+- A large read-only catalog (issue summaries, DB schema, doc hierarchy) is best exposed as an MCP **resource** the agent can browse. Wrapping it in a search tool makes the agent guess queries through many exploratory calls.
+- For standard integrations (GitHub, Jira, Slack), use a community server first. Build a custom server only for team-specific systems that nothing covers.
 
 ---
 

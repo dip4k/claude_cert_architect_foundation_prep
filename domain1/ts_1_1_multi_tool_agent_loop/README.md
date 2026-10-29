@@ -12,6 +12,22 @@
 
 ---
 
+## 🧒 Explain Like I'm 13
+
+**The picture:** Claude is a chef and your program is the kitchen runner. The chef cannot leave the kitchen, so when something is missing ("I need the current salt price") the chef hands you a ticket. You fetch it, bring it back, and the chef keeps cooking. Every reply from the chef carries a sticky note, `stop_reason`, that says either **"I need a tool"** or **"I'm finished"**.
+
+**In plain steps:**
+1. Send the question to Claude.
+2. Read the sticky note (`stop_reason`), not the chat text.
+3. Note says `tool_use`: run the tool, hand the result back with the matching ticket number, and ask Claude again.
+4. Note says `end_turn`: the answer is ready. Stop.
+
+**Why not read the text?** The chef might say "Almost done!" while still waiting for salt. The sticky note never lies, the sentence can.
+
+**Tiny example:** "What is 15% of Tokyo's population?" Claude asks for a search (`tool_use`), then asks for the calculator (`tool_use`), then writes the answer (`end_turn`). Three calls, and your code never guessed anything.
+
+---
+
 ## 📌 Overview
 
 ### Why it matters
@@ -19,24 +35,11 @@ In normal code, the programmer decides the next step. In an agent, **Claude deci
 
 If you guess "done" by reading Claude's text (for example looking for the word "done"), the loop will stop too early, or never stop. `stop_reason` is a structured field. It does not change with phrasing.
 
-### What the exam tests
-- You can name what each `stop_reason` means and what the loop must do.
-- You reject three anti-patterns: parsing text for completion, using an iteration cap as the main stop, and treating assistant text as the completion signal.
-- You know the model-driven loop (Claude chooses the next tool) is different from a fixed decision tree or a fixed pipeline.
-
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-One turn of the loop: **ask, look at `stop_reason`, act, repeat.**
-
-1. Send `messages` and `tools` to Claude.
-2. Read `response.stop_reason`.
-3. If it is `tool_use`: append the assistant turn, run every requested tool, append one user turn with a `tool_result` for each `tool_use`, and go back to step 1.
-4. If it is `end_turn`: return the final text.
-
-### 2. Every `stop_reason` needs an explicit branch
+### 1. Every `stop_reason` needs an explicit branch
 
 | `stop_reason` | Meaning | What the loop does |
 |---|---|---|
@@ -50,7 +53,7 @@ One turn of the loop: **ask, look at `stop_reason`, act, repeat.**
 
 In this repo the loop in [main.py](main.py) continues on `tool_use` and `pause_turn`, returns on `end_turn`, and raises `LoopStopped` (from [loop_common.py](../loop_common.py)) for every other value. A silent fallback to `end_turn` would hide truncated or refused answers.
 
-### 3. The two-message contract
+### 2. The two-message contract
 After `tool_use`, append two messages in this order:
 
 1. **assistant**: the full `response.content`, unchanged. This keeps the `tool_use` blocks, and any `thinking` blocks with their `signature`.
@@ -58,11 +61,11 @@ After `tool_use`, append two messages in this order:
 
 A `tool_result` without the assistant `tool_use` before it is rejected with HTTP 400. A response can hold several `tool_use` blocks. Answer all of them in one user message.
 
-### 4. Model-driven loop vs fixed decision tree
+### 3. Model-driven loop vs fixed decision tree
 - **Model-driven (this task)**: Claude sees the tool results and decides the next tool. The path changes per question.
 - **Fixed decision tree or pipeline**: your code decides the order (step 1 always, then step 2). That is right when the order must be guaranteed (see [TS 1.4](../ts_1_4_prerequisite_enforcement/README.md) and [TS 1.6](../ts_1_6_task_decomposition/README.md)). It is not what an agentic loop is.
 
-### 5. The safety cap
+### 4. The safety cap
 `MAX_ITERATIONS = 20` in [main.py](main.py) protects against a bug, such as a tool that always errors and Claude that keeps retrying. The cap is a **safety cap**. Normal runs must end through `stop_reason` long before it. If the cap is hit, log it as a failure (`safety_cap_reached`), do not present it as a result.
 
 ---
@@ -123,45 +126,107 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| **Completion** | `stop_reason == "end_turn"` | Search the text for "done" or "complete" | Phrasing varies. The text can say "done" while a tool call is still planned |
-| **Completion signal** | Use the structured field | Treat the presence of assistant text as "finished" | Claude often writes text and a `tool_use` in the same turn |
-| **Iteration cap** | Safety cap only, fixed high | `for i in range(3)` as the normal exit | Cuts off tasks that need more rounds. Wastes calls on tasks that finished |
-| **History** | Assistant `tool_use` turn, then user `tool_result` turn | Append only the `tool_result` | HTTP 400. The result has no matching `tool_use` |
-| **Thinking** | Echo `thinking` blocks and signatures unchanged | Strip them to save tokens | HTTP 400. The signature check fails |
-| **Other stop reasons** | One branch per value, unknown stops the loop | Default to `end_turn` | Hides truncated or refused answers |
+Each trap shows the scenario, why the wrong answer is tempting, what really goes wrong, and what to do instead.
 
----
+### Trap 1: Deciding "done" by reading the text
 
-## ❌ Common Mistakes
+**Exam scenario**: A support loop stops when `"resolved" in response.content[0].text.lower()`. Tickets are sometimes closed before the status check ran.
 
-- Checking `"done" in text` or a regex on the answer to decide when to stop.
-- Using `range(N)` as the main loop condition and treating the last turn as the answer.
-- Forgetting to answer every `tool_use` block when Claude calls two tools in one turn.
-- Running a `tool_use` from a `max_tokens` response. Its JSON input may be cut off.
-- Rebuilding the assistant message from text only and losing `tool_use` or `thinking` blocks.
+**Tempting answers**: add a prompt rule ("only say resolved when finished"), or switch to a stricter regex.
 
----
+**Why they tempt**: the bug looks like a wording problem, so a wording fix feels natural.
 
-## 💡 Quick Decision Rules
+**What really happens**:
 
-| Question | Answer |
+| Turn | `stop_reason` | Text Claude wrote | Block also in the response | Text-parsing loop does |
+|---|---|---|---|---|
+| 1 | `tool_use` | "I'll mark this resolved once I check the order status." | `tool_use check_order_status` | Sees "resolved", **exits**. The tool never runs |
+| 2 | never reached | - | - | Ticket closed with no status check |
+
+Claude writes text **and** a `tool_use` in the same turn. The text is narration. `stop_reason` is the only field that says whether a tool is pending.
+
+```python
+# ANTI-PATTERN: text decides completion
+if "resolved" in response.content[0].text.lower():
+    break
+
+# PATTERN: structured field decides
+if response.stop_reason == "tool_use":
+    ...  # run tools, append results, continue
+elif response.stop_reason == "end_turn":
+    return final_text(response)
+else:
+    raise LoopStopped(response.stop_reason)  # max_tokens, refusal, unknown
+```
+
+**Spot it fast**: any answer option that inspects `content[0].text`, a keyword, or a regex is wrong.
+
+### Trap 2: The iteration cap used as the normal exit
+
+**Exam scenario**: `for _ in range(4):` runs the loop. Long tasks return half-finished answers.
+
+**Tempting answers**: raise the number, or tell Claude "finish within 4 tool calls".
+
+**What really happens**: the number is a guess about task size.
+
+| Task | Tool rounds really needed | `range(4)` result |
+|---|---|---|
+| Simple lookup | 1 | Works, but only if the code also breaks on `end_turn` |
+| Order plus refund plus email | 5 | Cut off after round 4. Last `tool_result` never read |
+| Runaway tool error | endless | Stops, but silently looks like a normal answer |
+
+```python
+# ANTI-PATTERN: cap is the exit, last turn is the "answer"
+for _ in range(4):
+    response = client.messages.create(...)
+    run_tools(response)
+return response.content[0].text
+
+# PATTERN: stop_reason is the exit, cap is a logged failure
+for _ in range(MAX_ITERATIONS):          # e.g. 20, fallback only
+    response = client.messages.create(...)
+    if response.stop_reason == "end_turn":
+        return final_text(response)
+    ...
+raise RuntimeError("safety_cap_reached")   # a bug, not a result
+```
+
+**Spot it fast**: if hitting the cap returns a normal-looking answer, the cap is being misused.
+
+### Trap 3: Treating `max_tokens` like success
+
+**Exam scenario**: the response has `stop_reason == "max_tokens"` and the last block is a `tool_use` whose input looks cut off.
+
+```json
+{"type": "tool_use", "name": "process_refund", "input": {"order_id": "ORD-99
+```
+
+| Option | Result |
 |---|---|
-| Should the loop continue? | Only if `stop_reason` is `tool_use` (or `pause_turn`) |
-| Is the answer final? | Only if `stop_reason` is `end_turn` |
-| What is the iteration cap for? | A fallback against bugs. Never the main stop |
-| Where does ordering that must be guaranteed belong? | In code (a gate or fixed pipeline), not left to the model |
-| Which model for the agent loop? | `claude-sonnet-4-5` for reasoning. `claude-haiku-4-5` for simple workers |
+| Run it with the parsed part | Wrong order, or a validation crash, or a refund on a guessed id |
+| Treat as `end_turn` | User gets a truncated answer presented as final |
+| Raise `max_tokens` and retry, or stop with an error | Correct |
 
----
+With extended thinking, thinking tokens count against `max_tokens`. `max_tokens=4096` with `budget_tokens=4000` leaves about 96 tokens for the tool call, so truncation is likely. Keep `max_tokens` well above `budget_tokens`.
 
-## 🧠 Claude 4.5 Notes
+### Trap 4: Breaking the two-message contract
 
-- Models: `claude-sonnet-4-5` (coordinators, reasoning), `claude-haiku-4-5` (workers, subagents).
-- Extended thinking: `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`.
-- With thinking on: leave out `temperature` (HTTP 400), and leave `top_k` and `top_p` unset. `tool_choice` may only be `auto` or `none`. `any` or a forced named tool gives HTTP 400.
-- In a tool loop, echo the assistant content, including `thinking` blocks and their `signature`, back unchanged with the `tool_result`.
+**Exam scenario**: Claude calls `get_customer` and `lookup_order` in one response. The code answers only the first, or appends only the `tool_result` without the assistant turn.
+
+```python
+# ANTI-PATTERN: answers one of two tool_use blocks, drops the assistant turn
+messages.append({"role": "user", "content": [first_result]})   # HTTP 400
+
+# PATTERN: echo assistant content unchanged, answer EVERY tool_use_id once
+messages.append({"role": "assistant", "content": response.content})
+results = [
+    {"type": "tool_result", "tool_use_id": b.id, "content": run(b)}
+    for b in response.content if b.type == "tool_use"
+]
+messages.append({"role": "user", "content": results})
+```
+
+Same rule for `thinking` blocks: `response.content` already contains them with the `signature`. Rebuilding the assistant message from text only removes them and the API returns HTTP 400.
 
 ---
 

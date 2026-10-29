@@ -1,5 +1,7 @@
 # Task Statement 4.3: Structured Output with Tool Use and JSON Schemas
 
+> Scenario: Scenario 6 (Structured Data Extraction).
+
 ## In One Minute
 - **What**: Get structured data by defining a tool whose `input_schema` is your JSON schema.
 - **Why**: Tool use removes JSON *syntax* errors. It does **not** remove *semantic* errors, such as line items that do not add up to the total.
@@ -9,26 +11,29 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
-- **Scenario**: Scenario 6 (Structured Data Extraction).
-- **Goal**: Reliable, honest, machine-readable extraction.
-- **Exam focus**: Which `tool_choice` to use, why a field must be nullable, and what a schema cannot catch.
+**The picture:** A form with boxes, not an essay. A tool with an `input_schema` is the form: Claude must fill it in the right shape. Boxes that may not apply need an "N/A" (`null`) option, or Claude invents something to avoid leaving them blank. The form checks that the boxes exist, **not** that your sums add up.
+
+**In plain steps:**
+1. Define a tool with a JSON schema for the output.
+2. Make uncertain fields nullable.
+3. Add `other` and `unclear` to enums.
+4. Recompute totals in your code and set `conflict_detected`.
+5. Want a tool to be called? `tool_choice`. Want thinking? Then only `auto` or `none`.
+
+**Tiny example:** Line items sum to 480 but the invoice says 840. The schema is happy. Your check is the one that notices.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Asking for "JSON in a code block" is fragile. A tool call with a schema is the standard way to get structured output.
-
-### 2. Why it matters
+### 1. Why it matters
 - Text JSON can have fences, trailing commas, or a chatty preamble.
 - A required field that the document lacks pushes the model to make something up.
 - A valid JSON object can still be wrong: `items` add up to 400 but `total` says 500.
 
-### 3. How it works
+### 2. How it works
 
 **a. Tool schema.** Define one tool per extraction type. Claude returns a `tool_use` block whose `input` follows the schema. Add `"strict": true` at the top level of the tool definition and `"additionalProperties": false` on each object in `input_schema`. Claude's tokens are then constrained to the schema, so types and required fields always match. It still cannot check meaning, such as totals or a value in the wrong field.
 
@@ -49,7 +54,7 @@ Asking for "JSON in a code block" is fragile. A tool call with a schema is the s
 
 **e. Absent vs wrong.** A `null` for something the document never says is correct. A bad date format is an error and is worth a retry with feedback (TS 4.4).
 
-### 4. The thinking trade-off
+### 3. The thinking trade-off
 With extended thinking, `tool_choice` may be only `auto` or `none`. A forced tool call (`any` or a named tool) returns HTTP 400 if `thinking` is enabled.
 
 So for extraction you choose:
@@ -134,44 +139,52 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Goal | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Valid JSON | Tool + `input_schema` | Ask for JSON in text | Fences and typos break parsing |
-| No fabrication | Nullable or optional fields | Everything `required` | Model invents values to satisfy the schema |
-| Right totals | Recompute in code, set `conflict_detected` | "The schema guarantees correctness" | Schemas check shape, not arithmetic |
-| New categories | Enum + `other` + detail, and `unclear` | Closed enum | Forces a wrong label |
-| Force a tool | `tool_choice` without `thinking` | Forced tool + `thinking` | HTTP 400 |
-| Unknown doc type | `any` | Forcing one tool | Wrong tool for the document |
+### Trap 1: "Return JSON" in the prompt
 
-### Common Mistakes
-- Making `invoice_number`, `vendor_name`, `issue_date` required.
-- Believing the schema also checks the sums.
-- Combining a forced `tool_choice` with extended thinking.
-- Sending `temperature` together with thinking.
-- Treating a correct `null` as a failure and retrying.
+Text output can come wrapped in markdown fences, with a trailing comment, or with a missing brace. `json.loads` then raises in production. A tool with `input_schema` makes the output arrive as a structured `tool_use` block.
 
----
+```python
+tools = [{"name": "record_invoice", "description": "Record extracted invoice fields.",
+          "input_schema": {"type": "object", "properties": {
+              "invoice_number": {"type": ["string", "null"]},
+              "total": {"type": ["number", "null"]}}}}]
+```
 
-## 💡 Quick Decision Rules
+### Trap 2: Everything `required` forces fabrication
 
-| Situation | Choose |
+**Exam scenario**: The schema requires `invoice_number`, `vendor_name`, `issue_date`. A scanned receipt has no invoice number.
+
+```text
+ANTI-PATTERN: required: [invoice_number, ...]  -> model invents "INV-0001" to satisfy the schema.
+PATTERN: only truly guaranteed fields required; others nullable/optional.
+         "invoice_number": null  means "not in the document" (a correct answer, not an error).
+```
+
+### Trap 3: "The schema guarantees correctness"
+
+A schema checks **shape**: types, required keys, enum values. It cannot check that line items add up.
+
+```json
+{"line_items_sum": 480.00, "stated_total": 840.00, "conflict_detected": true}
+```
+
+Compute `calculated_total` in code, compare to `stated_total`, and set `conflict_detected`. Do not trust the model's arithmetic or assume the schema covered it.
+
+### Trap 4: Closed enum
+
+```text
+ANTI-PATTERN: category in ["invoice", "receipt", "contract"]  -> a purchase order is forced into one.
+PATTERN: category in ["invoice", "receipt", "contract", "other", "unclear"]
+         plus category_detail: "purchase order" when category is "other".
+```
+
+### Trap 5: `tool_choice` and thinking
+
+| Need | Use |
 |---|---|
-| Need guaranteed JSON shape | Tool use + schema |
-| Field may be missing in source | Nullable, not required |
-| Several extraction tools, unknown document | `tool_choice: any` |
-| Must run one tool first | Forced named tool |
-| Want thinking | `auto` or `none` only |
-| Totals might disagree | `calculated_total` + `stated_total` + `conflict_detected` |
-
----
-
-## 🧠 Claude 4.5 Notes
-
-- `claude-haiku-4-5` extracts; `claude-sonnet-4-5` reasons about hard or ambiguous documents.
-- Thinking: omit `temperature`; leave `top_k`/`top_p` unset; `budget_tokens` at least 1024 and less than `max_tokens`.
-- Thinking allows only `tool_choice` `auto`/`none`. For forced extraction, run without thinking.
-- When echoing assistant turns in a tool loop, keep thinking blocks and signatures unchanged.
-- The loop in `main.py` branches on `stop_reason`: `tool_use` validates; `pause_turn` continues; `max_tokens`, `refusal` and `end_turn` without a tool stop.
+| Must return structured output, document type unknown | `tool_choice: {"type": "any"}` (no thinking) |
+| Must run one named extraction tool | `{"type": "tool", "name": ...}` (no thinking) |
+| Thinking is on | Only `auto` or `none`. Forced or `any` returns HTTP 400. Also omit `temperature` |
 
 ---
 

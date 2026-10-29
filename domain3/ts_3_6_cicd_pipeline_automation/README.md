@@ -1,5 +1,7 @@
 # Task Statement 3.6: Integrate Claude Code into CI/CD Pipelines
 
+> Scenario: Scenario 5 (Claude Code for Continuous Integration).
+
 ## In One Minute
 
 - **`-p` / `--print`** runs Claude Code non-interactively. Without it, a CI job hangs waiting for input. (`CLAUDE_HEADLESS` and `--batch` do not exist.)
@@ -8,17 +10,24 @@
 - **Use an independent review instance.** The session that wrote the code is worse at reviewing it. On re-runs, include prior findings and ask only for new or unaddressed issues. For test generation, include the existing test files.
 - **Exam answer in one line**: a CI job that hangs needs `-p`.
 
-## Overview
+---
 
-- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
-- **Scenario**: Scenario 5 (Claude Code for Continuous Integration).
-- **Goal**: run Claude Code safely and predictably inside a pipeline.
-- **Exam focus**: the right flags, structured output, and review hygiene.
+## Explain Like I'm 13
+
+**The picture:** A robot with nobody at the keyboard. Without `-p`, Claude waits for someone to press Enter forever. `-p` means "answer once and leave". Findings should come as a **form** (JSON) the robot can read, not a **letter** it must guess at. And the one who wrote the code should not grade it.
+
+**In plain steps:**
+1. Run `claude -p "Review this PR" --output-format json --json-schema '{...}'`.
+2. Post each finding as an inline PR comment.
+3. Use a fresh instance for review, not the author session.
+4. On a re-run, include old findings and ask for only new ones.
+5. Waiting for the result? Use a normal call. Overnight? Use Batches.
+
+**Tiny example:** A pre-merge check on the 24-hour batch lane means developers wait a day to merge.
+
+---
 
 ## Concepts Explained
-
-### Simple idea
-In CI there is no person at a keyboard. The command must run by itself and print output a script can read.
 
 ### Why it matters
 A job that waits for input never ends. Free-text output forces fragile text scraping. Both break pipelines.
@@ -46,6 +55,8 @@ claude -p "Review this PR diff against our CLAUDE.md criteria" \
 - **Test generation**: give the existing test files in context so it does not duplicate tests.
 - **Batch vs blocking**: the Message Batches API suits overnight jobs, not pre-merge checks that block a merge (see Domain 4, TS 4.5, in the [Domain 4 README](../../domain4/README.md)).
 
+---
+
 ## Key Terms
 
 - **Non-interactive mode**: `-p` / `--print`.
@@ -53,6 +64,8 @@ claude -p "Review this PR diff against our CLAUDE.md criteria" \
 - **Inline PR comment**: a comment tied to a file and line.
 - **Gate**: a pipeline step that passes or fails the build from the findings.
 - **Independent review instance**: a separate Claude Code session used only to review.
+
+---
 
 ## Architecture
 
@@ -70,6 +83,8 @@ flowchart TD
     Gate -->|"No"| Pass["Gate script exits 0"]
     Rules["CLAUDE.md<br>standards and criteria"] --> Cmd
 ```
+
+---
 
 ## Worked Example
 
@@ -110,40 +125,44 @@ Report only NEW issues or prior findings that are still unaddressed.
 
 `validate_ci_command(["claude", "Review PR"])` reports the missing `-p` and `--output-format`. The review step in `main.py` is a **simulation**; no `claude` process runs.
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Concept | Correct | Trap | Why the trap fails |
-|---|---|---|---|
-| Job hangs | `-p` / `--print` | `CLAUDE_HEADLESS=true`, `--batch` | These do not exist |
-| Parseable findings | `--output-format json` with `--json-schema` | Ask for prose, parse with regex | Wording varies; false approvals |
-| Reviewer | Independent instance | Same session that wrote the code | Biased toward its own work |
-| Re-run noise | Include prior findings, ask for new only | Re-run with no history | Duplicate comments |
-| Test generation | Provide existing test files | Generate blind | Duplicate tests |
-| Pre-merge check | Synchronous call | Message Batches API | Batches are for work nobody is waiting on |
+### Trap 1: The CI job that hangs
 
-## Common Mistakes
+**Exam scenario**: `claude "Analyze this PR"` in a pipeline never finishes.
 
-- Forgetting `-p` and letting the job time out.
-- Posting a free-text summary instead of per-line inline comments.
-- Reviewing code in the same session that generated it.
-- Re-running a review without telling it what was already reported.
-- Putting review criteria only in a developer's user-level config, so CI never sees them.
+Without `-p` (`--print`), Claude Code starts an interactive session and waits for input that never comes. Invented fixes such as `CLAUDE_HEADLESS=true` or `--batch` do not exist.
 
-## Quick Decision Rules
+```bash
+# ANTI-PATTERN: waits for a human
+claude "Review this PR"
 
-| Need | Use |
-|---|---|
-| Run without a human | `-p` / `--print` |
-| Parse results in a script | `--output-format json` with `--json-schema` |
-| Standards for the CI instance | Project `CLAUDE.md` |
-| Unbiased review | Fresh independent instance |
-| Follow-up review on same PR | Prior findings plus "only new or unaddressed" |
-| Overnight, nobody waiting | Message Batches API |
+# PATTERN: non-interactive, parseable
+claude -p "Review this PR" --output-format json --json-schema '{"type":"object", ...}'
+```
 
-## Claude 4.5 Notes
+### Trap 2: Prose findings parsed with regex
 
-- Models in this repo: `claude-sonnet-4-5` (review reasoning), `claude-haiku-4-5` (cheap workers).
-- With extended thinking in API code: leave `temperature` and `top_k`/`top_p` unset; only `tool_choice` `auto` or `none`; echo thinking blocks with signatures unchanged.
+If the review is free text, your script greps for "LGTM" or "critical". Wording changes, and a review that says "no critical issues, but one high-severity bug" is approved by mistake. Use structured output (`--output-format json` with `--json-schema`) so each finding has file, line, severity, and message, and can be posted as an inline PR comment.
+
+### Trap 3: Same session writes and reviews
+
+The session that generated the code carries its own reasoning. It tends to defend its decisions. Use a **fresh independent instance** to review. Extended thinking in the same session does not remove the shared context.
+
+### Trap 4: Re-runs and test generation without history
+
+| Case | Anti-pattern | Pattern |
+|---|---|---|
+| Push 2 to the same PR | Re-run a review with no history: duplicate comments for fixed issues | Include prior findings and say "report only new or still-unaddressed issues" |
+| Generate tests | Generate blind: duplicates what exists | Provide existing test files so it fills gaps only |
+
+### Trap 5: Batch for a blocking check
+
+The Message Batches API saves 50% but can take up to 24 hours with no latency SLA. A pre-merge check blocks developers, so use a synchronous call. Batches are for overnight or weekly audits that nobody waits on.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -185,6 +204,8 @@ Report only NEW issues or prior findings that are still unaddressed.
 - B fails: removes history without telling the reviewer what was reported.
 - C fails: later commits go unreviewed.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I know `-p` / `--print` fixes a hanging CI job.
@@ -194,6 +215,8 @@ Report only NEW issues or prior findings that are still unaddressed.
 - [ ] I know Batches API is for overnight work, not blocking pre-merge checks.
 
 **Memory hook**: *-p to run it, JSON to read it, a fresh reviewer to trust it.*
+
+---
 
 ## Hands-on Workbook Guide
 

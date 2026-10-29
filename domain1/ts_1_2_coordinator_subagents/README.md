@@ -12,27 +12,30 @@
 
 ---
 
+## 🧒 Explain Like I'm 13
+
+**The picture:** A class project. The teacher (coordinator) splits "AI in creative industries" into chapters and gives each student (subagent) a sheet. Students cannot see each other's notebooks, and they do not know what the teacher knows unless it is written on their sheet. Anything one student needs from another goes through the teacher.
+
+**In plain steps:**
+1. The teacher splits the topic into parts that together cover everything.
+2. Each student gets a sheet with every fact they need.
+3. Students hand answers back to the teacher only.
+4. The teacher checks for missing chapters, sends someone back if needed, then writes the final report.
+
+**Tiny example:** The report has art and design but no music or film. The students did their jobs perfectly. The teacher only handed out two kinds of sheets. The fix is on the teacher's side.
+
+---
+
 ## 📌 Overview
 
 ### Why it matters
 A single agent that searches, reads documents, and writes the report in one conversation drowns in context. A mesh, where agents message each other, creates loops and hides who did what. Hub-and-spoke keeps one owner of the plan, the budget, and the audit trail.
 
-### What the exam tests
-- Subagents do **not** inherit the coordinator's history. Pass what they need in the prompt.
-- All subagent communication is routed through the coordinator.
-- The coordinator chooses subagents **dynamically** by query complexity. It does not push every query through every subagent.
-- The coordinator runs an **iterative refinement loop**: evaluate gaps, re-delegate, re-synthesise.
-- Scope is **partitioned** so subagents do not duplicate work.
-- Narrow decomposition is a coordinator problem (the "AI in creative industries" sample question).
-
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-The coordinator is the project manager. Subagents are specialists with a single task sheet. They never see the manager's inbox, and they never call each other.
-
-### 2. How it works
+### 1. How it works
 
 1. **Decompose broadly.** Split the request so all major areas are covered. A topic like "AI in creative industries" needs music, writing, film, design, and visual arts. Not only one of them.
 2. **Partition scope.** Give each subagent a different slice (a sub-topic, a date range, a source set). Overlap wastes tokens.
@@ -41,7 +44,7 @@ The coordinator is the project manager. Subagents are specialists with a single 
 5. **Refine.** Ask a synthesis step what is missing. If gaps exist, send targeted follow-up tasks, then synthesise again.
 6. **Return.** Only after coverage is acceptable does the coordinator answer the user.
 
-### 3. In this repo
+### 2. In this repo
 [main.py](main.py) exposes three coordinator tools: `delegate_web_search`, `delegate_doc_analysis`, `evaluate_synthesis`. Each one calls a local subagent class (`WebSearchSubagent`, `DocumentAnalysisSubagent`, `SynthesisSubagent`) that receives only its arguments. `MultiAgentCoordinator.dispatch_tool` is the single route for every call, and `accumulated_findings` holds the results. `SynthesisSubagent` returns `coverage_sufficient` and `missing_topics`, which drive the refinement loop. The Agent SDK `Task` tool version of spawning is in [TS 1.3](../ts_1_3_subagent_invocation_spawning/README.md).
 
 `max_turns=5` is a **safety cap**. The loop ends on `stop_reason == "end_turn"`. Other stop reasons are handled explicitly, and unknown ones raise `LoopStopped`.
@@ -107,44 +110,76 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| **Communication** | All traffic through the coordinator | Subagents message each other (mesh) | Loops, no single audit trail, no owner of the budget |
-| **Context** | Isolated. Pass needed facts in the prompt | Assume subagents inherit the coordinator history | They start empty. They would miss facts, or copying the whole history would bloat them |
-| **Selection** | Choose subagents by query complexity | Run every subagent for every query | Wastes latency and tokens on simple requests |
-| **Coverage** | Check gaps, re-delegate, re-synthesise | Return the first draft | Incomplete or unverified answers reach the user |
-| **Missing topics** | Fix the coordinator's decomposition | Blame the search tool or the synthesis subagent | The subagents did exactly what the coordinator asked |
+### Trap 1: Blaming the subagents for a coordinator decomposition error
 
----
+**Exam scenario**: The task is "research the impact of AI on creative industries". The final report covers only digital art and graphic design. Music, writing, and film are missing. Every subagent's own output is accurate and well sourced.
 
-## ❌ Common Mistakes
+**Tempting answers**: improve the search subagent's queries, make the synthesis subagent "more thorough", add a document-analysis subagent.
 
-- Decomposing too narrowly, so whole areas of the topic get no subagent.
-- Giving two subagents the same slice, so the work is duplicated.
-- Passing the entire coordinator history to every subagent instead of a focused prompt.
-- Letting subagent output skip the coordinator and go straight to the user.
-- Never checking coverage before synthesising.
+**Why they tempt**: the visible symptom is "the report is incomplete", and search or synthesis sit closest to the report.
 
----
+**What really happens** (read the coordinator log, not the subagent output):
 
-## 💡 Quick Decision Rules
+```text
+Coordinator decomposition:
+  subagent A -> "AI in digital art"
+  subagent B -> "AI in graphic design"
+  subagent C -> "AI in illustration"
+```
 
-| Question | Answer |
+Each subagent did exactly what it was asked. Nobody was asked about music, writing, or film. The coverage hole was created one level up.
+
+**Correct pattern**: partition the whole topic before delegating, then check coverage after.
+
+```text
+Coordinator decomposition (fixed):
+  A -> visual arts   B -> music   C -> writing and publishing   D -> film and video
+  After results: compare covered areas against the topic outline, re-delegate any gap.
+```
+
+**Spot it fast**: when the output is missing a whole area but each part is correct, the fault is the decomposition.
+
+### Trap 2: Mesh communication between subagents
+
+**Exam scenario**: To save a step, the web-search subagent sends its findings directly to the analysis subagent.
+
+| Design | Problem |
 |---|---|
-| Subagent B needs A's output? | Coordinator copies it into B's prompt |
-| Final report misses a whole area? | Look at the coordinator's decomposition first |
-| Simple question? | Answer directly or use one subagent |
-| Subagent results look thin? | Evaluate gaps, then re-delegate a targeted follow-up |
-| Models? | Sonnet for the coordinator, Haiku for bounded workers |
+| Mesh: A to B directly | No single audit trail. Errors in A flow into B unchecked. Nobody owns the token budget. Loops are possible (B asks A, A asks B) |
+| Hub-and-spoke: A to coordinator to B | The coordinator can validate, trim, log, and decide whether B should run at all |
 
----
+```text
+ANTI-PATTERN: Search --findings--> Analysis        (coordinator never sees it)
+PATTERN:      Search --> Coordinator (validate, log, trim) --> Analysis prompt
+```
 
-## 🧠 Claude 4.5 Notes
+### Trap 3: Assuming subagents inherit the coordinator's history
 
-- Models: `claude-sonnet-4-5` for the coordinator, `claude-haiku-4-5` for workers. The coordinator calls in [main.py](main.py) use `COORDINATOR_MODEL`.
-- Extended thinking: `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`. It suits decomposition and gap analysis.
-- With thinking on: no `temperature` (HTTP 400), leave `top_k` and `top_p` unset, and `tool_choice` only `auto` or `none`.
-- In the coordinator's tool loop, echo assistant content (with `thinking` blocks and `signature`) back unchanged.
+**Exam scenario**: The coordinator already learned that the customer is `CUST-88319` and the order is `ORD-2026-9912`. It spawns a subagent with the prompt "Check whether the refund is within policy".
+
+```python
+# ANTI-PATTERN: relies on context the subagent does not have
+prompt = "Check whether the refund is within policy."
+# Subagent messages start as []. It sees no customer, no order, no amount.
+
+# PATTERN: pass exactly what the subagent needs
+prompt = (
+    "Check refund policy for order ORD-2026-9912 (customer CUST-88319). "
+    "Item: noise-cancelling headphones, $249, delivered 2026-10-20, opened. "
+    "Return JSON: {eligible: bool, rule_id: str, reason: str}."
+)
+```
+
+The opposite mistake also loses points: copying the **whole** coordinator history into every subagent bloats its context. Send the relevant slice only.
+
+### Trap 4: Fixed pipeline for every query, and no coverage check
+
+| Query | Right route |
+|---|---|
+| "What is the return window for unwashed apparel?" | Coordinator answers or uses one lightweight lookup. No subagents |
+| "Compare Q3 delays in 4 regions and cross-check weather data" | Decompose, spawn several subagents, synthesise |
+
+After synthesis, ask: "Does this answer every part of the request?" If a source timed out or an area is empty, either re-delegate with a fallback or annotate the gap in the report. Returning the first draft hides the hole.
 
 ---
 

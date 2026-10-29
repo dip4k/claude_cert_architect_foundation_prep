@@ -1,5 +1,7 @@
 # Task Statement 2.5: Select and Apply Built-in Tools Effectively
 
+> Scenario alignment: Scenario 4 (Developer Productivity)
+
 ## In One Minute
 
 - **What**: Claude Code ships built-in tools. Pick the right one for each job.
@@ -11,26 +13,27 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 2: Tool Design & MCP Integration (**18%** of the exam)
-- **Scenario alignment**: Scenario 4 (Developer Productivity)
-- **What the exam tests**: Choosing the right built-in tool and recovering from an `Edit` failure.
-- **Study order**: [2.4](../ts_2_4_mcp_server_integration/README.md) → 2.5 (this file). Back to the [Domain 2 map](../README.md).
+**The picture:** Library tools. `Grep` is Ctrl+F **inside** books (content). `Glob` is looking at the **spines** on the shelf (file names). `Edit` is correction fluid on one sentence. `Write` is rewriting the whole page.
+
+**In plain steps:**
+1. Looking for text? `Grep`. Looking for files by name? `Glob`.
+2. Small change? `Edit` with a unique anchor. If the text is not unique, make the anchor longer, or `Read` and `Write`.
+3. New to a codebase? Follow footprints: `Grep` the entry point, `Read` it, `Grep` what it imports.
+
+**Tiny example:** Finding every caller of `charge_card` when a wrapper re-exports it as `pay`: list the wrapper's exported names, then `Grep` each one.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Each tool has one job. Use the one that matches the question you are asking.
-
-### 2. Why it matters
+### 1. Why it matters
 - Reading a whole repo to find one function floods the context with irrelevant text.
 - Rewriting a 600-line file to change one line risks accidental damage.
 - Repeating a failed `Edit` unchanged will fail again.
 
-### 3. How it works
+### 2. How it works
 
 | You want to... | Use | Why |
 |---|---|---|
@@ -108,45 +111,47 @@ Code: `BuiltinToolbox` in [main.py](main.py): `edit_file()`, `execute_edit_with_
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Situation | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Find a function definition | `Grep` | `Read` every file | Floods context and is slow |
-| Find all test files | `Glob` | `Grep` for filenames | `Grep` searches content, not paths |
-| Change one line in a big file | `Edit` | `Write` the whole file | Risks changing unrelated lines |
-| `Edit` fails on non-unique text | Longer anchor, or `Read` + `Write` | Repeat the same `Edit` | It fails the same way again |
-| Learn a new codebase | `Grep` entry points, `Read` imports, follow | Read all files first | Wastes context |
-| Wrapper modules hide usage | List exported names, `Grep` each | `Grep` only the wrapper's own name | Misses callers that use the re-exported names |
+### Trap 1: Grep and Glob swapped
 
----
+| Question | Tool | Example |
+|---|---|---|
+| Where is `process_refund` defined or called? (search **content**) | `Grep` | `Grep "def process_refund"` |
+| Which files are tests? (search **path/name**) | `Glob` | `Glob "**/*.test.tsx"` |
 
-## ❌ Common Mistakes
+Anti-patterns: `Grep` for "*.test.tsx" (it searches inside files, returns nothing useful), or `Glob` to find a string inside files (it only matches paths).
 
-- Using `Grep` to find files by name.
-- Using `Glob` to find text inside files.
-- Writing a whole file for a one-line change.
-- Retrying a failed `Edit` with no change.
-- Reading the whole codebase before searching.
+### Trap 2: `Write` for a one-line change, and repeating a failed `Edit`
 
----
+```text
+ANTI-PATTERN: Write the full 900-line file to change one constant.
+  Risk: the rewrite silently drops or alters unrelated lines.
 
-## 💡 Quick Decision Rules
+PATTERN: Edit with a unique anchor.
+  old: 'TIMEOUT_SECONDS = 30'    new: 'TIMEOUT_SECONDS = 60'
+```
 
-| If you see... | Do this |
-|---|---|
-| Search for text in files | `Grep` |
-| Search for files by name or extension | `Glob` |
-| Change unique text | `Edit` |
-| `Edit` says not unique | Expand anchor, or `Read` + `Write` |
-| New file or full rewrite | `Write` |
-| Unknown codebase | Grep entry points, Read imports, follow |
+If `Edit` fails because the text is not unique (appears 4 times), repeating the same call fails the same way. Either include more surrounding lines to make the anchor unique, or `Read` the file and `Write` the new content.
 
----
+### Trap 3: Reading everything to learn a codebase
 
-## 🧠 Claude 4.5 Notes
+```text
+ANTI-PATTERN: Read all 300 files first. Context is full before any work starts.
 
-- `claude-sonnet-4-5` for planning, `claude-haiku-4-5` for focused workers.
-- With extended thinking: `budget_tokens` ≥ 1024 and below `max_tokens`. **Omit `temperature`**. Leave `top_k` and `top_p` unset. `tool_choice` only `auto` or `none`.
-- Return thinking blocks with signatures unchanged in tool loops.
+PATTERN (incremental):
+  1. Grep entry points (main, route registrations)
+  2. Read the one file that matches, note its imports
+  3. Grep each imported name to find callers and definitions
+  4. Read only what the question needs
+```
+
+### Trap 4: Tracing usage through wrapper modules
+
+**Exam scenario**: Find every caller of `charge_card`, but `payments/__init__.py` re-exports it as `pay`.
+
+```text
+ANTI-PATTERN: Grep "charge_card" -> finds only the definition and the wrapper. Callers use `pay(...)`.
+PATTERN: Read the wrapper, list its exported names (charge_card, pay), then Grep each name.
+```
 
 ---
 

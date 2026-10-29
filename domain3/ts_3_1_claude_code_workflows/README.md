@@ -1,5 +1,7 @@
 # Task Statement 3.1: Configure CLAUDE.md Files with Appropriate Hierarchy and Scoping
 
+> Scenarios: Scenario 2 (Code Generation) and Scenario 5 (CI).
+
 ## In One Minute
 
 - **What**: `CLAUDE.md` files give Claude Code standing instructions. *Where a file lives decides who gets it.*
@@ -7,17 +9,22 @@
 - **Stay modular**: use `@import` and topic files in `.claude/rules/` (`testing.md`, `api-conventions.md`, `deployment.md`). Run `/memory` to see which memory files are loaded.
 - **Exam answer in one line**: a new teammate is not getting the instructions because they sit in *user-level* config. Move them to project level.
 
-## Overview
+---
 
-- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
-- **Scenarios**: Scenario 2 (Code Generation) and Scenario 5 (CI).
-- **Goal**: put each instruction at the right scope, and keep the files small and modular.
-- **Exam focus**: who receives a file, and how to diagnose a missing instruction.
+## Explain Like I'm 13
+
+**The picture:** Posters on walls. The poster in the school hallway (project `CLAUDE.md`) is seen by everyone. The sticky note in your own diary (`~/.claude/CLAUDE.md`) is only seen by you. A poster on one classroom door (directory `CLAUDE.md`) applies in that room only.
+
+**In plain steps:**
+1. Team rules go in the project `CLAUDE.md` and are committed.
+2. Too long? Keep the main file short and `@import` topic files from `.claude/rules/`.
+3. Claude ignoring a rule? Run `/memory` to see which posters are actually up.
+
+**Tiny example:** "It works on my laptop but not on Priya's" means the rule was in your diary, not on the hallway wall.
+
+---
 
 ## Concepts Explained
-
-### Simple idea
-Claude Code reads `CLAUDE.md` files at the start of a session. Think of them as the team handbook it always has open.
 
 ### Why it matters
 If your standards live only in your home folder, your teammates and the CI job never see them. Claude then behaves differently for each person.
@@ -41,6 +48,8 @@ If your standards live only in your home folder, your teammates and the CI job n
 - **`/memory`**: shows which memory files Claude Code has loaded. Use it first when an instruction seems ignored.
 - **Keep it short**: this repo keeps the root `CLAUDE.md` under 200 lines as a house rule. Move rare, task-specific procedures into skills (TS 3.2).
 
+---
+
 ## Key Terms
 
 - **User-level config**: `~/.claude/CLAUDE.md`. Personal. Never reaches teammates or CI.
@@ -48,6 +57,8 @@ If your standards live only in your home folder, your teammates and the CI job n
 - **Directory-level config**: a `CLAUDE.md` inside a subfolder. Committed and shared.
 - **`@import`**: the `@path/to/file` syntax that includes another file so a `CLAUDE.md` stays modular.
 - **`/memory`**: command that shows the loaded memory files.
+
+---
 
 ## Architecture
 
@@ -69,6 +80,8 @@ flowchart TD
     Rules -->|"always, or only when paths match"| Context
     Project -.->|"@import"| Rules
 ```
+
+---
 
 ## Worked Example
 
@@ -94,38 +107,49 @@ Fix: move those rules to the project `CLAUDE.md` (or a topic file) and commit.
 
 The `main.py` in this folder does this on the real files of this repo (`resolve_claude_md_chain`, `teammate_visible`).
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Concept | Correct | Trap | Why the trap fails |
-|---|---|---|---|
-| Team standards | Project-level file in version control | Putting them in `~/.claude/CLAUDE.md` | Teammates and CI never receive it |
-| Big instruction set | Short `CLAUDE.md` plus `@import` and `.claude/rules/` topic files | One giant `CLAUDE.md` | Loads every time, buries the important parts |
-| Missing instruction | Run `/memory`, check the scope of the file | Re-typing the rule in every prompt | Does not fix the cause; others still miss it |
-| Secrets | Environment variables | Passwords in `CLAUDE.md` | Committed to git |
+### Trap 1: Team standards saved at user level
 
-## Common Mistakes
+**Exam scenario**: A new teammate's Claude Code ignores the team's testing conventions. The rules work on the original author's machine.
 
-- Saving team conventions in the user-level file because it was quicker.
-- Assuming "it works on my machine" means the project is configured.
-- Writing one huge `CLAUDE.md` instead of splitting topics.
-- Putting rare task procedures in `CLAUDE.md` (they belong in skills).
-- Forgetting that directory-level files only apply under their folder.
+| File | Scope | Shared through git? |
+|---|---|---|
+| `~/.claude/CLAUDE.md` | You, every project | No |
+| `./CLAUDE.md` or `./.claude/CLAUDE.md` | Whole project | Yes |
+| `services/billing/CLAUDE.md` | That subtree | Yes |
 
-## Quick Decision Rules
+```text
+Symptom: "works for me, not for Priya"  -> rules are in ~/.claude/CLAUDE.md
+Fix:     move them to the project CLAUDE.md (or .claude/rules/), commit, push.
+```
 
-| Question | Answer |
-|---|---|
-| Personal preference, only for me? | `~/.claude/CLAUDE.md` |
-| Standard for the whole team? | Project `CLAUDE.md` or `.claude/CLAUDE.md` |
-| Rules for one service folder? | That folder's `CLAUDE.md` |
-| Topic guidance (testing, API, deploy)? | `.claude/rules/<topic>.md` |
-| Rule spread across many folders, files by pattern? | Path-scoped rule (TS 3.3) |
-| What did Claude actually load? | `/memory` |
+Files are loaded and combined (user, project, directory), not overridden. That is why a personal file never reaches teammates or CI.
 
-## Claude 4.5 Notes
+### Trap 2: One giant `CLAUDE.md`
 
-- Models in this repo: `claude-sonnet-4-5` (reasoning/coordinator), `claude-haiku-4-5` (workers).
-- If extended thinking is on in API code: leave `temperature` unset, leave `top_k`/`top_p` unset, use only `tool_choice` `auto` or `none`, and echo thinking blocks with their signature unchanged.
+A 600-line file loads every session. Important rules are buried, and every task pays for rules it never uses.
+
+```markdown
+# CLAUDE.md (short: universal facts only)
+- Python 3.10+, uv, pytest.
+- Testing rules: @.claude/rules/testing.md
+- API rules: @.claude/rules/api.md
+```
+
+Use `@path` imports and `.claude/rules/` topic files. Rare procedures go to skills (TS 3.2).
+
+### Trap 3: Debugging by retyping the rule
+
+When Claude "ignores" an instruction, the cause is usually that the file was never loaded. Run `/memory` to see exactly which files are loaded in this session. Retyping the rule in each prompt fixes one conversation and leaves the root cause for everyone else.
+
+### Trap 4: Secrets in instructions
+
+`CLAUDE.md` is committed text. Passwords or tokens in it end up in git history. Reference environment variables (`$DB_URL`) instead and keep the secret in the environment or a secret manager.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -167,6 +191,8 @@ The `main.py` in this folder does this on the real files of this repo (`resolve_
 - C fails: history shows edits, not what the session loaded.
 - D fails: restarting changes nothing about which files exist at which scope.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can name the three scopes and their file locations.
@@ -176,6 +202,8 @@ The `main.py` in this folder does this on the real files of this repo (`resolve_
 - [ ] I can diagnose "teammate does not get the instructions".
 
 **Memory hook**: *Home folder is private; the repo is shared.*
+
+---
 
 ## Hands-on Workbook Guide
 

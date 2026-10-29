@@ -1,5 +1,7 @@
 # Task Statement 2.1: Design Effective Tool Interfaces with Clear Descriptions and Boundaries
 
+> Scenario alignment: Scenario 1 (Customer Support)
+
 ## In One Minute
 
 - **What**: Claude picks a tool by reading its **name, description and input schema**. Nothing else.
@@ -10,24 +12,25 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 2: Tool Design & MCP Integration (**18%** of the exam)
-- **Scenario alignment**: Scenario 1 (Customer Support)
-- **What the exam tests**: A support agent calls `get_customer` when it should call `lookup_order`. You must pick the cheapest correct first step.
-- **Study order**: 2.1 (this file) → [2.2](../ts_2_2_mcp_structured_errors/README.md) → [2.3](../ts_2_3_tool_distribution_and_choice/README.md) → [2.4](../ts_2_4_mcp_server_integration/README.md) → [2.5](../ts_2_5_builtin_tools_usage/README.md). Back to the [Domain 2 map](../README.md).
+**The picture:** Labels on kitchen drawers. A drawer labelled "stuff" gets the wrong things. A drawer labelled "forks and spoons, for eating, NOT knives" gets used correctly. Claude picks tools by **reading the labels** (descriptions), so fix the labels first.
+
+**In plain steps:**
+1. For each tool write what it returns, what input looks like (with an example), when to use it, and when **not** to.
+2. If two tools do the same thing, rename or split them by purpose.
+3. If a tool is still over-used, look for the system prompt saying "always use X".
+
+**Tiny example:** "Retrieves customer information" vs "Retrieves order details" gets mixed up. "Customer PROFILE by CUST-id or email. Not for order status, use lookup_order" does not.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-A tool is a menu item. Claude reads the menu and orders one. If two items have almost the same text, Claude guesses.
-
-### 2. Why it matters
+### 1. Why it matters
 Tool descriptions are routing instructions for the model. They are not documentation for people. Short descriptions such as `"Retrieves order details"` and `"Retrieves customer details"` look the same to the model. The result is wrong calls, bad arguments and wasted turns.
 
-### 3. How a good description works
+### 2. How a good description works
 A strong description has five parts:
 1. **Purpose**: what data it returns, in one or two sentences.
 2. **Input formats**: what the argument looks like (`ORD-` plus digits, an email, a `CUST-XXXX` ID).
@@ -35,7 +38,7 @@ A strong description has five parts:
 4. **Edge cases**: what happens on no match, partial match, bad format.
 5. **Boundaries**: what it must NOT be used for, and which tool to use instead.
 
-### 4. Rename and split vague tools
+### 3. Rename and split vague tools
 Two tools called `analyze_content` and `analyze_document` overlap. The model cannot tell them apart. Split by **purpose** and rename:
 
 | Before | After | One job |
@@ -44,10 +47,10 @@ Two tools called `analyze_content` and `analyze_document` overlap. The model can
 | `analyze_document` | `summarize_content` | Write a short summary |
 | `analyze_document` | `verify_claim_against_source` | Check a claim against the text |
 
-### 5. System prompts can override descriptions
+### 4. System prompts can override descriptions
 If the system prompt says "always check the account first", the model may keep calling `get_customer` for every question. Keyword-style wording in a system prompt competes with the tool descriptions. Review the prompt for words that push toward one tool.
 
-### 6. Where `tool_choice` fits
+### 5. Where `tool_choice` fits
 Use `tool_choice` to force a mandatory step (see [2.3](../ts_2_3_tool_distribution_and_choice/README.md)). It is **not** the first fix for misrouting. Better descriptions come first.
 
 ---
@@ -96,44 +99,60 @@ The code in [main.py](main.py) has both tools, `audit_tool()` to flag thin descr
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Situation | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Agent picks `get_customer` instead of `lookup_order`, descriptions are minimal | **Expand the descriptions** with formats, examples, boundaries | Add few-shot examples to the prompt | Heavier, and does not fix the unclear tool text |
-| Same situation | Expand the descriptions | Build a routing layer (keywords or classifier) | Brittle extra code. Fix the cause, not the symptom |
-| Same situation | Expand the descriptions | Merge the tools into one | Makes the tool bigger and more ambiguous |
-| `analyze_content` vs `analyze_document` overlap | Split and rename by purpose | Keep both and add a prompt rule | The prompt competes with the tool text |
-| Agent over-uses one tool | Check the system prompt for keyword wording | Only tune the descriptions | The prompt can still override them |
+### Trap 1: Wrong tool picked because descriptions are thin
 
----
+**Exam scenario**: The agent calls `get_customer` when the user asks "where is order #12345?". The two descriptions are "Retrieves customer information" and "Retrieves order details".
 
-## ❌ Common Mistakes
+**Tempting answers**: (A) add few-shot examples to the prompt, (B) build a keyword or classifier routing layer, (C) merge both into one `lookup` tool.
 
-- Writing one-line descriptions like "Gets order details".
-- Describing what the tool does but not what it must **not** do.
-- Leaving argument formats out, so the model sends an email as an order ID.
-- Keeping two tools with the same purpose under different names.
-- Jumping to a routing layer or few-shot examples before fixing the descriptions.
+**Why they tempt**: each treats the symptom (a wrong pick) with something concrete.
 
----
+**Root cause**: the tool description is the **primary signal** the model uses to select a tool. Two vague descriptions give it nothing to separate them.
 
-## 💡 Quick Decision Rules
-
-| If you see... | Do this |
+| Fix | Verdict |
 |---|---|
-| Wrong tool picked between similar tools | Expand descriptions (purpose, formats, examples, boundaries) |
-| Two tools that overlap | Rename or split by purpose |
-| One tool over-used despite good descriptions | Look for keyword wording in the system prompt |
-| A mandatory first step | `tool_choice` forced (without thinking), see 2.3 |
+| Few-shot in the prompt | Heavier, adds tokens on every request, leaves the unclear tool text in place |
+| Routing layer | Extra brittle code that must be maintained next to the real cause |
+| Merge into one tool | Bigger, more ambiguous schema. Selection gets harder, not easier |
+| **Rewrite the descriptions** | Fixes the cause directly |
 
----
+```json
+// ANTI-PATTERN
+{"name": "get_customer", "description": "Retrieves customer information"}
 
-## 🧠 Claude 4.5 Notes
+// PATTERN
+{
+  "name": "get_customer",
+  "description": "Look up a customer PROFILE (name, email, tier, verified status) by customer ID (CUST-12345) or email. Use this to verify identity. Does NOT return orders: use lookup_order for order status, shipping, or items. Not for order numbers.",
+  "input_schema": {"type": "object", "properties": {
+    "customer_id": {"type": "string", "description": "Format CUST-12345"}}}
+}
+```
 
-- Use `claude-sonnet-4-5` for routing and reasoning, `claude-haiku-4-5` for workers.
-- With extended thinking on: `budget_tokens` ≥ 1024 and below `max_tokens`. **Omit `temperature`** (HTTP 400). Leave `top_k` and `top_p` unset.
-- With thinking on, `tool_choice` may only be `auto` or `none`. A forced tool or `any` returns HTTP 400. Force a tool on a request **without** thinking. This is the manual extended-thinking rule (Claude 4.5 models); adaptive thinking on newer models can accept forced tool use, except on some models.
-- In tool loops, return thinking blocks and their signature unchanged.
-- Loops stop on `stop_reason`, not on text. The iteration limit is only a **safety cap**.
+A good description states: what it returns, accepted input formats with an example, when to use it, and when **not** to use it (naming the sibling tool).
+
+### Trap 2: Overlapping tools kept alive with a prompt rule
+
+**Exam scenario**: `analyze_content` and `analyze_document` both "analyse text". The model alternates between them.
+
+- Anti-pattern: keep both and add "use analyze_document for PDFs" to the system prompt. The prompt now competes with the tool text, and the two disagree over time.
+- Pattern: remove the overlap. Rename or split by **purpose** (`extract_invoice_fields`, `summarize_web_page`), or drop one. A tool name should tell the model what it is for.
+
+### Trap 3: The system prompt quietly overrides good descriptions
+
+**Exam scenario**: Descriptions were fixed, but the agent still over-uses `search_web`. The system prompt contains "Always search before answering".
+
+Keyword-style prompt wording like that acts as a strong rule and wins against tool descriptions. After rewriting descriptions, also grep the system prompt for "always", "never", and tool names. Tune descriptions **and** remove conflicting wording.
+
+### Trap 4: No argument formats
+
+```text
+User: "Look up the order for jane@acme.com"
+Tool arg description: "id: the identifier"
+Model sends order_id="jane@acme.com"  -> validation error
+```
+
+Fix with explicit formats and examples in each parameter description (`order_id: ORD-2026-0001; not an email`).
 
 ---
 

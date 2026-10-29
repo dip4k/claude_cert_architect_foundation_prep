@@ -14,11 +14,20 @@
 
 ---
 
-## Overview
+## Explain Like I'm 13
 
-- **Domain:** 5 (15% of the exam).
-- **Task statement:** 5.6 - preserve information provenance and handle uncertainty in multi-source synthesis.
-- **Scenario fit:** Scenario 3 (research coordinator merging subagent findings).
+**The picture:** Two news sources give different numbers. A good reporter shows **both**, with the name and date of each, and explains why they might differ. They do not average the numbers (nobody published that), and they do not quietly pick one.
+
+**In plain steps:**
+1. Keep each claim attached to its source and date through every summary.
+2. Same metric, same period, different values: show both as contested.
+3. Different years: show a timeline, it is not a conflict.
+4. Split the report into established and contested.
+5. Tables for finance, prose for news, lists for technical findings.
+
+**Tiny example:** 1,200 employees in 2023 and 1,850 in 2025 is growth, not a contradiction.
+
+---
 
 ## Concepts Explained
 
@@ -43,6 +52,8 @@ Structure the report with a section for **well-established findings** (sources a
 
 Do not squash everything into one uniform format.
 
+---
+
 ## Worked Example
 
 **Subagents report:**
@@ -62,12 +73,16 @@ Do not squash everything into one uniform format.
 
 `ProvenanceSynthesizer` and `render_report()` in `main.py` produce exactly this.
 
+---
+
 ## Key Terms
 
 - **Claim-source mapping:** Link between a claim and its source, excerpt and date.
 - **Contested finding:** Credible sources disagree for the same period.
 - **Temporal difference:** Values differ because they describe different times.
 - **Methodology note:** Short text on how a number was produced (e.g. audited vs preliminary).
+
+---
 
 ## Architecture
 
@@ -89,38 +104,56 @@ flowchart TD
     Cont --> Report
 ```
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap to reject |
-|---|---|---|
-| Two sources disagree | Show both values with sources | Average them or pick the "better" one silently |
-| Summarising | Keep claim-source mapping through the summary | Summary with unsourced facts |
-| Different dates | Include dates; read as change over time | Flag a contradiction |
-| Report layout | Separate established from contested | One flat list of claims |
-| Format | Table for finance, prose for news, list for technical | One format for everything |
+### Trap 1: Averaging or silently choosing between two sources
 
-## Common Mistakes
+**Exam scenario**: Source A (Gartner) says the 2025 market is $12.1B. Source B (IDC) says $9.8B.
 
-- Averaging two numbers, which makes a value neither source reported.
-- Dropping source names to save space.
-- Leaving out dates, so older and newer values look contradictory.
-- Reporting a conflict that is really a time difference.
-- Presenting all findings with the same level of certainty.
+```text
+ANTI-PATTERN: "The market is about $11B."   (a number neither source reported)
+ANTI-PATTERN: "The market is $12.1B."       (picked the bigger publisher, hid the disagreement)
 
-## Quick Decision Rules
+PATTERN:
+  CONTESTED: 2025 market size
+    - $12.1B (Gartner, report dated 2025-06, includes services)
+    - $9.8B  (IDC, report dated 2025-09, hardware only)
+  Note: definitions differ, so the numbers may not be comparable.
+```
 
-| Situation | Do this |
+Show both values with their sources, and annotate the likely reason.
+
+### Trap 2: Treating a date difference as a contradiction
+
+```text
+Source 1 (2023): "Company has 1,200 employees."
+Source 2 (2025): "Company has 1,850 employees."
+NOT a conflict. It is change over time. Report with dates:  2023: 1,200 -> 2025: 1,850.
+```
+
+Rule: same metric and same period with different values is contested. Different periods is a timeline.
+
+### Trap 3: Summaries that lose claim-source links
+
+A subagent returns `{claim, source, date}`. Synthesis that rewrites them into prose without sources leaves unattributed facts that nobody can verify. Keep the mapping through the summary, and name source and date next to each claim.
+
+### Trap 4: Everything at the same certainty
+
+| Section | Content |
 |---|---|
-| Same metric, same period, different values | Contested: annotate both |
-| Same metric, different periods | Timeline with dates |
-| Only one source | Established, but name the source |
-| Mixed content types | Format each type for its content |
+| Established | Claims with agreement or a single reliable cited source |
+| Contested | Claims where sources disagree, shown side by side |
+| Not found | Areas checked with no evidence |
 
-## Claude 4.5 Notes
+A flat list makes a disputed number look as solid as a confirmed one.
 
-- `claude-sonnet-4-5` for synthesis; `claude-haiku-4-5` for extraction subagents that return claim-source records.
-- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
-- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
+### Trap 5: One format for all content
+
+Financial figures go in a table, news in prose, technical findings in a list. Forcing everything into bullets loses structure and comparisons.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -151,6 +184,8 @@ flowchart TD
 - **Q2: B.** A fails: it ignores that values describe different times. C fails: averaging is never right. D fails: length does not help.
 - **Q3: B.** A fails: it removes traceability. C fails: a single score hides what is contested. D fails: order does not fix traceability or format.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can list what a claim-source mapping contains.
@@ -160,6 +195,8 @@ flowchart TD
 - [ ] I know the right format for financial, news and technical content.
 
 **Memory hook:** *"Every claim carries its receipt."*
+
+---
 
 ## Hands-on Workbook Guide
 

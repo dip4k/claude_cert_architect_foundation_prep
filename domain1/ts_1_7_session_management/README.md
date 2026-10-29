@@ -12,41 +12,39 @@
 
 ---
 
+## 🧒 Explain Like I'm 13
+
+**The picture:** A video game save file. **Resume** when the world is unchanged. If a friend moved the furniture, **tell the game what changed** before you continue. If the whole map changed, **start a new game** and bring a notes page. **Fork** means copying the save to try two different paths.
+
+**In plain steps:**
+1. Nothing changed: resume (`--resume <name>`).
+2. A few files changed: resume and list them so Claude re-reads them.
+3. Lots changed: new session, seeded with a short summary of verified facts.
+4. Two options to compare: fork twice from the same save.
+
+**Tiny example:** Claude read `auth.py` yesterday. Today it was rewritten. If you resume silently, Claude edits the old lines from memory. Say "auth.py changed, re-read it" and it is fine.
+
+---
+
 ## 📌 Overview
 
 ### Why it matters
 Work spans days. On Monday Claude read `db/conn.py` and saw a pool size of 5. On Tuesday you edited it. If you resume Monday's session and say nothing, Claude still believes the old file. It will suggest changes to code that no longer exists. The old tool results are **stale**.
 
-### What the exam tests
-- `--resume <session-name>` for continuing named work.
-- `fork_session` for parallel, independent exploration from one baseline.
-- **Informing** a resumed session which files changed.
-- Starting a **new session with a structured summary** when tool results are stale.
-- Choosing between resuming and starting fresh.
-
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Three tools, three jobs:
-
-| Tool | Job |
-|---|---|
-| **Resume** | Keep going exactly where you were |
-| **Fork** | Try two directions from the same starting point |
-| **Fresh session + summary** | Start clean with only the facts you trust |
-
-### 2. Resume (`--resume <session-name>`)
+### 1. Resume (`--resume <session-name>`)
 Use it when earlier tool results are still true. If a few files changed, **say so**. In [main.py](main.py), `SessionManager.resume(name, changed_files=[...])` appends a user message that lists the changed files and asks the session to re-read them before relying on earlier output. With no changes, it adds nothing.
 
-### 3. Fork (`fork_session`)
+### 2. Fork (`fork_session`)
 Use it to compare approaches. Branch A and Branch B both start from the same analysis. Edits in A never leak into B. In [main.py](main.py), `SessionState.fork` deep-copies the messages and records the parent session id, so the parent and each fork stay independent.
 
-### 4. Fresh session with a structured summary
+### 3. Fresh session with a structured summary
 Use it when many tool results are stale, for example after a big merge. Write down what is still **verified** (decisions, confirmed facts, what changed), then start a new session with that summary and the new instruction. `SessionManager.resume_with_injected_summary` does this: the new session contains only the summary and the current task, never the old stale tool output.
 
-### 5. How to choose
+### 4. How to choose
 
 | Situation | Choose |
 |---|---|
@@ -108,43 +106,57 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| **Compare designs** | Fork from the baseline | Try both in one thread | Ideas from A leak into B |
-| **Small file changes** | Resume and name the changed files | Resume and say nothing | Claude trusts stale reads |
-| **Large changes** | New session with a structured summary | Resume and hope | Stale tool results mislead the work |
-| **Continuing named work** | `--resume <session-name>` | Paste a whole transcript into a new prompt | Wastes tokens and loses structure |
+### Trap 1: Resuming with stale tool results and saying nothing
 
----
+**Exam scenario**: Yesterday Claude read `auth.py` (lines 40-60 held the login check). Overnight a teammate rewrote it. You resume and ask "add rate limiting to the login check".
 
-## ❌ Common Mistakes
+```text
+ANTI-PATTERN: resume, then prompt as if nothing changed.
+  Claude trusts its old Read result and edits lines 40-60 that no longer exist.
 
-- Resuming after big edits without a changed-files notice.
-- Using one thread for two competing approaches.
-- Writing a vague summary ("we looked at the database") instead of decisions and facts.
-- Carrying old tool output into the fresh session, which defeats the purpose.
-- Forking when the real need is just to continue.
+PATTERN (small change): resume and say what changed.
+  "Since we last spoke, auth.py and session.py were rewritten. Re-read them before editing."
 
----
+PATTERN (large change): start a fresh session seeded with a structured summary.
+```
 
-## 💡 Quick Decision Rules
-
-| Question | Answer |
+| Change since last session | Choice |
 |---|---|
-| Nothing changed? | Resume |
-| Some files changed? | Resume and list them |
-| Many things changed, or results are stale? | Fresh session with summary |
-| Two options to compare? | Fork |
-| What goes in the summary? | Verified decisions, facts, what changed, the next task |
+| Nothing | Resume |
+| A few files | Resume and name the changed files |
+| Many files, or old tool output is mostly wrong | Fresh session with a summary |
 
----
+### Trap 2: Exploring two designs in one thread
 
-## 🧠 Claude 4.5 Notes
+**Exam scenario**: Compare a Redis cache against an in-memory cache for the same service.
 
-- Models: `claude-sonnet-4-5` for the session turns (`COORDINATOR_MODEL` in [main.py](main.py)), `claude-haiku-4-5` for simple workers.
-- Extended thinking: `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`.
-- With thinking on: no `temperature` (HTTP 400), no `top_k`, `top_p` only 0.95 to 1.0, and `tool_choice` only `auto` or `none`.
-- When a session with thinking blocks is resumed, keep the assistant content unchanged, including `signature`. A fresh session starts with none.
+In one thread, the Redis discussion becomes background for the in-memory one. Conclusions leak both ways, so neither option is evaluated fairly. Use a **fork** from the shared baseline.
+
+```bash
+claude --resume cache-analysis --fork-session   # branch A: Redis
+claude --resume cache-analysis --fork-session   # branch B: in-memory
+```
+
+SDK: `resume=session_id` with `fork_session=True` creates a new session id that starts from the same history.
+
+### Trap 3: A vague summary for a fresh session
+
+```text
+ANTI-PATTERN: "We looked at the database and found some issues."
+
+PATTERN:
+  Verified facts: orders table has no index on customer_id (confirmed with EXPLAIN, 2026-10-28)
+  Decisions: add composite index (customer_id, created_at); no schema change
+  Changed since: migrations/0042 added; orders.py query rewritten
+  Next task: benchmark the new index on staging
+  Do NOT reuse: earlier slow-query timings (measured before the change)
+```
+
+Put in verified decisions and facts. Leave out raw old tool output, which is the thing you are trying to avoid.
+
+### Trap 4: Pasting the whole transcript instead of resuming
+
+Pasting a long transcript into a new prompt costs tokens, loses the structured turns and `tool_use` pairing, and still carries stale content. If the named session is valid, use `--resume <session-name>`. If not, write a summary, not a paste.
 
 ---
 

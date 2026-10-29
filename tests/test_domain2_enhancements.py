@@ -283,7 +283,7 @@ TS_DIRS = sorted(p for p in DOMAIN2.iterdir() if p.is_dir() and p.name.startswit
 REQUIRED_SECTIONS = [
     "## In One Minute",
     "## 🧪 Worked Example",
-    "## ❌ Common Mistakes",
+    "## ⚠️ Exam Traps and Correct Patterns",
     "## 📝 Exam-Style Practice Questions",
     "### Answers",
     "## ✅ Self-Check Checklist",

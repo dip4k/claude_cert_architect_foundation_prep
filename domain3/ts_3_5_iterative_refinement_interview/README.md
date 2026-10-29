@@ -1,5 +1,7 @@
 # Task Statement 3.5: Apply Iterative Refinement Techniques for Progressive Improvement
 
+> Scenarios: Scenario 2 (Code Generation).
+
 ## In One Minute
 
 - **Concrete examples**: when prose instructions get interpreted inconsistently, give 2-3 input/output examples.
@@ -8,17 +10,23 @@
 - **Feedback batching**: put *interacting* problems in one message; fix *independent* problems one after another.
 - **Exam answer in one line**: inconsistent results from a prose spec means add concrete input/output examples.
 
-## Overview
+---
 
-- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
-- **Scenarios**: Scenario 2 (Code Generation).
-- **Goal**: improve results step by step with precise, checkable feedback.
-- **Exam focus**: which refinement technique fits which symptom.
+## Explain Like I'm 13
+
+**The picture:** Teaching a friend a card game. "Play carefully" does not help. Showing two example rounds does. Handing them the answer key (tests) lets them check themselves. And before cooking a birthday dinner you ask what they like (the interview) instead of guessing.
+
+**In plain steps:**
+1. Output keeps coming out different? Give 2 to 3 input/output examples.
+2. Want it correct? Write the test first, share the failure.
+3. Requirements unclear? Ask Claude to interview you first.
+4. Problems tangled together? One message. Unrelated problems? One at a time.
+
+**Tiny example:** "Format dates carefully" does nothing. `"3rd March 26" -> 2026-03-03` does.
+
+---
 
 ## Concepts Explained
-
-### Simple idea
-Show, do not just tell. An example or a failing test is clearer than another adjective.
 
 ### Why it matters
 Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
@@ -37,6 +45,8 @@ Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
 - **Interview**: ask Claude to question you before it designs. It may raise issues like cache invalidation, failure handling, or backward compatibility.
 - **Batching**: two issues interact if fixing one changes the other (they touch the same component). Send them together so Claude can solve them jointly.
 
+---
+
 ## Key Terms
 
 - **Concrete input/output example**: a real input paired with its exact expected output.
@@ -44,6 +54,8 @@ Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
 - **Interview pattern**: Claude asks clarifying questions before implementing.
 - **Interacting problems**: problems whose fixes affect each other.
 - **Independent problems**: problems that can be fixed separately.
+
+---
 
 ## Architecture
 
@@ -59,6 +71,8 @@ flowchart TD
     Pick -->|"Requirements are open"| Int["Interview pattern<br>Claude asks first"]
     Pick -->|"Several problems"| Batch["Interacting: one message<br>Independent: one at a time"]
 ```
+
+---
 
 ## Worked Example
 
@@ -87,38 +101,53 @@ Feedback batching with `group_feedback` in `main.py`:
 
 Result: send *token payload* and *router order* together (they share `router`); send *CSS padding* separately.
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Concept | Correct | Trap | Why the trap fails |
-|---|---|---|---|
-| Inconsistent interpretation | 2-3 concrete examples | "Be more careful and precise" | No new information for Claude |
-| Verifying correctness | Tests first, share failures | Describe the failure in vague words | Not precise or repeatable |
-| Open requirements | Interview first | Guess and rewrite later | Hidden concerns surface late and cost rework |
-| Interacting issues | One message | Separate messages | Fixes may conflict |
-| Independent issues | Sequential | One huge message | Harder to review and verify |
+### Trap 1: Adjectives instead of examples
 
-## Common Mistakes
+**Exam scenario**: Claude formats dates inconsistently. The prompt says "Be more careful and precise."
 
-- Adding adjectives instead of examples.
-- Giving one example only, so edge cases stay unclear.
-- Asking Claude to "fix the tests" instead of the code.
-- Splitting issues that touch the same component across messages.
-- Starting a complex feature without asking Claude to interview you.
+That sentence adds no information. Concrete input/output pairs do.
 
-## Quick Decision Rules
+```text
+ANTI-PATTERN: "Format dates carefully and consistently."
 
-| Situation | Do this |
-|---|---|
-| Inconsistent output format | Add 2-3 input/output examples |
-| Behavior can be checked | Write tests first |
-| Open design space | Interview pattern |
-| Linked problems | One message |
-| Unrelated problems | Separate sequential messages |
+PATTERN:
+  Input: "3rd of March 26"      -> Output: 2026-03-03
+  Input: "10/06/2026 (US)"     -> Output: 2026-10-06
+  Input: "yesterday"           -> Output: NEEDS_DATE   (do not guess)
+```
 
-## Claude 4.5 Notes
+Use 2 to 3 examples that cover the boundary, not one easy case.
 
-- Models in this repo: `claude-sonnet-4-5`, `claude-haiku-4-5`.
-- With extended thinking in API code: leave `temperature` and `top_k`/`top_p` unset; only `tool_choice` `auto` or `none`; echo thinking blocks with signatures unchanged.
+### Trap 2: Describing a failure vaguely instead of using tests
+
+"The export seems wrong sometimes" is not repeatable. Write the failing test first, then ask Claude to make it pass:
+
+```text
+FAILED tests/test_export.py::test_empty_cart - expected [] got None
+```
+
+Caveat: ask Claude to fix the **code**, not to "fix the tests" until they pass.
+
+### Trap 3: Guessing on open requirements
+
+**Exam scenario**: "Add caching to the API." Claude builds an in-memory cache. You wanted Redis with a 5-minute TTL and invalidation on update.
+
+Use the **interview pattern**: ask Claude to question you first (which data, how stale is acceptable, shared across instances?), then implement. Hidden concerns surface before code, not after a rewrite.
+
+### Trap 4: Batching or splitting issues the wrong way
+
+| Issues | Right | Wrong |
+|---|---|---|
+| "Token payload is wrong" and "router order is wrong" (both touch `router`) | One message | Two messages: fix 1 can undo fix 2 |
+| "CSS padding" and "router order" | Separate sequential messages | One huge message: harder to review and verify |
+
+Rule: interacting problems go together, independent problems go one at a time.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -160,6 +189,8 @@ Result: send *token payload* and *router order* together (they share `router`); 
 - B fails: separating interacting issues risks conflicting fixes.
 - D fails: unrelated issues still need fixing, just separately.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I know to use 2-3 concrete input/output examples when prose is inconsistent.
@@ -169,6 +200,8 @@ Result: send *token payload* and *router order* together (they share `router`); 
 - [ ] I know that adjectives and "try harder" do not help.
 
 **Memory hook**: *Show examples, share failing tests, ask before building.*
+
+---
 
 ## Hands-on Workbook Guide
 

@@ -12,12 +12,19 @@
 
 ---
 
-## Overview
+## Explain Like I'm 13
 
-- **Domain:** 5 (15% of the exam).
-- **Task statement:** 5.3 - implement error propagation strategies across multi-agent systems.
-- **Scenario fit:** Scenario 3 (coordinator plus search, analysis and synthesis subagents).
-- **Folder note:** The folder name matches official TS 5.3.
+**The picture:** Delivery notes. "Failed" is useless. "Door locked, tried twice, left a slip, can retry after 5pm" lets the next person decide. And "I checked the shelf and it was empty" is very different from "I never opened the shop".
+
+**In plain steps:**
+1. A subagent retries transient errors itself.
+2. If it still fails, it reports: failure type, what it tried, partial results, alternatives.
+3. Empty and checked is `VALID_EMPTY`. Could not check is `UPSTREAM_FAILURE`.
+4. The coordinator keeps going and writes which sources were and were not checked.
+
+**Tiny example:** "No patents found" is wrong if the patent database timed out. The report should say "Patent database: NOT CHECKED".
+
+---
 
 ## Concepts Explained
 
@@ -45,6 +52,8 @@ A subagent should retry **transient** errors itself (for example a timeout). It 
 ### 5. Coverage annotations in synthesis
 The final report says which sources answered and which did not. Readers can then see what is well supported and what is a gap.
 
+---
+
 ## Worked Example
 
 **Scenario (sample-question style):** A web search subagent **times out** while the document analysis subagent succeeds.
@@ -58,12 +67,16 @@ The final report says which sources answered and which did not. Readers can then
 
 `run_subagent_query()` and `render_report()` in `main.py` implement exactly this.
 
+---
+
 ## Key Terms
 
 - **Structured error context:** failure type, attempted query, partial results, alternatives.
 - **Valid empty result:** a successful query that matched nothing.
 - **Local recovery:** a subagent handling a transient error without involving the coordinator.
 - **Coverage annotation:** report text stating which sources were or were not checked.
+
+---
 
 ## Architecture
 
@@ -87,38 +100,58 @@ flowchart TD
     Coord --> Synth["Synthesis with<br>coverage annotations"]
 ```
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap to reject |
+### Trap 1: The generic status
+
+**Exam scenario**: The search subagent times out and returns `"search unavailable"`.
+
+The coordinator cannot tell: is it transient (retry)? Which query failed? Is there partial data? Any alternative? With a generic string it can only give up or guess.
+
+```json
+{
+  "status": "failed", "failure_type": "TRANSIENT",
+  "attempted_query": "solid-state battery patents 2025",
+  "partial_results": [{"title": "Cached: SolidPower patent summary", "source": "cache"}],
+  "alternatives": ["retry in 60s", "query the cached patent index"]
+}
+```
+
+### Trap 2: Empty result as success, or as failure
+
+| What happened | Correct return | Coordinator reading |
 |---|---|---|
-| Subagent times out | Structured error with context to the coordinator | Generic "search unavailable" |
-| Search found nothing | Return as a valid empty result | Raise an error |
-| Search could not run | Return as a failure | Return empty list as success |
-| One of five sources fails | Continue; annotate coverage | Abort the whole workflow |
-| Transient error | Retry inside the subagent | Escalate every blip upward |
+| Source searched, zero matches | `VALID_EMPTY` | Evidence: "checked, none found" |
+| Source could not be searched | `UPSTREAM_FAILURE` | Gap: "not checked" |
 
-## Common Mistakes
+```text
+ANTI-PATTERN: except Exception: return []
+  -> report says "no patents found" when the patent database was never queried.
+```
 
-- Returning `[]` for both "no results" and "could not search".
-- Catching every exception and returning a friendly string.
-- Letting one failure kill the run and lose good partial work.
-- Retrying permanent errors (auth failure) again and again.
-- Omitting any note about missing coverage in the final report.
+The opposite mistake is raising an error for a valid zero. That triggers retries and false alarms.
 
-## Quick Decision Rules
+### Trap 3: One failure kills the whole run
 
-| Situation | Do this |
-|---|---|
-| Timeout / 503 | Retry locally, then propagate with context |
-| 0 matches from a working source | Report as a valid empty result |
-| Some sources missing | Continue and add coverage annotations |
-| Permanent error (e.g. access denied) | Do not retry; propagate with alternatives |
+Of five sources, one times out. Aborting discards four good results. Continue, and annotate the report:
 
-## Claude 4.5 Notes
+```text
+Coverage: 4 of 5 sources answered.
+NOT CHECKED: Patent database (TRANSIENT timeout). Findings on patents are incomplete.
+```
 
-- `claude-sonnet-4-5` coordinates and synthesises; `claude-haiku-4-5` runs the search and extraction subagents.
-- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
-- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
+### Trap 4: Where to recover
+
+| Error | Subagent does | Propagates? |
+|---|---|---|
+| Timeout, 503 | Retry locally 2 times | Only if still failing, with context |
+| Access denied (permanent) | Does not retry | Yes, with alternatives |
+
+Escalating every blip floods the coordinator. Retrying a permanent error wastes turns.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -149,6 +182,8 @@ flowchart TD
 - **Q2: B.** A fails: a successful search is not a failure. C fails: nothing went wrong. D fails: "none found" is useful evidence.
 - **Q3: D.** A fails: the gap becomes invisible. B fails: it discards good partial work. C fails: it invents data.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can list the four parts of structured error context.
@@ -158,6 +193,8 @@ flowchart TD
 - [ ] I know what a coverage annotation says.
 
 **Memory hook:** *"Fail with facts; empty is an answer; report what you missed."*
+
+---
 
 ## Hands-on Workbook Guide
 

@@ -12,25 +12,29 @@
 
 ---
 
+## 🧒 Explain Like I'm 13
+
+**The picture:** Grading 15 essays at once. By essay 9 you are tired, grade unevenly, and miss that essay 3 and essay 12 contradict each other. Better: grade each essay on its own, then do one last pass that compares them. That is the **per-file pass plus integration pass**. For an unknown job (exploring a cave), you draw a map first and change the plan as you see more.
+
+**In plain steps:**
+1. Pass 1: one focused review per file. Write a short finding card for each.
+2. Pass 2: give only the cards to a reviewer who looks across files.
+3. For open-ended work: map it, rank by importance, adapt as you learn.
+
+**Tiny example:** File A renamed `user_id` to `userId`. File B still reads `user_id`. Each file looks fine alone. Only the pass that sees both catches the break.
+
+---
+
 ## 📌 Overview
 
 ### Why it matters
 Give Claude 14 changed files in one prompt and the review turns uneven. Some files get deep comments and others get one line. The same pattern gets flagged in one file and passed in another. Attention is spread too thin (attention dilution). Splitting the work fixes the cause.
 
-### What the exam tests
-- **Prompt chaining** (fixed pipeline) versus **dynamic adaptive** decomposition, and when each fits.
-- **Per-file passes** for local problems and a **cross-file integration pass** for contracts and data flow.
-- The 14-file pull request sample question: the right answer is per-file passes plus an integration pass. Wrong answers: ask for smaller PRs, use a bigger model or larger context window, or run three times and take the consensus.
-- Open-ended tasks: map structure, prioritise, adapt the plan as findings arrive.
-
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Ask small, focused questions in a sensible order. One call, one job.
-
-### 2. Prompt chaining (fixed pipeline)
+### 1. Prompt chaining (fixed pipeline)
 Use it when the steps are known in advance and are the same each time, for example a code review.
 
 1. **Pass 1, per file.** One call per changed file. Look only at that file: bugs, security, error handling. Also list the functions it defines (with signatures) and the outside functions it calls.
@@ -38,7 +42,7 @@ Use it when the steps are known in advance and are the same each time, for examp
 
 In [main.py](main.py), `run_prompt_chaining_review` does exactly this. Pass 1 uses `WORKER_MODEL` (fast, one file at a time). Pass 2 uses `COORDINATOR_MODEL` (needs reasoning across files). Pass 2 gets the Pass 1 notes, not the raw transcript of Pass 1.
 
-### 3. Dynamic adaptive decomposition
+### 2. Dynamic adaptive decomposition
 Use it when you do not know the work until you start, for example "add tests to this legacy codebase".
 
 1. **Map the structure**: what modules exist, who depends on whom.
@@ -47,7 +51,7 @@ Use it when you do not know the work until you start, for example "add tests to 
 
 `plan_adaptive_subtasks` in [main.py](main.py) shows the idea in small form. Given a dependency map, it orders modules leaf-first (a module comes after the modules it imports). Cycles are listed last.
 
-### 4. Which one?
+### 3. Which one?
 
 | Situation | Choose |
 |---|---|
@@ -116,44 +120,52 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| **Large PR review** | Per-file passes plus one integration pass | One prompt for all files | Attention dilution gives uneven results |
-| **Uneven review** | Fix the process | "Ask developers for smaller PRs" | Does not fix the review design, and is not always possible |
-| **Uneven review** | Fix the process | A bigger model or larger context | A larger window still has the same attention problem |
-| **Uneven review** | Fix the process | Run 3 times, take the consensus | Three diluted reviews are still diluted. It also triples cost |
-| **Open-ended task** | Map, prioritise, adapt | Fixed script written before looking | Breaks when the code is not what you assumed |
+### Trap 1: One prompt for a 15-file PR, then "fixing" it the wrong way
 
----
+**Exam scenario**: A single-pass review of a 15-file PR gives deep feedback on some files, shallow comments on others, and flags a pattern in one file while approving the same pattern elsewhere.
 
-## ❌ Common Mistakes
+**Root cause**: attention dilution. The model spreads limited attention across too much content at once.
 
-- Asking one prompt to check style, security, tests, and architecture together.
-- Skipping the integration pass, so cross-file bugs slip through.
-- Using a fixed pipeline for an exploratory task, or an adaptive one for a task with fixed steps.
-- Passing all raw Pass 1 output to Pass 2 instead of short finding cards.
-- Treating "use a bigger model" as a fix for a structure problem.
+| Tempting fix | Why it looks right | Why it fails |
+|---|---|---|
+| Ask developers for smaller PRs | Smaller input, less dilution | Does not fix the review design. Not always possible. Next big PR fails again |
+| Use a bigger model or larger context window | More capacity | A larger window does not remove uneven attention within it |
+| Run the review 3 times, keep the consensus | Voting sounds rigorous | Three diluted reviews are still diluted, and cost is 3x |
+| Per-file passes plus an integration pass | Changes the structure | Correct |
 
----
+```text
+Pass 1 (per file, focused):  file_01 ... file_15 -> finding cards   (local bugs, style, tests)
+Pass 2 (integration):        all cards + changed signatures + call sites -> cross-file issues
+```
 
-## 💡 Quick Decision Rules
+### Trap 2: Skipping the integration pass
 
-| Question | Answer |
-|---|---|
-| Many files, uneven review? | Per-file passes plus an integration pass |
-| Steps known up front? | Prompt chaining |
-| Steps unknown until you look? | Dynamic adaptive decomposition |
-| What goes in Pass 2? | Per-file findings (signatures, calls, issues) |
-| Which model for which pass? | Haiku for per-file work, Sonnet for integration |
+```text
+PR: a.py renames the field user_id -> userId in the response. b.py still reads data["user_id"].
+Per-file pass on a.py: "clean".   Per-file pass on b.py: "clean" (the key looks fine in isolation).
+Only pass 2, which sees both the changed contract and its caller, catches the break.
+```
 
----
+Per-file review alone finds local problems. Cross-file contract bugs need a pass that sees both sides.
 
-## 🧠 Claude 4.5 Notes
+### Trap 3: Feeding Pass 2 the raw Pass 1 output
 
-- Models: `claude-haiku-4-5` for per-file workers, `claude-sonnet-4-5` for the integration pass.
-- Extended thinking: `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`. It suits the integration pass.
-- With thinking on: no `temperature` (HTTP 400), leave `top_k` and `top_p` unset, and `tool_choice` only `auto` or `none`.
-- The passes here are separate single-turn calls. In any tool loop inside a pass, echo `thinking` blocks and `signature` unchanged.
+```text
+ANTI-PATTERN: paste 15 full review essays into pass 2 (thousands of tokens, same dilution again).
+
+PATTERN: compact finding cards
+  {file: "b.py", line: 42, kind: "api_call", symbol: "get_user", assumes: "key user_id"}
+  {file: "a.py", line: 10, kind: "contract_change", symbol: "get_user", now: "key userId"}
+```
+
+### Trap 4: Choosing the wrong decomposition style
+
+| Task | Style | Why |
+|---|---|---|
+| Review a PR: per-file analysis, then integration | **Prompt chaining**: steps known up front | Fixed, predictable structure |
+| "Add tests to this legacy codebase" | **Dynamic adaptive**: map structure, rank high-impact areas, adjust as dependencies appear | You cannot know the steps until you have looked |
+
+Anti-pattern: a fixed script for the legacy codebase ("step 1 test module A...") breaks when module A depends on something undiscovered. The reverse, an open-ended exploration for a known two-step review, wastes tokens.
 
 ---
 

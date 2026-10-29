@@ -12,25 +12,30 @@
 
 ---
 
+## 🧒 Explain Like I'm 13
+
+**The picture:** A theme-park ride. A sign saying "You must be this tall" is the **prompt**: most kids obey, some sneak by. A metal bar that physically blocks you is the **code gate**: nobody gets past. For money or identity, use the bar.
+
+**In plain steps:**
+1. Keep a tiny memory in code: `customer_verified = False`.
+2. When the tool `get_customer` confirms identity, flip it to `True`.
+3. `process_refund` checks the flag. If it is `False`, the call is blocked with a message that says what to do first.
+4. When a human must take over, give them a one-page summary, not the whole chat.
+
+**Tiny example:** A 1% skip rate sounds small, but 1,000 refunds a day means 10 unverified refunds every day. A bar has a 0% skip rate.
+
+---
+
 ## 📌 Overview
 
 ### Why it matters
 Suppose an agent skips `get_customer` in 12% of refund requests. Some refunds then go to the wrong account. Adding "always verify first" to the prompt lowers the rate. It does not make it zero, because the model is probabilistic. Code makes it zero: the tool simply refuses to run until verification has happened.
 
-### What the exam tests
-- **Programmatic enforcement** versus prompt-based guidance when compliance must be deterministic.
-- **Structured handoff summaries** for a human who cannot see the transcript.
-- **Decomposing** multi-concern customer requests.
-- Rejecting wrong fixes for the "12% skip verification" sample: stronger prompt, few-shot examples, or a routing classifier.
-
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-Put a **gate** in front of the risky tool. The gate checks state the code has recorded (for example "customer verified"). If the check fails, the tool does not run, and Claude gets an error telling it what to do first.
-
-### 2. How the gate works in this repo
+### 1. How the gate works in this repo
 In [main.py](main.py), `WorkflowState` records `verified_customer_id`. The tool `get_customer` sets it. `WorkflowState.check_gate` runs before **every** tool call in `execute_dispatched_tool`:
 
 - `process_refund` and `lookup_order` are blocked until a customer is verified.
@@ -41,14 +46,14 @@ Claude reads the error, calls `get_customer`, and tries again. The model is stil
 
 The gate in the code requires a verified customer. It does **not** require a prior `lookup_order` before a refund. The refund-amount limit lives in the hook of [TS 1.5](../ts_1_5_sdk_hooks/README.md).
 
-### 3. Prompt versus code
+### 2. Prompt versus code
 
 | Use | Good for |
 |---|---|
 | Prompt, examples | Tone, style, how to handle normal cases |
 | Code gate or hook | Order of steps, identity, money, permissions |
 
-### 4. Structured handoff
+### 3. Structured handoff
 A human agent picking up the case does not have the transcript. `escalate_to_human` builds a summary:
 
 ```json
@@ -64,7 +69,7 @@ A human agent picking up the case does not have the transcript. `escalate_to_hum
 
 The human can act in seconds. If the customer **explicitly asks for a human**, escalate right away, without arguing. Sentiment or the model's self-reported confidence are weak triggers.
 
-### 5. Multi-concern requests
+### 4. Multi-concern requests
 A message like *"refund order 991, update my address, and where is my other parcel?"* has three concerns. Break it into three items. Investigate each (independent ones can run in parallel, sharing the verified customer context). Then write one combined answer.
 
 ---
@@ -122,45 +127,71 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| **Required tool order** | Programmatic prerequisite in code | Stronger prompt wording | Still probabilistic. Some runs will skip the step |
-| **Required tool order** | Programmatic prerequisite in code | Few-shot examples of correct order | Raises the odds. Does not guarantee |
-| **Required tool order** | Programmatic prerequisite in code | A routing classifier for the tool | Routes requests. Does not enforce the order inside the workflow |
-| **Handoff** | Structured summary | Dump the full transcript | The human must read it all, and may not have it |
-| **Escalation trigger** | Explicit request or policy rule | Sentiment score | Sentiment does not tell you whether the case is hard |
-| **Customer asks for a human** | Escalate now | Ask them to justify it first | Frustrates the customer |
+### Trap 1: Fixing a skipped step with a prompt, few-shot, or classifier
 
----
+**Exam scenario**: In 8% of cases the agent calls `process_refund` before `get_customer` has verified identity. Four options are offered: (A) stronger prompt, (B) few-shot examples of the right order, (C) a routing classifier, (D) a programmatic prerequisite.
 
-## ❌ Common Mistakes
+**Why A, B, C tempt**: they are quick, need no code change in the tool layer, and each one really lowers the failure rate.
 
-- Using the prompt as the security control for money or identity.
-- Writing a gate but letting Claude call the tool through a second path that skips it.
-- Returning a vague error. Say what is missing ("verify the customer first") so Claude can recover.
-- Sending a human the raw chat log with no root cause or recommended action.
-- Handling a three-issue message as one blob and answering only one issue.
+| Option | What it does | Why it is not enough |
+|---|---|---|
+| A. "ALWAYS verify first" in the prompt | Raises compliance | Still probabilistic. At 1,000 refunds a day, a 1% miss is 10 unverified refunds a day |
+| B. Few-shot examples | Shows the correct order | Same: improves odds, guarantees nothing |
+| C. Routing classifier | Picks which tool or agent handles the request | Routes the request. It does not stop the model calling tool 2 before tool 1 inside the workflow |
+| D. Gate in code | Refuses the call unless `customer_verified` is true | Deterministic. Only this answers "must **always** happen" |
 
----
+```python
+class RefundWorkflow:
+    def __init__(self):
+        self.verified_customer_id: str | None = None
 
-## 💡 Quick Decision Rules
+    def on_tool_result(self, name: str, result: dict) -> None:
+        if name == "get_customer" and result.get("verified"):
+            self.verified_customer_id = result["customer_id"]
 
-| Question | Answer |
-|---|---|
-| Must step A always come before step B? | Code gate |
-| Is it about style or tone? | Prompt |
-| Handing off to a person? | Structured summary |
-| Customer says "get me a human"? | Escalate immediately |
-| Message has several problems? | Decompose, work each, combine |
+    def gate(self, name: str, args: dict) -> dict | None:
+        if name == "process_refund" and self.verified_customer_id != args.get("customer_id"):
+            return {"is_error": True,
+                    "content": "BLOCKED: call get_customer and verify this customer before process_refund."}
+        return None  # allowed
+```
 
----
+The error text names the missing step, so Claude can recover on the next turn instead of retrying blindly.
 
-## 🧠 Claude 4.5 Notes
+**Spot it fast**: keywords "must always", "compliance", "financial", "identity" mean the answer is a code gate. "Probabilistic" options (prompt, few-shot, classifier) are distractors.
 
-- Models: `claude-sonnet-4-5` for the support agent loop (`COORDINATOR_MODEL` in [main.py](main.py)), `claude-haiku-4-5` for simple workers.
-- Extended thinking: `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`.
-- With thinking on: no `temperature` (HTTP 400), leave `top_k` and `top_p` unset, and `tool_choice` only `auto` or `none`. Do not try to force `get_customer` with a named `tool_choice` on a thinking request. Use a gate instead.
-- Echo assistant content (with `thinking` blocks and `signature`) back unchanged after a gate error.
+### Trap 2: A gate that can be walked around
+
+**Exam scenario**: `process_refund` is gated, but `issue_store_credit` moves the same money and has no gate.
+
+- Anti-pattern: guarding one tool name. The model (or an injected instruction) uses the sibling tool.
+- Pattern: check the **state** (`customer_verified`, `amount <= limit`) in every tool that has the side effect, or in one central dispatcher that every call passes through.
+- Also verify the identity matches: a verified `CUST-1` must not authorise a refund for `CUST-2`.
+
+### Trap 3: Dumping the transcript on the human agent
+
+```text
+ANTI-PATTERN handoff:
+  "Here is the full chat log (212 messages)."
+  -> Human must re-read everything. Root cause and the next action are unknown.
+
+PATTERN handoff (structured case manifest):
+  customer_id: CUST-88319        identity_verified: true
+  issue: Full refund requested for water-damaged headphones, order ORD-2026-9912
+  attempted: lookup_order (delivered 2 days ago), check_warranty (water damage excluded)
+  escalation_reason: $649 exceeds the $500 autonomous limit
+  recommended_action: Supervisor review for a one-time courtesy exception
+```
+
+The human often has no access to the conversation, so the summary must stand alone.
+
+### Trap 4: Wrong escalation triggers, and multi-concern messages
+
+| Situation | Wrong answer | Right answer |
+|---|---|---|
+| Customer says "get me a human" | "Can you tell me why?" first | Escalate now. Do not make them justify it |
+| Customer is upset but the issue is a simple address change | Escalate on sentiment | Acknowledge, fix it, escalate only if they ask or it fails |
+| One message: refund, address change, and a billing question | Answer one issue and ignore the rest | Split into three tasks, investigate each (in parallel if independent), then reply with one unified answer |
 
 ---
 

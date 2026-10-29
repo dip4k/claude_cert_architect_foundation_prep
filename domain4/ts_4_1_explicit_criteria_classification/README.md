@@ -1,5 +1,7 @@
 # Task Statement 4.1: Explicit Criteria and Negative Boundaries
 
+> Scenarios: Scenario 5 (Claude Code for CI) and Scenario 6 (Structured Data Extraction).
+
 ## In One Minute
 - **What**: Tell Claude exactly what to report, what to skip, and what each severity means.
 - **Why**: Vague words like "be conservative" or "only high-confidence" do not change what Claude flags. Noisy reviews make developers ignore the bot.
@@ -9,32 +11,34 @@
 
 ---
 
-## 📌 Overview
+## 🧒 Explain Like I'm 13
 
-- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; the others are D1 27%, D2 18%, D3 20%, D5 15%).
-- **Scenarios**: Scenario 5 (Claude Code for CI) and Scenario 6 (Structured Data Extraction).
-- **Goal**: Cut false positives and keep developer trust.
-- **Exam focus**: Questions show a bot that flags test fixtures or style nits and ask which prompt change fixes it.
+**The picture:** A referee. "Be fair" is not a rulebook. "Yellow card for a late tackle, here is a video example; red card for violent conduct, here is another" is. If one rule causes constant arguments, pause that rule until it is fixed.
+
+**In plain steps:**
+1. List exactly what to report and what to skip (tests, mocks, TODOs).
+2. Define each severity with one example.
+3. Ask for evidence first, then the label.
+4. Noisy category? Turn it off, fix it, test it, turn it on.
+
+**Tiny example:** "Only report high-confidence issues" fails because Claude has no number line for "confident". "Skip anything in `tests/`" is a rule it can follow.
 
 ---
 
 ## 📖 Concepts Explained
 
-### 1. The simple idea
-A reviewer prompt is a rulebook. If the rulebook says "be careful", Claude has to guess what you mean. If it says "report null dereferences and live secrets, skip naming style", Claude can follow it.
-
-### 2. Why it matters
+### 1. Why it matters
 - Every false positive costs a developer a few minutes.
 - After a few weeks, developers stop reading the bot's comments.
 - A bot nobody reads also misses the real bug.
 
-### 3. How it works: four building blocks
+### 2. How it works: four building blocks
 1. **Report categories**: behaviour bugs and security issues.
 2. **Skip categories**: minor style, and local patterns the team uses on purpose.
 3. **Severity levels with code examples**: so "HIGH" means the same thing every run.
 4. **Negative boundaries**: concrete things *not* to flag, such as `mock_` keys under `tests/`.
 
-### 4. Managing a noisy category
+### 3. Managing a noisy category
 Suppose "speculative race condition" findings are dismissed 60% of the time.
 - **Do**: temporarily disable that category, rewrite its criteria with examples, test on labelled samples, then switch it back on.
 - **Do not**: ask Claude for a confidence number and filter below a threshold. Claude can be confident and wrong.
@@ -110,39 +114,50 @@ flowchart LR
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-| Goal | Correct pattern | Trap | Why the trap fails |
-|---|---|---|---|
-| Fewer false positives | Explicit report/skip categories and negative boundaries | "Be conservative" or "only high-confidence" | Claude has no objective line to apply |
-| Consistent severity | One rule and one code example per level | Level names only | The meaning drifts between runs |
-| Noisy category | Disable it temporarily, fix criteria | Filter by self-reported confidence | Confidence is not calibrated |
-| Better judgement | Evidence and rationale before the label | Label first | The label is decided before the reasoning |
+### Trap 1: "Be conservative" and "only report high-confidence findings"
 
-### Common Mistakes
-- Writing "be careful" and expecting precision to improve.
-- Listing severity names without code examples.
-- Leaving a noisy category on while "tuning" the prompt.
-- Using a confidence threshold as the fix.
-- Using temperature 0 as the fix. It makes output steadier, not more correct.
+**Exam scenario**: A code-review bot flags test fixtures, TODO comments, and style nits. Developers start ignoring it. The prompt is changed to "be conservative; only report when confident". Noise barely drops.
 
----
+**Why it fails**: the words give no objective line. Claude's confidence is not calibrated, so "confident" is a feeling, not a rule.
 
-## 💡 Quick Decision Rules
+```text
+ANTI-PATTERN
+  "Review this code. Be conservative and only report high-confidence issues."
 
-| Symptom | Fix |
-|---|---|
-| Test fixtures flagged | Add a negative boundary for `tests/` and `mock_` |
-| Severity differs between runs | Add a concrete example per level |
-| One category is mostly dismissed | Disable it, rewrite, re-enable |
-| Developers ignore the bot | Cut categories to bugs and security only |
+PATTERN: explicit report and skip categories
+  REPORT: (1) bugs that cause wrong results or crashes; (2) security: injection, secrets, authz.
+  SKIP:   style and naming; anything under tests/ or in files named mock_*; TODO comments;
+          local variable naming; minor refactors.
+  For each finding give: file, line, category, and the exact code that proves it.
+```
 
----
+### Trap 2: Severity names without definitions
 
-## 🧠 Claude 4.5 Notes
+```text
+ANTI-PATTERN: "Label each issue critical, high, medium, or low."
+  -> The same SQL concatenation is "critical" on Monday and "high" on Tuesday.
 
-- Models: `claude-sonnet-4-5` for review reasoning, `claude-haiku-4-5` for cheap triage.
-- If you enable thinking, omit `temperature` (it is rejected), and leave `top_k`/`top_p` unset.
-- With thinking, `tool_choice` may only be `auto` or `none`. A forced tool call must not use thinking.
-- Better criteria help more than more thinking tokens.
+PATTERN: one rule and one code example per level
+  critical: exploitable data loss or auth bypass.
+    e.g. query = "SELECT * FROM users WHERE id=" + request.args["id"]
+  high: wrong result in normal use.
+    e.g. total = price * qty - discount  # discount may be None
+  medium: wrong result in an edge case.     low: maintainability only.
+```
+
+### Trap 3: Keeping a noisy category on while you tune
+
+If developers dismiss most "naming" findings, every extra false positive teaches them to ignore the real bugs next to them. **Disable that category temporarily**, rewrite its criteria, test on a sample, then re-enable. Filtering by the model's self-reported confidence is the same trap as Trap 1. Setting temperature to 0 makes output steadier, not more correct.
+
+### Trap 4: Label first, reasoning second
+
+```text
+ANTI-PATTERN output: {"severity": "high", "explanation": "..."}   (label already chosen)
+PATTERN output:      {"evidence": "line 42 divides by qty without a zero check",
+                      "reasoning": "qty comes from user input", "severity": "high"}
+```
+
+Producing evidence before the label makes the label follow from it.
 
 ---
 

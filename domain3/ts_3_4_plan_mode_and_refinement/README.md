@@ -1,5 +1,7 @@
 # Task Statement 3.4: Determine When to Use Plan Mode vs Direct Execution
 
+> Scenarios: Scenario 2 (Code Generation).
+
 ## In One Minute
 
 - **Plan mode**: for large, multi-file, architectural changes, or when several approaches are valid. Claude investigates and proposes a plan before editing.
@@ -8,17 +10,23 @@
 - **Combine them**: plan mode to investigate, direct execution to implement the approved plan.
 - **Exam answer in one line**: monolith to microservices means plan mode; a single-file fix with a stack trace means direct execution.
 
-## Overview
+---
 
-- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
-- **Scenarios**: Scenario 2 (Code Generation).
-- **Goal**: match the workflow to the size and risk of the task.
-- **Exam focus**: recognizing which signals point to plan mode and which to direct execution.
+## Explain Like I'm 13
+
+**The picture:** Renovating a house needs a blueprint first. Changing a light bulb does not. **Plan mode** is the blueprint step. **Direct execution** is just doing it. An **Explore subagent** is a scout who walks the neighbourhood and brings back a short report instead of you carrying every brick home.
+
+**In plain steps:**
+1. Big, many files, several valid designs: plan mode.
+2. Small and clear (stack trace points at one line): direct execution.
+3. Lots of reading needed: send an Explore subagent.
+4. Large and unclear: plan first, then switch to direct to build.
+
+**Tiny example:** "Split the monolith into microservices" without a plan means moving 40 files and then disagreeing about the boundaries.
+
+---
 
 ## Concepts Explained
-
-### Simple idea
-Measure twice, cut once, but only when the cut is big. For a small fix, just cut.
 
 ### Why it matters
 Starting big changes without a plan causes rework: edits land in the wrong places or follow the wrong design. Planning a one-line fix wastes time.
@@ -37,12 +45,16 @@ Starting big changes without a plan causes rework: edits land in the wrong place
 - **Hybrid**: investigate in plan mode, then switch to direct execution to implement what you approved.
 - The file-count threshold in `main.py` (`MULTI_FILE_THRESHOLD = 3`) is a **teaching heuristic**, not an official limit.
 
+---
+
 ## Key Terms
 
 - **Plan mode**: investigate and propose before editing.
 - **Direct execution**: make the change immediately.
 - **Explore subagent**: isolates discovery output and returns a summary.
 - **Well-scoped change**: small, with a clear cause and clear location.
+
+---
 
 ## Architecture
 
@@ -59,6 +71,8 @@ flowchart TD
     Size -->|"No: small and clear"| Direct
 ```
 
+---
+
 ## Worked Example
 
 Task A: "Split our billing monolith into three microservices. About 45 files are involved."
@@ -72,36 +86,43 @@ Task B: "`NullPointerException` at `invoice.py:88`, stack trace attached."
 
 `main.py` encodes this: `evaluate_execution_mode(45, True, False, False)` returns plan mode with phases `plan mode: investigate and propose` then `direct execution: apply the plan`. `evaluate_execution_mode(1, False, True, True)` returns direct execution.
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Concept | Correct | Trap | Why the trap fails |
-|---|---|---|---|
-| Monolith to microservices | Plan mode | Direct execution to move fast | Big design choices need agreement first |
-| Single-file fix with stack trace | Direct execution | Plan mode "to be safe" | Adds overhead with no benefit |
-| Verbose codebase discovery | Explore subagent | Reading everything in the main chat | Fills the main context |
-| Large task with an unclear start | Plan to investigate, direct to implement | One mode for everything | Wastes either safety or speed |
+### Trap 1: Direct execution for an architectural change
 
-## Common Mistakes
+**Exam scenario**: "Restructure the monolith into microservices." Direct execution starts editing at once.
 
-- Using direct execution for an architectural change.
-- Using plan mode for a typo or a one-function fix.
-- Treating the file count as a hard rule instead of one signal.
-- Doing wide exploration in the main conversation instead of an Explore subagent.
-- Never switching to direct execution after the plan is approved.
+```text
+Anti-pattern trace: Claude picks service boundaries by guess, moves 40 files, then you disagree
+  with the boundary. Now you undo 40 file moves.
+Pattern: plan mode. Claude reads, proposes boundaries, lists affected files and risks. You agree.
+  Then switch to direct execution for the approved plan.
+```
 
-## Quick Decision Rules
+Signals for plan mode: many files, multiple valid approaches, architectural decision, unfamiliar code. File count is one signal, not a rule.
 
-| Question | Answer |
+### Trap 2: Plan mode "to be safe" on a one-line fix
+
+**Exam scenario**: A stack trace points at a null check in `user_service.py` line 88.
+
+Plan mode here adds a proposal step, an approval step, and no benefit, since the cause and fix are clear. Use direct execution: fix, run the tests.
+
+### Trap 3: Verbose discovery in the main chat
+
+Reading 60 files to answer "where is auth handled?" leaves the main context full of file contents. Delegate to an **Explore** subagent. It reads in its own context and returns a summary, so the main conversation keeps room for the real work.
+
+### Trap 4: One mode for the whole job
+
+| Job | Right mix |
 |---|---|
-| Is the scope large or the design open? | Plan mode |
-| Is it small with a known cause? | Direct execution |
-| Is discovery output going to be long? | Explore subagent |
-| Both investigation and implementation needed? | Plan first, then direct |
+| Large task with an unclear start | Plan mode to investigate and propose, then direct execution to implement |
+| Typo, rename in one file | Direct only |
 
-## Claude 4.5 Notes
+Using plan for everything wastes time. Using direct for everything risks expensive rework on large changes.
 
-- Models in this repo: `claude-sonnet-4-5` for planning and reasoning, `claude-haiku-4-5` for worker steps.
-- With extended thinking in API code: leave `temperature` and `top_k`/`top_p` unset; only `tool_choice` `auto` or `none`; echo thinking blocks with signatures unchanged.
+---
 
 ## Exam-Style Practice Questions
 
@@ -143,6 +164,8 @@ Task B: "`NullPointerException` at `invoice.py:88`, stack trace attached."
 - B fails: after the plan is approved, direct execution is the efficient way to implement.
 - D fails: CI is a late check, not a discovery tool.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can list signals for plan mode and for direct execution.
@@ -152,6 +175,8 @@ Task B: "`NullPointerException` at `invoice.py:88`, stack trace attached."
 - [ ] I can describe the hybrid: plan to investigate, direct to implement.
 
 **Memory hook**: *Big or unclear: plan first. Small and clear: just do it.*
+
+---
 
 ## Hands-on Workbook Guide
 

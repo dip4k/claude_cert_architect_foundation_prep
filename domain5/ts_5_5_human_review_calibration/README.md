@@ -13,12 +13,19 @@
 
 ---
 
-## Overview
+## Explain Like I'm 13
 
-- **Domain:** 5 (15% of the exam).
-- **Task statement:** 5.5 - design human review workflows and confidence calibration.
-- **Scenario fit:** Scenario 6 (extraction from invoices, forms, contracts).
-- **Folder note:** The folder name matches official TS 5.5. A small older review helper also sits in the [TS 5.4](../ts_5_4_scratchpads_and_human_review/README.md) folder; it stays there only for old imports.
+**The picture:** A school with a 97% average. One subject could be failing badly while the big subjects are perfect. So look at **each subject**. And when spot-checking homework, check some of the answers the student felt **sure** about too, or you never find confident mistakes.
+
+**In plain steps:**
+1. Measure accuracy per document type and per field.
+2. Sample for human review across those groups (stratified), including high-confidence items.
+3. Check that "0.9 confident" really means about 90% correct.
+4. Reduce review only for a segment with proven accuracy and enough examples.
+
+**Tiny example:** 90% of volume at 99.5%, but handwritten receipts at 81%. The average hides the problem.
+
+---
 
 ## Concepts Explained
 
@@ -39,6 +46,8 @@ Ask the model for confidence **per field**. Then compare confidence against the 
 ### 5. Route to humans on risk signals
 Send items to a human when confidence is low, the source is **ambiguous**, or sources **contradict** each other.
 
+---
+
 ## Worked Example
 
 **Data:** 100 labelled fields. 90 are `standard_invoice/total` (all correct, confidence 0.97). 10 are `customs_form/hs_code` (7 correct, confidence 0.95).
@@ -54,6 +63,8 @@ Send items to a human when confidence is low, the source is **ambiguous**, or so
 
 Run `main.py` to print these numbers. The tests check them.
 
+---
+
 ## Key Terms
 
 - **Stratum / segment:** A group such as (document type, field).
@@ -61,6 +72,8 @@ Run `main.py` to print these numbers. The tests check them.
 - **Calibration:** Stated confidence matches real accuracy.
 - **ECE:** Expected calibration error, the weighted gap between confidence and accuracy.
 - **Labelled validation set:** Data with known correct answers used to test accuracy and calibration.
+
+---
 
 ## Architecture
 
@@ -82,39 +95,44 @@ flowchart TD
     Audit --> Track["Update per-segment accuracy"]
 ```
 
+---
+
 ## Exam Traps and Correct Patterns
 
-| Topic | Correct pattern | Trap to reject |
+### Trap 1: "97% accurate overall, so remove human review"
+
+**Exam scenario**: The pipeline reports 97% accuracy across 10,000 documents.
+
+| Document type | Share of volume | Accuracy |
 |---|---|---|
-| "97% accurate overall" | Measure accuracy per document type and field | Approve full automation on the aggregate |
-| Sampling | Stratified random sample, including high-confidence items | Review only low-confidence items |
-| Confidence | Field-level scores calibrated on a labelled set | Trust raw model confidence as-is |
-| Reducing review | Validate that segment first | Reduce review everywhere once the aggregate is high |
-| Contradictory sources | Route to a human | Let the model pick one |
+| Clean typed invoices | 90% | 99.5% |
+| Handwritten receipts | 6% | 81% |
+| Foreign-language contracts | 4% | 78% |
 
-## Common Mistakes
+Overall: 0.90*99.5 + 0.06*81 + 0.04*78 = about 97.6%. The average hides two segments where 1 in 5 documents is wrong. Measure accuracy **per document type and per field** before any decision about reducing review.
 
-- Reporting one overall accuracy number to decide on automation.
-- Sampling only the failures or only the low-confidence items.
-- Using a flat random sample and missing rare segments.
-- Never checking if "0.9 confidence" really means 90% correct.
-- Removing human review for a segment with only a few labelled examples.
+### Trap 2: Reviewing only the low-confidence items
 
-## Quick Decision Rules
+```text
+ANTI-PATTERN: humans see only items with confidence < 0.8.
+  Confident but wrong outputs are never seen, so you cannot know how often that happens.
+PATTERN: stratified random sample across (document type x field), INCLUDING high-confidence items.
+  A flat random sample would hold almost no handwritten receipts (6% of volume).
+```
 
-| Situation | Do this |
-|---|---|
-| High overall accuracy | Break it down by segment |
-| Need to monitor automation | Stratified random sample by (type, field) |
-| Want to trust confidence | Calibrate on labelled data (bins, ECE) |
-| Reduce review for a segment | Check accuracy and sample size for that segment |
-| Ambiguous or conflicting input | Human review |
+### Trap 3: Trusting raw confidence
 
-## Claude 4.5 Notes
+Check calibration on a labelled set: group predictions in bins (0.9 to 1.0, 0.8 to 0.9...) and compare each bin's claimed confidence to its actual accuracy. If the "0.9" bin is right only 70% of the time, the number cannot gate automation.
 
-- `claude-sonnet-4-5` for hard extraction and review reasoning; `claude-haiku-4-5` for high-volume extraction.
-- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
-- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
+### Trap 4: Reducing review for a segment with too little evidence
+
+"Handwritten receipts scored 100% on 6 labelled examples" is not proof. Check the segment's accuracy **and** its sample size before lowering review for it.
+
+### Trap 5: Letting the model pick between contradictory sources
+
+When two documents disagree on a value, route to a human. Choosing silently hides the conflict.
+
+---
 
 ## Exam-Style Practice Questions
 
@@ -145,6 +163,8 @@ flowchart TD
 - **Q2: C.** A fails: confidence can be wrong. B fails: a flat sample can miss rare segments. D fails: complaints show only some errors, late.
 - **Q3: A.** B fails: more digits do not add reliability. C fails: averaging hides weak fields. D fails: one high field says nothing about the others.
 
+---
+
 ## Self-Check Checklist
 
 - [ ] I can explain how 97% overall accuracy hides a weak segment.
@@ -154,6 +174,8 @@ flowchart TD
 - [ ] I know to validate a segment before reducing review for it.
 
 **Memory hook:** *"Slice it, sample it, calibrate it, then trust it."*
+
+---
 
 ## Hands-on Workbook Guide
 
