@@ -52,11 +52,11 @@ We are architecting an enterprise developer productivity system using Claude Cod
 
 ```mermaid
 flowchart TD
-    Start{Code Generation Focus}
-    Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br/>(Explore & require<br/>blueprint approval)"]
-    Start -->|Ambiguous Requirements| D2["Interview Pattern<br/>(Clarify 3-5 options<br/>before coding)"]
-    Start -->|Distributed Conventions| D3[".claude/rules/*.md (paths glob)<br/>(Never duplicate CLAUDE.md)"]
-    Start -->|Verbose Skill Output| D4["context: fork in SKILL.md<br/>(Isolate tokens in subagent)"]
+    Start{"Code Generation Focus"}
+    Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br>(Explore & require<br>blueprint approval)"]
+    Start -->|Ambiguous Requirements| D2["Interview Pattern<br>(Clarify 3-5 options<br>before coding)"]
+    Start -->|Distributed Conventions| D3[".claude/rules/*.md (paths glob)<br>(Never duplicate CLAUDE.md)"]
+    Start -->|Verbose Skill Output| D4["context: fork in SKILL.md<br>(Isolate tokens in subagent)"]
 ```
 
 | Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
@@ -76,10 +76,10 @@ Enterprise developers work under multiple layers of policy. When rules conflict,
 
 ```mermaid
 flowchart TD
-    Enterprise["1. Enterprise Policy<br/>(/etc/claude/CLAUDE.md - Immutable)"]
-    User["2. Global User Profile<br/>(~/.claude/CLAUDE.md - Personal)"]
-    Project["3. Project Root<br/>(.claude/CLAUDE.md - Team standards)"]
-    PathScoped["4. Path-Scoped Rules<br/>(.claude/rules/*.md - Glob match)"]
+    Enterprise["1. Enterprise Policy<br>(/etc/claude/CLAUDE.md - Immutable)"]
+    User["2. Global User Profile<br>(~/.claude/CLAUDE.md - Personal)"]
+    Project["3. Project Root<br>(.claude/CLAUDE.md - Team standards)"]
+    PathScoped["4. Path-Scoped Rules<br>(.claude/rules/*.md - Glob match)"]
     Enterprise --> User --> Project --> PathScoped
 ```
 
@@ -160,7 +160,7 @@ Claude Code translates developer prompts and repository context into structured 
 
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 4096,
   "system": [
     {

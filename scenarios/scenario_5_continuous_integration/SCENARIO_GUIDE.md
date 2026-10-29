@@ -53,11 +53,11 @@ We are engineering an automated pull request (PR) gatekeeper and code review eng
 
 ```mermaid
 flowchart TD
-    Start{CI/CD Review Focus}
-    Start -->|Runner Hangs on Stdin| D1["Pass -p / --print Flag<br/>(Never unix stdin redirects)"]
-    Start -->|Batch API for PR Checks| D2["Reject for Blocking PRs<br/>(Use Real-Time API;<br/>Batch has 24h SLA)"]
-    Start -->|Multi-File PR Attention Loss| D3["Two-Pass Review Pipeline<br/>(Pass 1 Local +<br/>Pass 2 Integration)"]
-    Start -->|Author Reviews Own PR| D4["Spawn Independent Instance<br/>(Eliminate self-review bias)"]
+    Start{"CI/CD Review Focus"}
+    Start -->|Runner Hangs on Stdin| D1["Pass -p / --print Flag<br>(Never unix stdin redirects)"]
+    Start -->|Batch API for PR Checks| D2["Reject for Blocking PRs<br>(Use Real-Time API;<br>Batch has 24h SLA)"]
+    Start -->|Multi-File PR Attention Loss| D3["Two-Pass Review Pipeline<br>(Pass 1 Local +<br>Pass 2 Integration)"]
+    Start -->|Author Reviews Own PR| D4["Spawn Independent Instance<br>(Eliminate self-review bias)"]
 ```
 
 | Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
@@ -99,8 +99,8 @@ Anthropic's Message Batches API provides a **50% discount** on input and output 
 flowchart TD
     Task["Code Review Workload"] --> LatencyCheck{"Pre-merge or blocking?"}
     
-    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br/>Immediate response; standard pricing"]
-    LatencyCheck -- "No (&le; 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br/>50% cost discount; asynchronous"]
+    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br>Immediate response; standard pricing"]
+    LatencyCheck -- "No (&le; 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br>50% cost discount; asynchronous"]
 ```
 
 ### 3. Two-Pass Review Architecture (TS 4.6)
@@ -111,9 +111,9 @@ flowchart TD
     PR["Incoming Multi-File PR"] --> Split["Split Files into Isolated Contexts"]
     
     subgraph Pass1["Pass 1: Local Per-File Correctness (Parallel)"]
-        Split --> P1A["Pass 1 Instance A<br/>src/auth.py"]
-        Split --> P1B["Pass 1 Instance B<br/>src/payment.py"]
-        Split --> P1C["Pass 1 Instance C<br/>src/api_client.py"]
+        Split --> P1A["Pass 1 Instance A<br>src/auth.py"]
+        Split --> P1B["Pass 1 Instance B<br>src/payment.py"]
+        Split --> P1C["Pass 1 Instance C<br>src/api_client.py"]
         
         P1A --> R1["Findings: Null safety, exceptions"]
         P1B --> R2["Findings: Syntax, type errors"]
@@ -123,12 +123,12 @@ flowchart TD
     R1 & R2 & R3 --> Agg["Aggregate Local Findings Manifest"]
     
     subgraph Pass2["Pass 2: System API Contracts & Integration (Holistic)"]
-        Agg --> P2Instance["Pass 2 Independent Review<br/>(Aggregated Findings +<br/>Exported Signatures)"]
+        Agg --> P2Instance["Pass 2 Independent Review<br>(Aggregated Findings +<br>Exported Signatures)"]
         P2Instance --> ContractEval{"Contract Violations Found?"}
     end
     
-    ContractEval -- "Yes" --> BlockGate["Exit Code 1: Block PR &<br/>Post Inline Review"]
-    ContractEval -- "No" --> PassGate["Exit Code 0: Approve<br/>PR Merge Gate"]
+    ContractEval -- "Yes" --> BlockGate["Exit Code 1: Block PR &<br>Post Inline Review"]
+    ContractEval -- "No" --> PassGate["Exit Code 0: Approve<br>PR Merge Gate"]
 ```
 
 | Review Dimension | Pass 1: Local File Correctness | Pass 2: System API Contracts & Integration |
@@ -162,7 +162,7 @@ Blocking PR checks execute synchronously against `/v1/messages` with structured 
 
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 2048,
   "system": [
     {
@@ -214,7 +214,7 @@ Non-blocking overnight scans across 50,000 files utilize the Message Batches API
     {
       "custom_id": "file_audit_services_billing_calc_py",
       "params": {
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-sonnet-4-5",
         "max_tokens": 1024,
         "system": [
           {
@@ -502,7 +502,7 @@ class ContinuousIntegrationEngine:
 
 > **Deep Architectural Rationale**: Under **TS 4.5**, the Message Batches API is an asynchronous, high-throughput service designed for latency-tolerant jobs (such as overnight repo migrations or bulk data extraction). Blocking PR reviews are synchronous pre-merge gates where developers await feedback to merge their code. Waiting up to 24 hours paralyzes the engineering team.  
 > **Exhaustive Distractor Teardown**:
-> - *Option A is incorrect*: The Message Batches API supports current models, including Claude 3.5 Sonnet and Haiku.
+> - *Option A is incorrect*: The Message Batches API supports current models, including Claude 4.5 Sonnet and Haiku.
 > - *Option C is incorrect*: The Batch API supports identical parameters to the Messages API, including tools and JSON schemas.
 > - *Option D is incorrect*: The Batch API is available to standard tier developers on the Anthropic platform.
 
@@ -528,7 +528,7 @@ class ContinuousIntegrationEngine:
 **Scenario**: An automated AI coding bot generates a 400-line feature PR. In the same execution loop, the bot is prompted: *"Now review your generated code to confirm there are no vulnerabilities."* The bot reports 0 issues. Later, a human reviewer discovers an unvalidated user redirect. Why did the bot miss its own defect?
 
 - **A)** The bot suffered from author confirmation bias, where an LLM reviewing its own recently generated context exhibits self-affirmation and rationalizes its prior architectural decisions. *(Correct)*
-- **B)** Claude 3.5 Sonnet does not understand HTTP redirects.
+- **B)** Claude 4.5 Sonnet does not understand HTTP redirects.
 - **C)** The bot ran out of tokens during generation.
 - **D)** The prompt lacked the word "please".
 

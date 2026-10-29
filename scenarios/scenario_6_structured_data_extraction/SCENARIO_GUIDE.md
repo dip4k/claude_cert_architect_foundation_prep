@@ -53,12 +53,12 @@ We are architecting an enterprise data ingestion and document processing pipelin
 
 ```mermaid
 flowchart TD
-    Start{Extraction Scenario Focus}
-    Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br/>(Forced tool_choice,<br/>never regex/text)"]
-    Start -->|Missing Optional Fields| D2["Nullable Schema: type ['string', 'null']<br/>(Never strictly required)"]
-    Start -->|Arithmetic Mismatch| D3["Closed-Loop Retry<br/>(Targeted math error feedback)"]
-    Start -->|Physically Absent Data| D4["Fail-Fast to Human Review<br/>(Retries cannot invent<br/>absent data)"]
-    Start -->|Audit 98% Accurate Pipeline| D5["5-10% Stratified Sampling<br/>(Across document subtypes<br/>& vendors)"]
+    Start{"Extraction Scenario Focus"}
+    Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br>(Forced tool_choice,<br>never regex/text)"]
+    Start -->|Missing Optional Fields| D2["Nullable Schema: type ['string', 'null']<br>(Never strictly required)"]
+    Start -->|Arithmetic Mismatch| D3["Closed-Loop Retry<br>(Targeted math error feedback)"]
+    Start -->|Physically Absent Data| D4["Fail-Fast to Human Review<br>(Retries cannot invent<br>absent data)"]
+    Start -->|Audit 98% Accurate Pipeline| D5["5-10% Stratified Sampling<br>(Across document subtypes<br>& vendors)"]
 ```
 
 | Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
@@ -82,7 +82,7 @@ Prompting an LLM with *"Return raw JSON, do not include markdown or explanations
 #### Exact Request Payload: Enforcing Extraction Schema via Tool Use
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 2048,
   "system": [
     {
@@ -181,10 +181,10 @@ flowchart TD
     
     FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count &lt; 2?"}
     
-    RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br/>Send targeted math error<br/>via tool_result"]
-    RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human<br/>Exception Queue"]
+    RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br>Send targeted math error<br>via tool_result"]
+    RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human<br>Exception Queue"]
     
-    FailureType -- "Fact Fundamentally Absent (missing on paper)" --> FastFail["Fast-Fail to Human Queue<br/>Abort retries; keep field null"]
+    FailureType -- "Fact Fundamentally Absent (missing on paper)" --> FastFail["Fast-Fail to Human Queue<br>Abort retries; keep field null"]
 ```
 
 - **Why Retrying Missing Facts Fails**: Repeating retries on text that was physically never printed cannot summon the text into existence. It merely applies pressure on the model to hallucinate a fake Tax ID to satisfy the validator.
@@ -192,7 +192,7 @@ flowchart TD
 #### Exact Request Payload: Turn 2 Closed-Loop Retry with Targeted Math Error
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 2048,
   "system": [
     {

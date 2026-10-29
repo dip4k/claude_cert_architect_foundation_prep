@@ -52,11 +52,11 @@ We are architecting an autonomous, institutional-grade market and financial due-
 
 ```mermaid
 flowchart TD
-    Start{Research Inquiry Focus}
-    Start -->|Spawn 3 Subagents| D1["Multiple Task Calls in Turn 1<br/>(Concurrent parallel fan-out)"]
-    Start -->|Conflicting Metrics| D2["Cite Both Numbers & Dates<br/>(Never average into mean)"]
-    Start -->|Subagent Timeout / Error| D3["Structured Error Propagation<br/>(Add coverage gap notice)"]
-    Start -->|0 Matching Records| D4["Valid Empty: isError false, count 0<br/>(Ground truth finding)"]
+    Start{"Research Inquiry Focus"}
+    Start -->|Spawn 3 Subagents| D1["Multiple Task Calls in Turn 1<br>(Concurrent parallel fan-out)"]
+    Start -->|Conflicting Metrics| D2["Cite Both Numbers & Dates<br>(Never average into mean)"]
+    Start -->|Subagent Timeout / Error| D3["Structured Error Propagation<br>(Add coverage gap notice)"]
+    Start -->|0 Matching Records| D4["Valid Empty: isError false, count 0<br>(Ground truth finding)"]
 ```
 
 | Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
@@ -96,7 +96,7 @@ Rather than executing subagents sequentially across separate conversation turns 
 #### Coordinator Turn 1 Request to `/v1/messages`
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 1024,
   "system": [
     {
@@ -165,7 +165,7 @@ Rather than executing subagents sequentially across separate conversation turns 
 #### Coordinator Turn 2 Request (Returning Concurrent `tool_result` Blocks to Claude)
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 2048,
   "system": [
     {
@@ -651,7 +651,7 @@ What architectural pattern protects the Multi-Agent Research System from this In
 - **A)** Immediately crash the entire multi-agent coordinator process.
 - **B)** Implement an exponential backoff with full jitter retry loop (e.g., base delay 1.0s, factor 2, max 3 attempts) inside the specific subagent tool handler, without restarting the parent Coordinator. *(Correct)*
 - **C)** Send a prompt to Claude asking it to complain to the external API vendor.
-- **D)** Switch the model from Claude 3.5 Sonnet to an open-source 1B model.
+- **D)** Switch the model from Claude 4.5 Sonnet to an open-source 1B model.
 
 > **Deep Architectural Rationale**: Under **TS 2.2**, transient infrastructure errors (HTTP 429, 503) should be handled locally at the tool execution boundary using exponential backoff with jitter. Localized retries isolate transient hiccups and prevent tearing down the entire multi-agent orchestration tree.  
 > **Exhaustive Distractor Teardown**:

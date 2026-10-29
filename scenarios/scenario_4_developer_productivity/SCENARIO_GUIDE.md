@@ -52,11 +52,11 @@ We are engineering an AI-augmented developer onboarding and maintenance workflow
 
 ```mermaid
 flowchart TD
-    Start{Developer Workflow Focus}
-    Start -->|Locating Symbols| D1["Glob → Grep → Chunked Read<br/>(Never bulk-read all files)"]
-    Start -->|Edit Anchor Collision| D2["Read File → Expand Anchor<br/>(Fallback to Write if needed)"]
-    Start -->|Schemas & API Specs| D3["MCP Resources (resources/read)<br/>(Never active tool calls)"]
-    Start -->|Multi-Hour Exploration| D4["scratchpad.md + Explore Subagent<br/>(Use context: fork)"]
+    Start{"Developer Workflow Focus"}
+    Start -->|Locating Symbols| D1["Glob → Grep → Chunked Read<br>(Never bulk-read all files)"]
+    Start -->|Edit Anchor Collision| D2["Read File → Expand Anchor<br>(Fallback to Write if needed)"]
+    Start -->|Schemas & API Specs| D3["MCP Resources (resources/read)<br>(Never active tool calls)"]
+    Start -->|Multi-Hour Exploration| D4["scratchpad.md + Explore Subagent<br>(Use context: fork)"]
 ```
 
 | Scenario Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
@@ -80,10 +80,10 @@ When a developer asks to fix a bug in an unfamiliar repository, a novice agent a
 
 ```mermaid
 flowchart LR
-    Start["User Request"] --> Step1["1. Glob<br/>(Candidate files)"]
-    Step1 --> Step2["2. Grep<br/>(Pinpoint line)"]
-    Step2 --> Step3["3. Chunked Read<br/>(Inspect slice)"]
-    Step3 --> Edit["4. Surgical Edit<br/>(Under 600 tokens)"]
+    Start["User Request"] --> Step1["1. Glob<br>(Candidate files)"]
+    Step1 --> Step2["2. Grep<br>(Pinpoint line)"]
+    Step2 --> Step3["3. Chunked Read<br>(Inspect slice)"]
+    Step3 --> Edit["4. Surgical Edit<br>(Under 600 tokens)"]
 ```
 
 ### 2. The Edit Fallback Protocol (TS 2.5)
@@ -98,7 +98,7 @@ flowchart TD
     Expansion --> RetryEdit["Retry Edit with Expanded Anchor"]
     RetryEdit --> RetryCheck{"Now Unique?"}
     RetryCheck -->|Yes| Success
-    RetryCheck -->|No| FallbackWrite["3. Fallback: Read + Write<br/>Reconciled File"]
+    RetryCheck -->|No| FallbackWrite["3. Fallback: Read + Write<br>Reconciled File"]
     FallbackWrite --> Success
 ```
 
@@ -173,7 +173,7 @@ Developer productivity workflows leverage fine-grained tool definitions:
 
 ```json
 {
-  "model": "claude-3-5-sonnet-20241022",
+  "model": "claude-sonnet-4-5",
   "max_tokens": 4096,
   "system": [
     {

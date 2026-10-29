@@ -38,108 +38,108 @@ On the authentic 60-question CCAR-F certification exam:
 ### Decision Tree 1: Operational Mode Selection (Domain 3)
 ```mermaid
 flowchart TD
-    TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches &ge; 3 files<br/>or core schemas?"}
+    TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches &ge; 3 files<br>or core schemas?"}
     
-    ScopeCheck -- "Yes" --> PlanMode["Plan Mode<br/>(Read-Only)"]
-    PlanMode --> DraftBlueprint["Draft Step-by-Step<br/>Blueprint"]
+    ScopeCheck -- "Yes" --> PlanMode["Plan Mode<br>(Read-Only)"]
+    PlanMode --> DraftBlueprint["Draft Step-by-Step<br>Blueprint"]
     DraftBlueprint --> UserApproval{"Developer Approves?"}
-    UserApproval -- "Yes" --> ExecuteForked["Execute via<br/>Forked Subagent"]
-    UserApproval -- "No" --> RefineBlueprint["Refine Blueprint<br/>based on feedback"]
+    UserApproval -- "Yes" --> ExecuteForked["Execute via<br>Forked Subagent"]
+    UserApproval -- "No" --> RefineBlueprint["Refine Blueprint<br>based on feedback"]
     RefineBlueprint --> DraftBlueprint
     
-    ScopeCheck -- "No" --> AmbiguityCheck{"Requirement<br/>Ambiguous?"}
-    AmbiguityCheck -- "Yes" --> InterviewPattern["The Interview Pattern<br/>Present 2-3 options<br/>with trade-offs"]
+    ScopeCheck -- "No" --> AmbiguityCheck{"Requirement<br>Ambiguous?"}
+    AmbiguityCheck -- "Yes" --> InterviewPattern["The Interview Pattern<br>Present 2-3 options<br>with trade-offs"]
     InterviewPattern --> DirectMode["Direct Execution Mode"]
     AmbiguityCheck -- "No" --> DirectMode
-    DirectMode --> SurgicalEdit["Surgical Edit Applied<br/>(Direct Execution)"]
+    DirectMode --> SurgicalEdit["Surgical Edit Applied<br>(Direct Execution)"]
 ```
 
 ### Decision Tree 2: API Selection: Real-Time vs. Message Batches (Domain 4 & 5)
 ```mermaid
 flowchart TD
-    Workload["Inference Workload"] --> LatencyCheck{"Pre-merge or<br/>developer blocking?"}
+    Workload["Inference Workload"] --> LatencyCheck{"Pre-merge or<br>developer blocking?"}
     
-    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTimeAPI["Use Real-Time Messages API<br/>(/v1/messages)<br/>Immediate response,<br/>standard price"]
+    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTimeAPI["Use Real-Time Messages API<br>(/v1/messages)<br>Immediate response,<br>standard price"]
     
-    LatencyCheck -- "No (Async / Non-blocking)" --> SLA24Check{"Tolerates &le; 24h<br/>turnaround?"}
+    LatencyCheck -- "No (Async / Non-blocking)" --> SLA24Check{"Tolerates &le; 24h<br>turnaround?"}
     
-    SLA24Check -- "Yes (Overnight audits)" --> BatchesAPI["Use Message Batches API<br/>(/v1/messages/batches)<br/>50% cost discount,<br/>custom_id correlation"]
+    SLA24Check -- "Yes (Overnight audits)" --> BatchesAPI["Use Message Batches API<br>(/v1/messages/batches)<br>50% cost discount,<br>custom_id correlation"]
     
-    SLA24Check -- "No (e.g. 1-hour SLA)" --> WorkerPool["Use Real-Time API with<br/>Managed Worker Pool"]
+    SLA24Check -- "No (e.g. 1-hour SLA)" --> WorkerPool["Use Real-Time API with<br>Managed Worker Pool"]
 ```
 
 ### Decision Tree 3: Handling Missing Document Attributes (Domain 4 & Scenario 6)
 ```mermaid
 flowchart TD
-    ExtractDoc["Extracting Field<br/>from Document"] --> FactPresent{"Fact physically<br/>in document?"}
+    ExtractDoc["Extracting Field<br>from Document"] --> FactPresent{"Fact physically<br>in document?"}
     
-    FactPresent -- "Yes" --> ExtractField["Extract Field<br/>via Tool Use"]
-    ExtractField --> MathCheck{"Passes math & logic<br/>validation?"}
+    FactPresent -- "Yes" --> ExtractField["Extract Field<br>via Tool Use"]
+    ExtractField --> MathCheck{"Passes math & logic<br>validation?"}
     MathCheck -- "Pass" --> Commit["Commit to Database"]
-    MathCheck -- "Fail" --> Retry["Closed-Loop Retry with<br/>targeted math feedback<br/>(Max 2 retries)"]
+    MathCheck -- "Fail" --> Retry["Closed-Loop Retry with<br>targeted math feedback<br>(Max 2 retries)"]
     
-    FactPresent -- "No (Physically Absent)" --> NullableCheck{"Schema attribute<br/>marked nullable?"}
-    NullableCheck -- "Yes (type: ['string', 'null'])" --> ReturnNull["Return null<br/>(Zero Hallucination)"]
-    NullableCheck -- "No (Required string)" --> Trap["Hallucination Trap!<br/>Make field nullable<br/>immediately"]
+    FactPresent -- "No (Physically Absent)" --> NullableCheck{"Schema attribute<br>marked nullable?"}
+    NullableCheck -- "Yes (type: ['string', 'null'])" --> ReturnNull["Return null<br>(Zero Hallucination)"]
+    NullableCheck -- "No (Required string)" --> Trap["Hallucination Trap!<br>Make field nullable<br>immediately"]
 ```
 
 ### Decision Tree 4: Customer Support Resolution & Gating Flow (Domain 1, 2, 5 & Scenario 1)
 ```mermaid
 flowchart TD
-    UserTurn["Incoming Customer Turn"] --> DemandHuman{"Explicit human<br/>supervisor demand?"}
-    DemandHuman -- "Yes" --> Escalate["Immediate Human Escalation<br/>(Escalate without<br/>diagnostic interrogation)"]
+    UserTurn["Incoming Customer Turn"] --> DemandHuman{"Explicit human<br>supervisor demand?"}
+    DemandHuman -- "Yes" --> Escalate["Immediate Human Escalation<br>(Escalate without<br>diagnostic interrogation)"]
     
-    DemandHuman -- "No" --> IntentCheck{"Mutative tool<br/>requested?"}
-    IntentCheck -- "No" --> ReadOnlyTool["Execute Read-Only Tool<br/>(lookup_order)"]
-    ReadOnlyTool --> Trim["Trim 55 raw CRM fields<br/>to 4 decision fields via hook"]
-    Trim --> UpdateFacts["Update Immutable<br/>Case Facts Layer"]
+    DemandHuman -- "No" --> IntentCheck{"Mutative tool<br>requested?"}
+    IntentCheck -- "No" --> ReadOnlyTool["Execute Read-Only Tool<br>(lookup_order)"]
+    ReadOnlyTool --> Trim["Trim 55 raw CRM fields<br>to 4 decision fields via hook"]
+    Trim --> UpdateFacts["Update Immutable<br>Case Facts Layer"]
     
-    IntentCheck -- "Yes" --> AuthCheck{"Customer 2FA<br/>verified?"}
-    AuthCheck -- "No" --> AuthGate["Programmatic Prerequisite Gate<br/>Blocks Tool (Prompt for 2FA)"]
-    AuthCheck -- "Yes" --> PolicyCheck{"Within 30-day window<br/>and &le; $50 limit?"}
+    IntentCheck -- "Yes" --> AuthCheck{"Customer 2FA<br>verified?"}
+    AuthCheck -- "No" --> AuthGate["Programmatic Prerequisite Gate<br>Blocks Tool (Prompt for 2FA)"]
+    AuthCheck -- "Yes" --> PolicyCheck{"Within 30-day window<br>and &le; $50 limit?"}
     PolicyCheck -- "Yes" --> ExecuteRefund["Execute process_refund Tool"]
-    PolicyCheck -- "No" --> PolicyEscalate["Escalate to Human Supervisor<br/>with Case Facts"]
+    PolicyCheck -- "No" --> PolicyEscalate["Escalate to Human Supervisor<br>with Case Facts"]
 ```
 
 ### Decision Tree 5: Multi-Agent Research Coverage & Provenance Flow (Domain 1, 2, 5 & Scenario 3)
 ```mermaid
 flowchart TD
-    Coord["Coordinator Receives<br/>Complex Research Prompt"] --> FanOut["Turn 1: Emit Multiple<br/>Task Calls Concurrently"]
+    Coord["Coordinator Receives<br>Complex Research Prompt"] --> FanOut["Turn 1: Emit Multiple<br>Task Calls Concurrently"]
     
     subgraph Subagents["Isolated Subagents (Turn 1 Execution)"]
-        FanOut --> S1["Financial Subagent<br/>(10-K filings)"]
-        FanOut --> S2["Regulatory Subagent<br/>(FDA/FTC docket)"]
-        FanOut --> S3["Patent Subagent<br/>(USPTO database)"]
+        FanOut --> S1["Financial Subagent<br>(10-K filings)"]
+        FanOut --> S2["Regulatory Subagent<br>(FDA/FTC docket)"]
+        FanOut --> S3["Patent Subagent<br>(USPTO database)"]
     end
     
-    S1 & S2 & S3 --> Collect["Collect Subagent Responses<br/>in Turn 2"]
+    S1 & S2 & S3 --> Collect["Collect Subagent Responses<br>in Turn 2"]
     
-    Collect --> UpstreamCheck{"Upstream API timeout<br/>or error?"}
-    UpstreamCheck -- "Yes" --> Partial["Mark UPSTREAM_FAILURE<br/>Inject PARTIAL_COVERAGE disclaimer"]
-    UpstreamCheck -- "No" --> ZeroCheck{"Legitimate 0 records<br/>returned?"}
-    ZeroCheck -- "Yes" --> ValidEmpty["Mark VALID_EMPTY<br/>(Valid search match; not error)"]
-    ZeroCheck -- "No" --> ConflictCheck{"Conflicting statistics<br/>detected?"}
+    Collect --> UpstreamCheck{"Upstream API timeout<br>or error?"}
+    UpstreamCheck -- "Yes" --> Partial["Mark UPSTREAM_FAILURE<br>Inject PARTIAL_COVERAGE disclaimer"]
+    UpstreamCheck -- "No" --> ZeroCheck{"Legitimate 0 records<br>returned?"}
+    ZeroCheck -- "Yes" --> ValidEmpty["Mark VALID_EMPTY<br>(Valid search match; not error)"]
+    ZeroCheck -- "No" --> ConflictCheck{"Conflicting statistics<br>detected?"}
     
-    ConflictCheck -- "Yes" --> PreserveBoth["Preserve BOTH figures with<br/>dates & source citations<br/>(NEVER average into mean)"]
-    ConflictCheck -- "No" --> Synthesize["Synthesize Final Report<br/>with 100% Citations"]
+    ConflictCheck -- "Yes" --> PreserveBoth["Preserve BOTH figures with<br>dates & source citations<br>(NEVER average into mean)"]
+    ConflictCheck -- "No" --> Synthesize["Synthesize Final Report<br>with 100% Citations"]
     Partial & ValidEmpty & PreserveBoth --> Synthesize
 ```
 
 ### Decision Tree 6: Codebase Discovery & Edit Fallback Flow (Domain 1, 2, 3 & Scenario 4)
 ```mermaid
 flowchart TD
-    Task["Developer Codebase<br/>Exploration Task"] --> KnowPath{"Target file path<br/>known?"}
+    Task["Developer Codebase<br>Exploration Task"] --> KnowPath{"Target file path<br>known?"}
     
-    KnowPath -- "No" --> Step1["1. Glob Tool<br/>Locate candidate file paths<br/>across project"]
-    Step1 --> Step2["2. Grep Tool<br/>Search candidate files<br/>for exact symbols or regex"]
+    KnowPath -- "No" --> Step1["1. Glob Tool<br>Locate candidate file paths<br>across project"]
+    Step1 --> Step2["2. Grep Tool<br>Search candidate files<br>for exact symbols or regex"]
     KnowPath -- "Yes" --> Step2
     
-    Step2 --> Step3["3. Chunked Read Tool<br/>Inspect lines surrounding<br/>target symbol (never bulk)"]
-    Step3 --> Step4["4. Surgical Edit Tool<br/>Replace unique anchor<br/>chunk with new code"]
+    Step2 --> Step3["3. Chunked Read Tool<br>Inspect lines surrounding<br>target symbol (never bulk)"]
+    Step3 --> Step4["4. Surgical Edit Tool<br>Replace unique anchor<br>chunk with new code"]
     
-    Step4 --> Collision{"Anchor collision<br/>or edit fails?"}
-    Collision -- "No" --> EditSuccess["Surgical Edit Applied<br/>Successfully"]
-    Collision -- "Yes" --> FallbackProtocol["5. Fallback Protocol<br/>Read entire file into memory +<br/>Write complete replacement"]
+    Step4 --> Collision{"Anchor collision<br>or edit fails?"}
+    Collision -- "No" --> EditSuccess["Surgical Edit Applied<br>Successfully"]
+    Collision -- "Yes" --> FallbackProtocol["5. Fallback Protocol<br>Read entire file into memory +<br>Write complete replacement"]
     FallbackProtocol --> EditSuccess
 ```
 

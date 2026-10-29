@@ -15,21 +15,21 @@ Each scenario directory below is an end-to-end learning lab containing:
 
 ```mermaid
 flowchart TD
-    Scenarios["6 CCAR-F Production Scenarios<br/>(4 Randomly Selected on Exam)"]
+    Scenarios["6 CCAR-F Production Scenarios<br>(4 Randomly Selected on Exam)"]
     
     subgraph Ops["Enterprise Operations"]
-        S1["Scenario 1: Support<br/>• Programmatic 2FA Gating<br/>• Zero-Friction Escalation"]
-        S3["Scenario 3: Research<br/>• Turn-1 Concurrent Task Calls<br/>• Preserving Conflicting Stats"]
+        S1["Scenario 1: Support<br>• Programmatic 2FA Gating<br>• Zero-Friction Escalation"]
+        S3["Scenario 3: Research<br>• Turn-1 Concurrent Task Calls<br>• Preserving Conflicting Stats"]
     end
 
     subgraph Dev["Developer Tooling"]
-        S2["Scenario 2: Code Gen<br/>• Plan Mode for Refactors<br/>• Path-Scoped Rules (.claude/rules/)"]
-        S4["Scenario 4: Productivity<br/>• Glob → Grep → Read<br/>• Surgical Edit Fallback"]
+        S2["Scenario 2: Code Gen<br>• Plan Mode for Refactors<br>• Path-Scoped Rules (.claude/rules/)"]
+        S4["Scenario 4: Productivity<br>• Glob → Grep → Read<br>• Surgical Edit Fallback"]
     end
 
     subgraph Auto["Automation & Data"]
-        S5["Scenario 5: CI/CD<br/>• Headless Flag (-p)<br/>• Two-Pass Review Pipeline"]
-        S6["Scenario 6: Extraction<br/>• JSON Schema via tool_use<br/>• 5-10% Stratified Audits"]
+        S5["Scenario 5: CI/CD<br>• Headless Flag (-p)<br>• Two-Pass Review Pipeline"]
+        S6["Scenario 6: Extraction<br>• JSON Schema via tool_use<br>• 5-10% Stratified Audits"]
     end
 
     Scenarios --> Ops
