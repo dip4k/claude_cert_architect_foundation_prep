@@ -6,7 +6,6 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     subgraph Preservation["Context Preservation"]
         direction TB
@@ -48,7 +47,6 @@ In long-running autonomous workflows (e.g. customer support sessions or complex 
 - **Result**: Specific transactional identifiers, dollar amounts, tracking numbers, and verified constraints are washed away into vague natural language prose. When the agent later attempts to process a return, it hallucinations an order ID or fails because the ground truth was erased.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     subgraph Bad["Anti-Pattern: Naive Summarization"]
         B1["Raw Turns 1-4"] --> B2["Summarize History"]
@@ -110,7 +108,6 @@ One of the most heavily tested human escalation scenarios:
 - **The Golden Rule**: **When a customer explicitly demands a human representative, escalate IMMEDIATELY without asking diagnostic or clarifying questions.** Compile a structured handoff manifest and transfer the session.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start["Customer Request"] --> Demand{"Demands Human Agent?"}
     Demand -->|Yes| EscHuman["Escalate Immediately<br/>(Zero friction; no probing)"]
@@ -262,7 +259,6 @@ A standard trap in enterprise AI evaluation:
 | **Unrecoverable Missing Fact** | N/A | Any | **Immediate Fast-Fail to Human Triage** | Closed-loop retries cannot fabricate facts physically absent from source. |
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Doc["Incoming Document Extraction"] --> ValueCheck{"Financial Value &gt; $1,000?"}
     ValueCheck -- "Yes" --> HighValReview["Mandatory Human Review<br/>(Policy threshold overrides model)"]
@@ -580,7 +576,6 @@ Option B is correct. In deep codebase exploration (TS 5.4), multi-turn sessions 
 ### 🧠 Domain 5 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Q1["1. Customer demands a human?"] -->|Yes| A1["Escalate Immediately<br/>Zero friction; compile handoff manifest"]
     Q1 -->|No| Q2["2. Entity lookup collision?"]

@@ -52,7 +52,6 @@ npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server
 ## 🏛️ Exam Content Domains (27 Task Statements)
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     CCAR["Claude Certified Architect – Foundations (CCAR-F)<br/>Score: 720 / 1000 | 60 Questions | 120 Mins"]
     

@@ -14,7 +14,6 @@ Each scenario directory below is an end-to-end learning lab containing:
 ## 🧭 The 6 Production Scenarios Directory
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Scenarios["6 CCAR-F Production Scenarios<br/>(4 Randomly Selected on Exam)"]
     

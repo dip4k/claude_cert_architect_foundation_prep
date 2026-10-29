@@ -22,17 +22,24 @@ Understand when and how Claude Code selects and applies built-in developer tools
 
 On the exam, scenarios often ask what happens when `Edit` fails:
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    A["Attempt Edit(old_str, new_str)"] --> B{Edit Status?}
-    B -- Success --> C["Code Updated"]
-    B -- "Multiple matches found" --> D["Read context around target line"]
-    B -- "Target text not found" --> D
-    D --> E["Expand anchor string<br/>to include unique lines"]
+    A["Attempt Edit(old_str, new_str)"] --> B{"Edit Status?"}
+    B -->|"Success"| C["Code Updated"]
+    B -->|"Multiple matches found"| D["Read context around target line"]
+    B -->|"Target text not found"| D
+    D --> E["Expand anchor string<br>to include unique lines"]
     E --> F["Re-attempt Edit with unique context"]
-    F -- Still failing --> G["Fall back to Read + Write<br/>(full file replacement)"]
+    F -->|"Still failing"| G["Fall back to Read + Write<br>(full file replacement)"]
 ```
 
 ### Key Gotcha
 - If `old_str` matches 2+ locations in the target file, `Edit` **fails** to prevent unintended replacements.
 - **Resolution**: Expand the anchor lines above/below to ensure uniqueness, or fallback to `Read` followed by clean `Write`.
+
+---
+
+## 🛠️ Production Code Reference
+- Interactive Workbook: [`ts_2_5_builtin_tools_usage.ipynb`](ts_2_5_builtin_tools_usage.ipynb)
+- Runnable Script: [`main.py`](main.py)
+- Offline Verification: Run via `uv run pytest tests/test_domain2_full.py` in WSL.
+

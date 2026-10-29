@@ -51,7 +51,6 @@ We are architecting an enterprise developer productivity system using Claude Cod
 ### 🧠 Scenario 2 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{Code Generation Focus}
     Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br/>(Explore & require<br/>blueprint approval)"]
@@ -76,7 +75,6 @@ flowchart TD
 Enterprise developers work under multiple layers of policy. When rules conflict, Claude Code enforces strict top-down precedence:
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Enterprise["1. Enterprise Policy<br/>(/etc/claude/CLAUDE.md - Immutable)"]
     User["2. Global User Profile<br/>(~/.claude/CLAUDE.md - Personal)"]

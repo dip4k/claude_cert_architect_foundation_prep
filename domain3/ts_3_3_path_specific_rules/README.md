@@ -8,17 +8,16 @@ Understand how path-scoped rules in `.claude/rules/` are selectively loaded base
 ## 🏗️ Architecture: Rule Precedence & Conditional Injection
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Req["User Prompt Touching Files:<br/>['backend/api.py']"] --> Evaluator["Path Rule Engine"]
+    Req["User Prompt Touching Files:<br>['backend/api.py']"] --> Evaluator["Path Rule Engine"]
     
-    Evaluator --> RuleA[".claude/rules/frontend.md<br/>paths: ['frontend/**']"]
-    Evaluator --> RuleB[".claude/rules/backend.md<br/>paths: ['backend/**']"]
-    Evaluator --> RuleC[".claude/rules/shared.md<br/>(no paths filter)"]
+    Evaluator --> RuleA[".claude/rules/frontend.md<br>paths: ['frontend/**']"]
+    Evaluator --> RuleB[".claude/rules/backend.md<br>paths: ['backend/**']"]
+    Evaluator --> RuleC[".claude/rules/shared.md<br>(no paths filter)"]
     
-    RuleA -- "No match" --> DiscardA["❌ Excluded from Context"]
-    RuleB -- "Match found" --> InjectedB["✅ Injected into Context"]
-    RuleC -- "Global rule" --> InjectedC["✅ Injected into Context"]
+    RuleA -->|"No match"| DiscardA["Excluded from Context"]
+    RuleB -->|"Match found"| InjectedB["Injected into Context"]
+    RuleC -->|"Global rule"| InjectedC["Injected into Context"]
     
     InjectedB --> FinalPrompt["Compact System Context"]
     InjectedC --> FinalPrompt

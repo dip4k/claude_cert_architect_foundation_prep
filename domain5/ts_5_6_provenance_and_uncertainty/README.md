@@ -8,16 +8,15 @@ Understand how to construct structured claim-source mappings, maintain provenanc
 ## 🏗️ Architecture: Conflict Preservation & Provenance Graph
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    SourceA["Source A (Earnings Call, Oct 1)<br/>'Q3 Cloud Revenue: $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
-    SourceB["Source B (10-Q Filing, Oct 15)<br/>'Q3 Cloud Revenue: $1.4B'"] --> Synthesizer
+    SourceA["Source A (Earnings Call, Oct 1)<br>'Q3 Cloud Revenue: $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
+    SourceB["Source B (10-Q Filing, Oct 15)<br>'Q3 Cloud Revenue: $1.4B'"] --> Synthesizer
     
     Synthesizer --> ConflictDetector{"Do Claims Conflict?"}
     
-    ConflictDetector -- "Yes" --> PreserveConflict["Conflict Preservation Protocol"]
+    ConflictDetector -->|"Yes"| PreserveConflict["Conflict Preservation Protocol"]
     
-    PreserveConflict --> Out["Structured Claim Matrix<br/>Disclose both figures with citations<br/>(Never average into synthetic mean)"]
+    PreserveConflict --> Out["Structured Claim Matrix<br>Disclose both figures with citations<br>(Never average into synthetic mean)"]
 ```
 
 ---
@@ -33,3 +32,11 @@ When presented with conflicting numbers from two external reports:
 - Both Trap Options are **incorrect** because they destroy provenance and mislead executive decision-makers.
 - **The Correct Architecture**:
   - Always **preserve both data points**, attach explicit citation metadata (author, date, methodology), and explain the variance (e.g. preliminary vs audited).
+
+---
+
+## 🛠️ Production Code Reference
+- Interactive Workbook: [`ts_5_6_provenance_and_uncertainty.ipynb`](ts_5_6_provenance_and_uncertainty.ipynb)
+- Runnable Script: [`main.py`](main.py)
+- Offline Verification: Run via `uv run pytest tests/test_domain5_full.py` in WSL.
+

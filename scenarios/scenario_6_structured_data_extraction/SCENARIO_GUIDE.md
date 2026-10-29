@@ -52,7 +52,6 @@ We are architecting an enterprise data ingestion and document processing pipelin
 ### 🧠 Scenario 6 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{Extraction Scenario Focus}
     Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br/>(Forced tool_choice,<br/>never regex/text)"]
@@ -177,7 +176,6 @@ Rigid enums force the model to categorize edge-case items into the nearest incor
 When deterministic validation fails, the orchestrator must decide whether to retry or abort:
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     ValidationError["Validation Failure Triggered"] --> FailureType{"Failure Root Cause"}
     

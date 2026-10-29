@@ -118,7 +118,6 @@ Domain 3 represents 20% of the **Claude Certified Architect – Foundations (CCA
 ### 🧠 Domain 3 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br/>Never personal ~/.claude/"]
     Q1 -->|No| Q2["2. Verbose exploration skill?"]

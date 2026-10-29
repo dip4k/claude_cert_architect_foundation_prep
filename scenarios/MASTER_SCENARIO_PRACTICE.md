@@ -37,7 +37,6 @@ On the authentic 60-question CCAR-F certification exam:
 
 ### Decision Tree 1: Operational Mode Selection (Domain 3)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches &ge; 3 files<br/>or core schemas?"}
     
@@ -57,7 +56,6 @@ flowchart TD
 
 ### Decision Tree 2: API Selection: Real-Time vs. Message Batches (Domain 4 & 5)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Workload["Inference Workload"] --> LatencyCheck{"Pre-merge or<br/>developer blocking?"}
     
@@ -72,7 +70,6 @@ flowchart TD
 
 ### Decision Tree 3: Handling Missing Document Attributes (Domain 4 & Scenario 6)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     ExtractDoc["Extracting Field<br/>from Document"] --> FactPresent{"Fact physically<br/>in document?"}
     
@@ -88,7 +85,6 @@ flowchart TD
 
 ### Decision Tree 4: Customer Support Resolution & Gating Flow (Domain 1, 2, 5 & Scenario 1)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     UserTurn["Incoming Customer Turn"] --> DemandHuman{"Explicit human<br/>supervisor demand?"}
     DemandHuman -- "Yes" --> Escalate["Immediate Human Escalation<br/>(Escalate without<br/>diagnostic interrogation)"]
@@ -107,7 +103,6 @@ flowchart TD
 
 ### Decision Tree 5: Multi-Agent Research Coverage & Provenance Flow (Domain 1, 2, 5 & Scenario 3)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Coord["Coordinator Receives<br/>Complex Research Prompt"] --> FanOut["Turn 1: Emit Multiple<br/>Task Calls Concurrently"]
     
@@ -132,7 +127,6 @@ flowchart TD
 
 ### Decision Tree 6: Codebase Discovery & Edit Fallback Flow (Domain 1, 2, 3 & Scenario 4)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Task["Developer Codebase<br/>Exploration Task"] --> KnowPath{"Target file path<br/>known?"}
     

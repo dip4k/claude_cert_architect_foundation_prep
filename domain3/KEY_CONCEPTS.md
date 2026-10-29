@@ -6,7 +6,6 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     subgraph Config["Configuration & Extensions"]
         direction TB
@@ -42,7 +41,6 @@ flowchart LR
 Claude Code enforces a strict, hierarchical inheritance model when loading configuration instructions:
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     L1["1. User Scope: ~/.claude/CLAUDE.md<br/>(Personal defaults, unversioned)"]
     L2["2. Project Scope: .claude/CLAUDE.md<br/>(Team standards, in git)"]
@@ -266,7 +264,6 @@ Using `--output-format json` with `--json-schema` guarantees that Claude's revie
 Downstream CI steps can parse this JSON with `jq` to post automated PR comments or block merging if `findings` contains `HIGH` or `CRITICAL` severity issues.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Event["CI Trigger (PR Event)"] --> Sandbox["Ephemeral Container Sandbox"]
     Sandbox --> Exec["Run claude -p<br/>--dangerously-skip-permissions<br/>(--output-format json)"]
@@ -546,7 +543,6 @@ Option B is correct. In TS 3.5 (Iterative Refinement), a core architectural rule
 ### 🧠 Domain 3 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br/>Never personal ~/.claude/"]
     Q1 -->|No| Q2["2. Verbose exploration skill?"]

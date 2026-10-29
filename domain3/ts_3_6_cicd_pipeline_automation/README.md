@@ -8,20 +8,19 @@ Understand how to integrate Claude Code into automated CI/CD pipelines using non
 ## 🏗️ Architecture: Non-Interactive CI Runner
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Trigger["CI Trigger<br/>(GitHub / GitLab PR)"] --> Runner["Ephemeral CI Runner<br/>Environment"]
+    Trigger["CI Trigger<br>(GitHub / GitLab PR)"] --> Runner["Ephemeral CI Runner<br>Environment"]
     
-    Runner --> Command["claude -p 'Review PR changes'<br/>--output-format json<br/>--json-schema review.json<br/>--max-tokens 4000"]
+    Runner --> Command["claude -p 'Review PR changes'<br>--output-format json<br>--json-schema review.json<br>--max-tokens 4000"]
     
-    Command --> Exec["Headless Claude Code<br/>Execution"]
+    Command --> Exec["Headless Claude Code<br>Execution"]
     Exec --> JSONOutput["Structured JSON Artifact"]
     
     JSONOutput --> Parser["CI Pipeline Gatekeeper"]
     Parser --> Eval{"Security Violations?"}
     
-    Eval -- "Yes (High / Critical)" --> PRBlock["Post PR Review Comments<br/>Exit Code 1 (Fail Pipeline)"]
-    Eval -- "No (Approved)" --> PRPass["Post Approval Comment<br/>Exit Code 0 (Pass Pipeline)"]
+    Eval -->|"Yes: High/Critical"| PRBlock["Post PR Review Comments<br>Exit Code 1 (Fail Pipeline)"]
+    Eval -->|"No: Approved"| PRPass["Post Approval Comment<br>Exit Code 0 (Pass Pipeline)"]
 ```
 
 ---

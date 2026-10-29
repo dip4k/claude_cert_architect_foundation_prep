@@ -8,33 +8,32 @@ Understand how to eliminate author bias through independent Claude review instan
 ## 🏗️ Architecture: Multi-Instance Two-Pass Review Pipeline
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Generator["Agent 1:<br/>Code Generator Instance"] --> Codebase["Generated Code Artifacts<br/>(auth.py, client.py)"]
+    Generator["Agent 1:<br>Code Generator Instance"] --> Codebase["Generated Code Artifacts<br>(auth.py, client.py)"]
     
     subgraph Pass1["Pass 1: File-Level Reviewers (Isolated)"]
-        ReviewerA["Claude Instance A<br/>(Reviews auth.py)"]
-        ReviewerB["Claude Instance B<br/>(Reviews client.py)"]
+        ReviewerA["Claude Instance A<br>(Reviews auth.py)"]
+        ReviewerB["Claude Instance B<br>(Reviews client.py)"]
     end
     
     Codebase --> ReviewerA
     Codebase --> ReviewerB
     
-    ReviewerA --> FileFindingsA["Local Issues:<br/>Off-by-one, typing, edge cases"]
-    ReviewerB --> FileFindingsB["Local Issues:<br/>Error handling, logging"]
+    ReviewerA --> FileFindingsA["Local Issues:<br>Off-by-one, typing, edge cases"]
+    ReviewerB --> FileFindingsB["Local Issues:<br>Error handling, logging"]
     
     subgraph Pass2["Pass 2: System Architecture Reviewer"]
-        CrossReviewer["Claude Instance C<br/>(Cross-File Integration)<br/>Reviews interactions & API contracts"]
+        CrossReviewer["Claude Instance C<br>(Cross-File Integration)<br>Reviews interactions & API contracts"]
     end
     
     Codebase --> CrossReviewer
-    CrossReviewer --> ContractFindings["Contract Mismatches:<br/>Token expiration mismatch,<br/>parameter name discrepancies"]
+    CrossReviewer --> ContractFindings["Contract Mismatches:<br>Token expiration mismatch,<br>parameter name discrepancies"]
     
     FileFindingsA --> Aggregator["Synthesis Aggregator"]
     FileFindingsB --> Aggregator
     ContractFindings --> Aggregator
     
-    Aggregator --> FinalAudit["Consolidated, Deduplicated<br/>Audit Report"]
+    Aggregator --> FinalAudit["Consolidated, Deduplicated<br>Audit Report"]
 ```
 
 ---
@@ -45,3 +44,11 @@ flowchart TD
 |---|---|
 | **Author Self-Review**: The same agent generates code and then in the same prompt is asked "Now check if there are bugs in your code". (Symptom: confirmation bias). | **Independent Fresh Instances**: Spawn fresh review instances with zero generation memory. |
 | **Monolithic Single Pass**: Reviewing a 20-file PR in a single prompt. (Symptom: misses both local syntax bugs and cross-module interface drifts). | **Two-Pass Architecture**: Pass 1 reviews individual files for micro-correctness; Pass 2 reviews cross-file contracts. |
+
+---
+
+## 🛠️ Production Code Reference
+- Interactive Workbook: [`ts_4_6_multi_pass_review.ipynb`](ts_4_6_multi_pass_review.ipynb)
+- Runnable Script: [`main.py`](main.py)
+- Offline Verification: Run via `uv run pytest tests/test_domain4_full.py` in WSL.
+

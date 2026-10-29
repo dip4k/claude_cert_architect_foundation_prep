@@ -8,20 +8,19 @@ Understand how to apply the Interview Pattern to resolve underspecified requirem
 ## 🏗️ Architecture: The Interview Gatekeeper Pattern
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    UserReq["User Prompt:<br/>'Build an authentication service'"] --> Analyzer["Ambiguity & Scope Analyzer"]
+    UserReq["User Prompt:<br>'Build an authentication service'"] --> Analyzer["Ambiguity & Scope Analyzer"]
     
     Analyzer --> AmbiguityCheck{"Scope Underspecified?"}
     
-    AmbiguityCheck -- "Yes: Score &gt; 0.4" --> Interview["Interview Mode Activated"]
-    Interview --> Ask["Clarifying Questions (2-3 Options)<br/>Auth Type, DB & Session Model"]
+    AmbiguityCheck -->|"Yes: High Ambiguity"| Interview["Interview Mode Activated"]
+    Interview --> Ask["Clarifying Questions (2-3 Options)<br>Auth Type, DB & Session Model"]
     Ask --> UserFeedback["User Selects Exact Architecture"]
     
-    UserFeedback --> ConcreteIO["Provide 2-3 Concrete<br/>Input/Output Examples"]
-    AmbiguityCheck -- "No: Specified" --> ConcreteIO
+    UserFeedback --> ConcreteIO["Provide 2-3 Concrete<br>Input/Output Examples"]
+    AmbiguityCheck -->|"No: Specified"| ConcreteIO
     
-    ConcreteIO --> TestCases["Generate Test Suite<br/>First (TDD)"]
+    ConcreteIO --> TestCases["Generate Test Suite<br>First (TDD)"]
     TestCases --> CodeGen["Implement Targeted Solution"]
     CodeGen --> Verification["Run Offline Test Assertions"]
     Verification --> Success["Refinement Complete"]

@@ -8,20 +8,19 @@ Understand how to define, configure, and isolate custom slash commands and skill
 ## 🏗️ Architecture: Commands vs Skills
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     User["Developer Prompt / UI"] --> Choice{"Command or Skill?"}
     
-    Choice -- "/custom-command args" --> Cmd[".claude/commands/command.md"]
-    Cmd --> Inline["Inline Prompt Expansion<br/>($ARGUMENTS)"]
+    Choice -->|"/custom-command args"| Cmd[".claude/commands/command.md"]
+    Cmd --> Inline["Inline Prompt Expansion<br>($ARGUMENTS)"]
     Inline --> MainCtx["Main Conversation Context"]
     
-    Choice -- "Skill Invocation" --> Skill[".claude/skills/name/SKILL.md"]
+    Choice -->|"Skill Invocation"| Skill[".claude/skills/name/SKILL.md"]
     Skill --> ForkCheck{"context: fork ?"}
-    ForkCheck -- Yes --> Sub["Sub-Agent Session<br/>(Isolated)"]
+    ForkCheck -->|"Yes"| Sub["Sub-Agent Session<br>(Isolated)"]
     Sub --> CleanResult["Clean Result Synthesized Back"]
     CleanResult --> MainCtx
-    ForkCheck -- No --> MainCtx
+    ForkCheck -->|"No"| MainCtx
 ```
 
 ---
