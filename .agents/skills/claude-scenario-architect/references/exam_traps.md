@@ -1,6 +1,6 @@
-# The 5 Critical Exam Traps & Anti-Patterns
+# The Critical Exam Traps & Anti-Patterns
 
-When reviewing architectural alternatives on the CCAR-F exam or in technical interviews, look out for these 5 common anti-pattern traps:
+When reviewing architectural alternatives on the CCAR-F exam or in technical interviews, look out for these 7 common anti-pattern traps:
 
 ### 1. The Batch API CI Trap
 - **The Trap**: Proposing Anthropic's Message Batches API for pre-merge pull request gating to save 50% on cost.
@@ -26,3 +26,13 @@ When reviewing architectural alternatives on the CCAR-F exam or in technical int
 - **The Trap**: Assuming a 98% overall extraction accuracy score means manual verification can be skipped.
 - **Why It Fails**: Aggregate accuracy can conceal severe failures in low-frequency segments (e.g., 99% accuracy on common invoices, but 40% failure on rare handwritten receipts).
 - **The Architect Solution**: Implement stratified random sampling (auditing 5–10% of high-confidence predictions across all document segments) to detect silent model drift and category-specific failures.
+
+### 6. The Temperature with Extended Thinking Trap
+- **The Trap**: Passing `temperature: 0.0` or custom sampling parameters alongside Extended Thinking (`thinking={"type": "enabled", "budget_tokens": ...}`) in Claude 4.5.
+- **Why It Fails**: The Anthropic API strictly prohibits sampling parameters (`temperature`, `top_p`, `top_k`) when thinking is enabled; passing them throws an immediate HTTP `400 Bad Request` error.
+- **The Architect Solution**: Omit `temperature` entirely when thinking is enabled. Adjust reasoning depth exclusively via `budget_tokens`.
+
+### 7. The Thinking Block Stripping Trap
+- **The Trap**: Stripping assistant `thinking` blocks from conversation history before sending `tool_result` to "conserve context tokens".
+- **Why It Fails**: The Anthropic API requires assistant thinking blocks (and their cryptographic signatures) to be echoed back verbatim in subsequent turns. Omitting or modifying them invalidates the conversation trail and raises an HTTP `400 Bad Request` error.
+- **The Architect Solution**: Always append the full assistant response content (`model_dump()`) containing both `thinking` and `tool_use` blocks into history.

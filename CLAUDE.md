@@ -11,85 +11,49 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ Safe to automate: `pytest tests/`, `black lib/ tests/`, `flake8`, `mypy` (offline tools)
 - ✅ Users run API examples manually in WSL Ubuntu terminal
 
-**Why:** Scripts can make multiple API calls per execution. Unmonitored automated runs exhaust token budgets quickly.
-
 See [EXECUTION_POLICY.md](EXECUTION_POLICY.md) and [RUNNING_WITH_UV.md](RUNNING_WITH_UV.md) for detailed guidance.
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture & Model Standards
 
-**Language:** Python 3.10+ | **Package Manager:** uv | **Test Framework:** pytest
+**Language:** Python 3.10+ | **Package Manager:** uv | **Test Framework:** pytest  
+**Models:** Claude 4.5 family (`claude-sonnet-4-5`, `claude-haiku-4-5`)
+
+### Extended Thinking & Sampling Rule
+- When `thinking={"type": "enabled", "budget_tokens": ...}` is enabled, **omit `temperature` entirely** (avoids HTTP 400 Bad Request error).
+- In multi-turn agent loops: **never strip assistant `thinking` blocks** from conversation history; return them verbatim with signatures.
+
+### Context Preservation & Tiering (Domain 5 & 3)
+- Keep `CLAUDE.md` **under 200 lines**. Put universal constants here; tier procedural workflows into skills.
+- Maintain persistent immutable "Case Facts" block outside summarized history.
+- Trim raw tool outputs via `PostToolUse` before appending to conversation context.
 
 ### Core Libraries (in `lib/`)
-
-1. **`sdk_parser_py/`** — Generic parser for Claude API/SDK responses
-   - Zero dependencies, production-ready
-   - Type-safe with Python dataclasses
-   - Extract text, tool calls, token usage from responses
-   - See: [lib/sdk_parser_py/USAGE.md](lib/sdk_parser_py/USAGE.md)
-
-2. **`response_logger/`** — Audit trail for agentic loops
-   - Log API requests/responses to JSONL for offline replay
-   - Track latency, tool calls, session lifecycle
-   - No API calls needed for replay
-   - See: [lib/response_logger/README.md](lib/response_logger/README.md)
-
-### Examples & Practice
-
-- **`1_stop_reason/main.py`** — Agent with Pokemon lookup + fortune tools (makes API calls)
-- **`1_hello-sdk/agent.py`** — Basic SDK usage example (makes API calls)
-- **`lib/sdk_parser_py/examples.py`** — SDK parser examples with simulated data (no API calls)
-- **`hello-world/`** — Tool use tutorial examples
-
-### Certification Practice (`domainN/`)
-
-Hands-on exercises for the **Claude Certified Architect – Foundations** exam
-(`Claude_Certified_Architect_-_Foundations_-_Exam_Guide.pdf`), organized by exam content domain
-and task statement:
-
-```
-domain{N}/ts_{N}_{M}_<short-name>/main.py
-```
-
-- `N` = domain number (1–5), `M` = task statement number within that domain
-- Example: `domain1/ts_1_1_multi_tool_agent_loop/main.py` → Domain 1, Task Statement 1.1
-
-Exam domains:
-1. **Agentic Architecture & Orchestration** (27%) — agentic loops, subagents, hooks, task decomposition, session state
-2. **Tool Design & MCP Integration** (18%) — tool interfaces, MCP error handling, tool distribution, built-in tools
-3. **Claude Code Configuration & Workflows** (20%) — CLAUDE.md hierarchy, slash commands/skills, plan mode, CI/CD
-4. **Prompt Engineering & Structured Output** (20%) — precision prompting, few-shot, JSON schemas, batch processing
-5. **Context Management & Reliability** (15%) — context preservation, escalation patterns, error propagation, provenance
-
-Every practice script:
-- Uses `lib/sdk_parser_py` to parse Claude responses (`create_parser().parse(response.model_dump())`)
-- Uses `lib/response_logger` (`ResponseTrail`, `get_agent_trail_path`, `replay_trail`) for a full JSONL audit trail of each run
-- Makes live API calls → **subject to the Manual Execution Only constraint above**
-
-### Tests, Offline Simulation & Quality
-
-- **`tests/`** — 100% offline pytest unit tests for parsers, loggers, and domain exercises (zero API tokens used)
-- **`lib/mock_claude/`** — Offline mock client (`MockClaudeClient`, `MockMessageResponse`) for simulated agentic loops
-- **pyproject.toml** — Dependencies: `anthropic`, `python-dotenv` (plus dev tools)
-- **`.python-version`** — Python 3.11 (minimum 3.10)
+1. **`sdk_parser_py/`** — Generic parser for Claude API/SDK responses (Zero dependencies, type-safe dataclasses).
+2. **`response_logger/`** — Audit trail logging API requests/responses to JSONL for offline replay.
+3. **`mock_claude/`** — Offline mock client (`MockClaudeClient`, `MockMessageResponse`) for simulated agentic loops.
 
 ### Claude Code Customizations (Domain 3 in Action)
-
 - **Skills (`.claude/skills/`)**:
   - `architect-eval` — Code review against exam criteria (`context: fork`, restricted read tools)
   - `scaffold-exercise` — Scaffolder for new domain task statement exercises
-- **Slash Commands (`.claude/commands/`)**:
-  - `/practice <domain> <ts>` — Launch scenario practice
-  - `/review [path]` — Architecture & code review
-  - `/audit` — Run offline pytest, formatters, and type checkers
+- **Slash Commands (`.claude/commands/`)**: `/practice`, `/review`, `/audit`
 - **Path Rules (`.claude/rules/`)**:
-  - `domain_exercises.md` — Enforces parser, logger, and deterministic loop conventions on `domain*/**`
+  - `domain_exercises.md` — Enforces parser, logger, loop conventions, and thinking parameters on `domain*/**`
   - `mcp_tools.md` — Enforces `isError` structured schemas on `**/tools/**`, `**/mcp*/**`
   - `python_quality.md` — Enforces typing, PEP 8, and black standards on `**/*.py`
-- **MCP Server Config**: `.mcp.json` with environment variable expansion (`${ANTHROPIC_API_KEY}`)
-- **Master Blueprint**: `EXAM_BLUEPRINT.md` and `PROGRESS.md`
+  - `mermaid_standards.md` — Enforces October 2026 GitHub Mermaid rendering standards on `**/*.md`, `**/*.ipynb`
 
+---
+
+## 📊 GitHub Mermaid Architecture Standards (October 2026)
+
+All Mermaid diagrams across documentation and notebooks must follow these rules:
+- **Quoted Node Labels**: Wrap labels with punctuation, colons, or spaces in double quotes: `Node["Clean Label"]`.
+- **Explicit Flow Direction**: Always declare `flowchart TD` or `flowchart LR`.
+- **No Raw HTML Tags**: Never use `<b>` or `</b>` inside node labels. Use `<br>` inside double quotes for line breaks.
+- **No Init Directives**: Never include `%%{init: ...}%%` blocks.
 
 ---
 
@@ -97,7 +61,6 @@ Every practice script:
 
 ```bash
 # Setup (one-time)
-# From repository root:
 cp .env.example .env          # Edit with your ANTHROPIC_API_KEY
 uv sync                       # Install dependencies
 
@@ -116,81 +79,20 @@ uv run 1_hello-sdk/agent.py               # Makes API calls - manual run only!
 
 ---
 
-## 📝 Development Workflow
-
-### Add a New Test
-```bash
-# Create test in tests/test_*.py
-# Use pytest patterns, import from lib.sdk_parser_py or lib.response_logger
-# Run: uv run pytest tests/test_yourname.py -v
-```
-
-### Create a Practice Project
-```bash
-mkdir practice/my-project
-cat > practice/my-project/main.py << 'EOF'
-from lib.sdk_parser_py import create_parser
-from lib.response_logger import ResponseTrail
-
-def main():
-    # Your code here
-    pass
-
-if __name__ == "__main__":
-    main()
-EOF
-
-# Run manually if it makes API calls
-# Run via agents if it doesn't
-```
-
-### Import SDK Parser
-```python
-from lib.sdk_parser_py import create_parser, format_token_usage
-from lib.response_logger import ResponseTrail, replay_trail
-```
-
----
-
-## 📚 Key Documentation
-
-**For detailed setup:** [PYTHON_SETUP.md](PYTHON_SETUP.md)  
-**For execution policy:** [EXECUTION_POLICY.md](EXECUTION_POLICY.md)  
-**For import/path issues:** [RUNNING_WITH_UV.md](RUNNING_WITH_UV.md)  
-**SDK Parser deep dive:** [lib/sdk_parser_py/README.md](lib/sdk_parser_py/README.md)  
-**Response Logger guide:** [lib/response_logger/README.md](lib/response_logger/README.md)
-
----
-
-## ✅ Code Standards
-
-- **Style:** Black (100 char lines), PEP 8
-- **Types:** Full type hints on all functions (mypy checks)
-- **Docs:** Module & function docstrings
-- **Imports:** Module exports via `__init__.py` (use `/select:Read,Edit,Grep` for imports)
-- **Tests:** pytest in `tests/` directory
-- **Deps:** Zero external deps for core parsers
-
----
-
 ## 🔍 Quick Answers
 
-**Q: Where is the SDK parser?**  
-A: `lib/sdk_parser_py/` — use `from lib.sdk_parser_py import create_parser`
+**Q: Can I run scripts that make Claude API calls automatically?**  
+A: No. Scripts that call `client.messages.create()` must be run manually by the user in WSL Ubuntu terminal.
 
-**Q: How do I log API calls for offline replay?**  
-A: `from lib.response_logger import ResponseTrail` — see [lib/response_logger/README.md](lib/response_logger/README.md)
+**Q: How do I handle temperature with Extended Thinking?**  
+A: Omit `temperature` completely. The API rejects requests containing custom temperature when thinking is enabled.
 
-**Q: Can I run stop_reason/main.py automatically?**  
-A: No. It makes API calls. User must run manually in WSL Ubuntu terminal. See [EXECUTION_POLICY.md](EXECUTION_POLICY.md).
+**Q: Can I remove thinking blocks from conversation history?**  
+A: No. Assistant thinking blocks must be preserved verbatim with signatures in subsequent turns to prevent 400 Bad Request errors.
 
 **Q: How do I run tests?**  
 A: `uv run pytest tests/` from repo root. Safe to automate.
 
-**Q: What's in 1_stop_reason/ vs stop_reason/?**  
-A: `1_stop_reason/` is the current version. Old `stop_reason/` was deleted but still referenced in git history.
-
 ---
 
-**Last Updated:** September 2026  
-**Status:** Active Learning Repository
+**Last Updated:** October 2026 | **Line Count:** < 140 lines | **Status:** Active Learning Repository

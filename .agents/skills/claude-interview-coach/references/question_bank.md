@@ -71,3 +71,28 @@ Use these sample questions during Mode 1 Mock Exam drills. Each question has a s
 
 **Correct Answer**: **B**  
 **Rationale**: Summarization compresses text and frequently discards or mutates exact transactional tokens (order numbers, zip codes, timestamps). Maintaining a persistent, structured "Case Facts" layer ensures critical state survives compactions with 100% fidelity without blowing up context window limits.
+
+---
+
+### Question 6: Extended Thinking & Parameter Conflicts (Domain 1 / TS 1.1 & Claude 4.5)
+**Scenario**: A developer deploys an agentic multi-tool loop using Claude Sonnet 4.5. To make output deterministic and encourage deep reasoning on complex architectural refactoring tasks, the developer configures:
+```python
+client.messages.create(
+    model="claude-sonnet-4-5",
+    max_tokens=4096,
+    temperature=0.0,
+    thinking={"type": "enabled", "budget_tokens": 2048},
+    messages=messages,
+    tools=tools,
+)
+```
+Upon execution, every API call fails immediately with an HTTP `400 Bad Request` error.
+
+**Question**: What is the root cause of this error and how should the architect remediate it?
+- **A)** The `budget_tokens` must be set to 4096 to match `max_tokens`.
+- **B)** The Anthropic API strictly disallows sampling parameters (`temperature`, `top_p`, `top_k`) when Extended Thinking is active; remove `temperature=0.0` from the request.
+- **C)** `claude-sonnet-4-5` does not support tools when thinking is enabled; disable tool calling.
+- **D)** Extended Thinking requires streaming to be enabled via `stream=True`.
+
+**Correct Answer**: **B**  
+**Rationale**: Anthropic's Messages API enforces that when thinking is enabled, sampling parameters like `temperature` cannot be modified (passing custom temperature causes a `400 Bad Request` error). Reasoning variability and depth are managed exclusively via `budget_tokens`, and `max_tokens` must be strictly greater than `budget_tokens`.
