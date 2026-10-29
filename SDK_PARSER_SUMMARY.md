@@ -308,7 +308,7 @@ result = parser.parse({
     'type': 'message',
     'role': 'assistant',
     'content': [{'type': 'text', 'text': 'Hello'}],
-    'model': 'claude-3-5-sonnet-20241022',
+    'model': 'claude-sonnet-4-5',
     'stop_reason': 'end_turn',
     'usage': {'input_tokens': 10, 'output_tokens': 20}
 })

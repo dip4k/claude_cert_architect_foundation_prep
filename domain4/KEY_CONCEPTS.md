@@ -223,7 +223,7 @@ Every request in a batch must include a unique, deterministic `custom_id`:
 {
   "custom_id": "audit-repo-auth-service-file-auth_py-commit-a4f1",
   "params": {
-    "model": "claude-3-7-sonnet-20250219",
+    "model": "claude-sonnet-4-5",
     "max_tokens": 2048,
     "messages": [{"role": "user", "content": "..."}]
   }

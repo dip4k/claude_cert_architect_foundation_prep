@@ -98,8 +98,8 @@ When a tool fails (e.g. database connection dropped, API 404, validation error),
 - Return a `tool_result` block with `is_error=True` and a clear, descriptive JSON payload explaining what failed.
 - This allows Claude to inspect the error, adjust parameters, try an alternative tool, or explain the limitation to the user gracefully.
 
-#### 6. Claude 3.7 Sonnet Extended Thinking (`thinking` blocks) in the Loop
-In Claude 3.7 Sonnet, when extended thinking is enabled via `thinking={"type": "enabled", "budget_tokens": N}`:
+#### 6. Claude 4.5 Sonnet Extended Thinking (`thinking` blocks) in the Loop
+In Claude 4.5 Sonnet, when extended thinking is enabled via `thinking={"type": "enabled", "budget_tokens": N}`:
 - `response.content` contains one or more `ThinkingBlock` elements (`type: "thinking"`, `thinking: "..."`, `signature: "..."`).
 - **Critical History Preservation Rule**: When appending the assistant's turn back to `messages` for subsequent tool execution turns, **the `thinking` block must be preserved verbatim in the assistant message content**. Stripping or modifying thinking blocks causes the Anthropic API to return an `invalid_request_error` (HTTP 400).
 - **Budgeting vs. Max Tokens**: `budget_tokens` specifies the target thinking budget, but thinking tokens **count directly against `max_tokens`**. If `max_tokens: 4096` and `budget_tokens: 4000`, the model has only 96 tokens remaining to emit tool calls, frequently causing premature truncation (`stop_reason == "max_tokens"`). Always set `max_tokens` substantially higher than `budget_tokens` (e.g. `max_tokens: 8192` with `budget_tokens: 4000`).
@@ -458,7 +458,7 @@ For investigations where the path is unknown in advance (e.g. root cause analysi
 
 Looking at the orchestration loop code:
 ```python
-response = client.messages.create(model="claude-3-7-sonnet-20250219", messages=messages, tools=tools)
+response = client.messages.create(model="claude-sonnet-4-5", messages=messages, tools=tools)
 if "All migration tasks complete" in response.content[0].text:
     return "SUCCESS"
 elif response.stop_reason == "tool_use":
@@ -490,7 +490,7 @@ How should the architect refactor the coordinator's invocation pattern to minimi
 - **A)** Combine all subagent instructions into a single monolithic prompt executed by the coordinator itself without subagents.
 - **B)** Have the coordinator emit 4 separate `Task` tool use blocks within a single response message, enabling the runtime to execute the subagents concurrently.
 - **C)** Enable shared memory caching between subagents so subsequent subagents read intermediate results directly from memory.
-- **D)** Switch the model from Claude 3.7 Sonnet to Claude 3.5 Haiku for the coordinator to make sequential calls faster.
+- **D)** Switch the model from Claude 4.5 Sonnet to Claude 4.5 Haiku for the coordinator to make sequential calls faster.
 
 **Correct Answer**: **B**  
 **Architectural Rationale**:  
@@ -553,7 +553,7 @@ What is the primary risk of this approach, and what is the recommended architect
 
 - **A)** Risk: Claude Code will throw a fatal `SessionCorruptedError` on resumed sessions after branch switches. Remedy: Delete `~/.claude/` cache.
 - **B)** Risk: Claude will reason over stale tool outputs and outdated file representations cached in the 65-turn context, leading to hallucinated edits. Remedy: Extract a structured state summary, terminate the session, and start a fresh session with the summary injected.
-- **C)** Risk: The resumed session will incur double billing for all past tokens. Remedy: Switch to Claude 3.5 Haiku.
+- **C)** Risk: The resumed session will incur double billing for all past tokens. Remedy: Switch to Claude 4.5 Haiku.
 - **D)** Risk: Branch switching invalidates API tokens. Remedy: Re-authenticate with `claude login`.
 
 **Correct Answer**: **B**  

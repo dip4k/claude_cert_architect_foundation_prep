@@ -98,6 +98,26 @@ Large language models exhibit a **U-shaped attention curve** over extensive cont
 
 ---
 
+#### 5. Prompt Caching Architecture & Cost/Latency Optimization
+Prompt caching enables large, static prompt prefixes (such as expansive tool catalogs, policy handbooks, and standard few-shot libraries) to be cached on Anthropic servers:
+- **Prefix Matching Invariant**: Caching relies on deterministic character-for-character prefix matching. Prompts must be ordered strictly from static to dynamic:
+  1. `tools` (static schema definitions)
+  2. `system` (static system instructions and role boundaries)
+  3. `messages` (dynamic multi-turn history)
+- **The Single-Character Invalidation Rule**: If even a single whitespace character, timestamp, or dynamic user identifier changes before a cache breakpoint, the entire cache block is invalidated and billed as an uncached write.
+- **Minimum Eligibility Thresholds**:
+  - `claude-sonnet-4-5` / `claude-opus-4-5`: **1,024 tokens minimum** prefix length.
+  - `claude-haiku-4-5`: **2,048 tokens minimum** prefix length.
+  - If content preceding the breakpoint is below this threshold, `cache_control` is ignored and charged as standard input tokens.
+- **Breakpoint Limits**: Up to **4 explicit cache breakpoints** (`cache_control: {"type": "ephemeral"}`) per API request.
+- **Economic & Latency Benefits**:
+  - **Cache Write**: $1.25\times$ base input rate.
+  - **Cache Read**: $0.10\times$ base input rate (**90% discount**).
+  - **Latency Reduction**: Time-to-first-token (TTFT) drops by up to 80% on large cached prompts.
+  - **TTL**: 5-minute rolling retention; every read resets the 5-minute timer.
+
+---
+
 ### TS 5.2: Design Effective Escalation and Ambiguity Resolution Patterns
 
 #### 1. Immediate Escalation on Customer Demand

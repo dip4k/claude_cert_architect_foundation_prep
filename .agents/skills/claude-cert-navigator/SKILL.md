@@ -23,6 +23,6 @@ description: Navigate the CCAR-F syllabus, domain weightings (Domains 1-5), and 
 ---
 
 ## 📚 Syllabus & Scenario References
-- **Detailed Task Statements Matrix**: See [EXAM_BLUEPRINT.md](EXAM_BLUEPRINT.md) for 1:1 dedicated practice mappings.
-- **6 Production Scenarios Blueprint**: See [`claude-scenario-architect`](.agents/skills/claude-scenario-architect/SKILL.md) and [scenarios/README.md](scenarios/README.md).
-- **Interactive Practice & Quizzing**: Activate [`claude-interview-coach`](.agents/skills/claude-interview-coach/SKILL.md).
+- **Detailed Task Statements Matrix**: See [EXAM_BLUEPRINT.md](../../../EXAM_BLUEPRINT.md) for 1:1 dedicated practice mappings.
+- **6 Production Scenarios Blueprint**: See [`claude-scenario-architect`](../claude-scenario-architect/SKILL.md) and [scenarios/README.md](../../../scenarios/README.md).
+- **Interactive Practice & Quizzing**: Activate [`claude-interview-coach`](../claude-interview-coach/SKILL.md).

@@ -152,7 +152,7 @@ By default, Claude 3.5 and 3.7 may emit multiple tool calls in a single turn if 
 - **The Solution**: Configure `disable_parallel_tool_use: true` within `tool_choice`:
   ```python
   response = client.messages.create(
-      model="claude-3-7-sonnet-20250219",
+      model="claude-sonnet-4-5",
       messages=messages,
       tools=tools,
       tool_choice={
@@ -405,7 +405,7 @@ Option B is correct. In Claude Code and agent architectures, the `Edit` tool req
 - `provision_vpc_subnet(cidr_block: str) -> dict` (returns `{"subnet_id": "sub-99120", "status": "AVAILABLE"}`)
 - `deploy_database_cluster(subnet_id: str, instance_type: str) -> dict` (requires a valid, active `subnet_id`)
 
-During end-to-end testing with Claude 3.7 Sonnet using default `tool_choice: {"type": "auto"}`, Claude attempts to optimize execution by emitting calls to both `provision_vpc_subnet` and `deploy_database_cluster` concurrently in Turn 1, passing a fabricated placeholder `subnet_id: "sub-placeholder-01"` to the cluster tool. The cluster API rejects the request with an invalid subnet ID error.
+During end-to-end testing with Claude 4.5 Sonnet using default `tool_choice: {"type": "auto"}`, Claude attempts to optimize execution by emitting calls to both `provision_vpc_subnet` and `deploy_database_cluster` concurrently in Turn 1, passing a fabricated placeholder `subnet_id: "sub-placeholder-01"` to the cluster tool. The cluster API rejects the request with an invalid subnet ID error.
 
 Which architectural change deterministically prevents this parallel race condition while preserving autonomous tool execution?
 

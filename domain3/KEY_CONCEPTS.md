@@ -347,7 +347,7 @@ Option B is correct. By default, Claude Code runs as an interactive terminal CLI
 
 How should the skill definition in `.claude/skills/license-audit/SKILL.md` be modified to prevent this context window pollution?
 
-- **A)** Add `model: claude-3-5-haiku` to the frontmatter so the skill runs cheaper.
+- **A)** Add `model: claude-haiku-4-5` to the frontmatter so the skill runs cheaper.
 - **B)** Add `context: fork` to the YAML frontmatter so the skill executes in an isolated subagent conversation and returns only a concise summary to the main session.
 - **C)** Delete the skill and instruct developers to run `npm audit` directly in bash.
 - **D)** Increase the project `CLAUDE.md` token limit configuration to 500,000 tokens.
@@ -413,7 +413,7 @@ Later, a human security audit discovers a critical state-parameter CSRF vulnerab
 
 What architectural flaw explains why Claude missed this vulnerability, and how should it be corrected?
 
-- **A)** Claude 3.7 Sonnet lacks training data on RFC 6749; upgrade to Claude 4.
+- **A)** Claude 4.5 Sonnet lacks training data on RFC 6749; upgrade to Claude 4.
 - **B)** Self-Review Bias: The session context contains all of Claude's prior generation reasoning and design justifications, blinding it to its own assumptions. Remedy: Conduct security reviews in a separate, independent Claude session with a clean context window.
 - **C)** The temperature was set to 0.7; it should be set to 1.0 for creative vulnerability discovery.
 - **D)** Claude Code does not support security auditing; security checks must only be performed by static analysis tools.

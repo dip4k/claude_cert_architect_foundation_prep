@@ -178,7 +178,7 @@ def test_basic_parsing():
         "type": "message",
         "role": "assistant",
         "content": [{"type": "text", "text": "Hello World"}],
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-sonnet-4-5",
         "stop_reason": "end_turn",
         "usage": {"input_tokens": 10, "output_tokens": 20},
     }
@@ -204,7 +204,7 @@ def test_tool_use_parsing():
                 "input": {"query": "test"},
             },
         ],
-        "model": "claude-3-5-sonnet-20241022",
+        "model": "claude-sonnet-4-5",
         "stop_reason": "tool_use",
         "usage": {"input_tokens": 50, "output_tokens": 100},
     }
