@@ -120,6 +120,29 @@ flowchart TD
     Q5 -->|"No"| A6["High aggregate accuracy?<br>Check segments and sample (5.5)"]
 ```
 
+## Domain 5 Golden Rules
+
+1. **Exact facts live outside the summary (TS 5.1)**:  
+   Progressive summarisation turns "$142.50 on 12 March" into "a recent charge". Keep a persistent **case facts** block (ids, amounts, dates, stated expectations) in every prompt, outside summarised history. Pass the complete history rather than a lossy recap.
+2. **Trim before it enters context (TS 5.1)**:  
+   Reduce a 40+ field tool result to the few fields needed (a `PostToolUse` step). Put key findings first and use section headers to counter "lost in the middle". Subagents return structured data (facts, citations, dates), not reasoning chains.
+3. **Escalate on explicit criteria, not proxies (TS 5.2)**:  
+   Escalate at once when the customer asks for a human, on a policy gap, or when no progress is possible. Frustration alone means acknowledge and offer a fix if within capability. Sentiment and self-reported confidence are poorly calibrated, so write explicit criteria with few-shot examples.
+4. **Ambiguity means ask, never guess (TS 5.2)**:  
+   If a lookup returns several matches, ask for another identifier (email, order number). Picking by heuristic risks acting on the wrong account.
+5. **Failure is not an empty result (TS 5.3)**:  
+   Return the failure type, the attempted query, partial results and alternatives. A timeout reported as "no results" hides a coverage gap. Recover transient errors locally and propagate only what is unresolved.
+6. **Degrade gracefully and say so (TS 5.3)**:  
+   One failed source must not abort the workflow. Continue with what succeeded and attach **coverage annotations** (which areas are well supported, which are missing and why) to the final output.
+7. **Use external memory for long work (TS 5.4)**:  
+   Reminding the model does not restore lost detail. Write findings to **scratchpad** files, push verbose exploration into subagents, summarise per phase, and use `/compact` when needed. For crash recovery, export per-agent state and load a coordinator **manifest** on resume instead of rerunning everything.
+8. **Aggregate accuracy hides weak segments (TS 5.5)**:  
+   97% overall can mean 70% on one document type or field. Measure per segment, sample high-confidence outputs with stratified random sampling, and calibrate field-level confidence on labelled validation sets before reducing human review. Route low-confidence, ambiguous or contradictory items to people.
+9. **Provenance survives synthesis (TS 5.6)**:  
+   Keep claim-to-source mappings (source, location, date) through every summarisation step. When two sources disagree, show both with attribution. Never average or silently pick one. Dates explain many apparent contradictions.
+10. **Separate certainty levels and render by content type (TS 5.6)**:  
+    Mark well-established findings apart from contested ones. Present financial data as tables, narrative as prose, and enumerations as lists, instead of one uniform format.
+
 ## Anti-Patterns to Reject
 
 | Anti-pattern | Why it fails | Correct pattern | TS |

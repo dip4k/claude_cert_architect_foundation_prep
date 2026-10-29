@@ -73,14 +73,26 @@ Cross-domain links: tool errors and MCP design are in [Domain 2](../domain2/READ
 
 ## Rules to Remember
 
-1. Loop on `stop_reason`, never on text. An iteration cap is a **safety cap**, not the exit.
-2. Handle every `stop_reason` on purpose: `tool_use`, `end_turn`, `max_tokens`, `stop_sequence`, `pause_turn`, `refusal`.
-3. Subagents start empty. Pass what they need in the prompt.
-4. Everything between subagents goes through the coordinator.
-5. Parallel subagents are several `Task` tool_use blocks in one coordinator response.
-6. If a rule must always hold, use a programmatic gate or a hook, not a prompt.
-7. Split big reviews into per-file passes plus a cross-file integration pass.
-8. Resume when results are valid, fork to compare, summarise into a fresh session when they are stale.
+1. **Loop on `stop_reason`, never on text (TS 1.1)**:  
+   `tool_use` means run the tools, append the results, and call again. `end_turn` means stop. Scanning the reply for "done" or "finished" is brittle because wording varies. An iteration cap (`MAX_ITERATIONS`) is only a **safety cap** against runaway loops. It is never the normal exit.
+2. **Handle every `stop_reason` on purpose (TS 1.1)**:  
+   `max_tokens` means the answer was cut off (raise the limit or continue). `stop_sequence` means a custom marker was hit. `pause_turn` means a server-side tool turn paused and the same conversation must be sent back to resume. `refusal` means the model declined and the loop must not retry blindly. An unhandled value silently ends or hangs the agent.
+3. **Append tool results and echo assistant content unchanged (TS 1.1)**:  
+   Add the full assistant message, then a user message with one `tool_result` per `tool_use` id. With extended thinking on, `thinking` blocks and their `signature` go back verbatim. Dropping them causes HTTP 400.
+4. **Subagents start empty (TS 1.2, 1.3)**:  
+   A subagent does not inherit the coordinator's history. Put findings, URLs, constraints and the output format in its prompt. Pass content (facts, sources) together with metadata (page, date, source id) so attribution survives.
+5. **Everything between subagents goes through the coordinator (TS 1.2)**:  
+   Hub-and-spoke gives one place for logging, error handling and routing. Subagents never talk to each other. If coverage is thin, the usual cause is that the coordinator **decomposed too narrowly**, not that a subagent failed. Run a gap check and re-delegate.
+6. **Parallel subagents are several `Task` calls in one response (TS 1.3)**:  
+   The coordinator needs `Task` in `allowedTools` and one `AgentDefinition` per role (description, prompt, restricted tools). Emitting `Task` blocks across separate turns runs them one after another.
+7. **If a rule must always hold, enforce it in code (TS 1.4, 1.5)**:  
+   A prompt, few-shot example or classifier is probabilistic. Use a programmatic prerequisite gate (for example, no `process_refund` until `get_customer` and `lookup_order` succeeded) or a pre-tool hook that blocks or rewrites the call. Use `PostToolUse` hooks to normalise dates, status codes and bloated output before the model sees them.
+8. **Hand off with structure (TS 1.4)**:  
+   On escalation, send customer id, root cause, amounts and a recommended action. The human agent does not see the transcript. Split multi-concern requests into separate investigations, then merge.
+9. **Pick the decomposition style by how predictable the work is (TS 1.6)**:  
+   Prompt chaining suits fixed, known steps. Adaptive decomposition suits open-ended tasks where each finding changes the plan. Split big reviews into per-file passes plus a cross-file integration pass. A bigger model, smaller PRs or consensus voting do not fix attention dilution.
+10. **Choose the session strategy by whether old results are still valid (TS 1.7)**:  
+    Resume with `--resume <session-name>` when the results are still true. Use `fork_session` to compare approaches from one baseline. If files changed, tell the resumed agent exactly which ones. If most tool results are stale, start fresh with a written summary.
 
 ---
 

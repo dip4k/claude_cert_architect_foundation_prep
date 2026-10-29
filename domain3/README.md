@@ -59,6 +59,25 @@ Each folder also has `main.py` (offline) and a `.ipynb` workbook. Offline tests:
 | Reviewer | Independent instance | The authoring session |
 | Overnight bulk work | Message Batches API (Domain 4, TS 4.5: [Domain 4 README](../domain4/README.md)) | Using it for blocking pre-merge checks |
 
+## Domain 3 Golden Rules
+
+1. **Scope decides who gets the config (3.1)**:  
+   Team standards go in project-level files under version control (`./CLAUDE.md`, `.claude/`). Personal preferences go in `~/.claude/`. A rule left in the user-level file never reaches teammates or CI. Use `@import` and `.claude/rules/` to split a large `CLAUDE.md`, and `/memory` to check what is actually loaded.
+2. **Always-on vs on-demand (3.1, 3.2)**:  
+   `CLAUDE.md` holds short standards needed in every session. Procedures used occasionally belong in a skill, so they cost no context until invoked. Keep `CLAUDE.md` small.
+3. **Shared commands live in the project (3.2)**:  
+   `.claude/commands/` is shared through the repo. `~/.claude/commands/` is personal. To customise a shared skill, create a personal variant under `~/.claude/skills/` with a different name instead of editing the team copy.
+4. **Isolate noisy work with `context: fork` (3.2)**:  
+   A skill with `context: fork` runs in its own context and returns only a result, so verbose exploration does not pollute the main session. Restrict it with `allowed-tools` and prompt for input with `argument-hint`.
+5. **Use path-scoped rules for cross-folder patterns (3.3)**:  
+   A `.claude/rules/*.md` file with `paths:` globs (for example `**/*.test.tsx`) loads only when matching files are edited. This covers conventions for files scattered across directories, which a per-directory `CLAUDE.md` or a skill cannot do reliably.
+6. **Plan first when scope is large (3.4)**:  
+   Plan mode fits multi-file, architectural or ambiguous changes (a monolith split, a library migration). Direct execution fits a well-understood small fix such as a bug with a stack trace. Use the Explore subagent to keep discovery output out of the main context.
+7. **Show, do not tell, when refining (3.5)**:  
+   Two or three concrete input/output examples beat "be more precise". Write tests first and iterate on failures. Let Claude interview you to surface unstated requirements. Put interacting problems in one message and independent ones in separate messages.
+8. **CI needs non-interactive, structured, independent runs (3.6)**:  
+   Use `-p` (`--print`) so the job does not hang. Use `--output-format json` with `--json-schema` for machine-parseable findings, not regex on prose. Review with an independent instance, not the authoring session. Include prior findings so reruns do not post duplicate comments. `CLAUDE_HEADLESS` and `--batch` do not exist.
+
 ## Hands-on Exercises
 
 Run the offline workbooks, or the tests, with:

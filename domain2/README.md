@@ -59,16 +59,26 @@ Why this order: good tool descriptions (2.1) come first. Then how tools fail (2.
 
 ## ⚡ Domain 2 Golden Rules
 
-1. **Descriptions route** (2.1). Include purpose, input formats, examples, edge cases, boundaries.
-2. **Split vague tools** (2.1): `analyze_document` → `extract_data_points`, `summarize_content`, `verify_claim_against_source`.
-3. **Structured errors** (2.2): `isError`, `errorCategory`, `isRetryable`, `message`.
-4. **Empty is not an error** (2.2): `isError: false`, `count: 0`.
-5. **Subagents recover locally** (2.2) and propagate only unresolved errors with attempts and partial results.
-6. **4–5 tools per role** (2.3). Replace `fetch_url` with `load_document`. Scoped `verify_fact` for synthesis.
-7. **`tool_choice`** (2.3): `auto` may return text, `any` must call a tool, forced calls that tool. Thinking allows only `auto` or `none`.
-8. **Config and secrets** (2.4): `.mcp.json` shared, `~/.claude.json` personal, `${ENV_VAR}` for secrets.
-9. **Resources** (2.4) for catalogs. Rich MCP descriptions beat built-in Grep.
-10. **Edit fallback** (2.5): longer unique anchor, or Read + Write.
+1. **Descriptions route the call (2.1)**:  
+   The model picks tools almost entirely from their descriptions. State purpose, accepted input formats, an example, edge cases, and boundaries against similar tools. When two tools get confused, expand the descriptions first, before adding few-shot examples, a routing layer, or merging tools.
+2. **Split vague tools into specific ones (2.1)**:  
+   `analyze_document` becomes `extract_data_points`, `summarize_content`, and `verify_claim_against_source`. Each tool has one purpose and a clear input and output contract. Rename overlapping tools so names do not collide.
+3. **Errors are structured (2.2)**:  
+   Return `isError`, `errorCategory` (transient, validation, permission, business), `isRetryable`, and a human-readable `message`. "Operation failed" gives the agent nothing to act on. The category decides whether to retry, fix the input, or escalate.
+4. **Empty is not an error (2.2)**:  
+   A search with no hits is a valid answer: `isError: false`, `count: 0`. Flagging it as an error triggers pointless retries. A real access failure must never be returned as an empty success either.
+5. **Subagents recover locally, then propagate (2.2)**:  
+   Retry transient failures inside the subagent. Pass up only unresolved errors, with what was attempted, partial results, and possible alternatives, so the coordinator can decide.
+6. **Keep 4 to 5 scoped tools per role (2.3)**:  
+   Too many tools degrade selection. Give each subagent only what its role needs. Replace a generic `fetch_url` with a constrained `load_document`. Give the synthesis agent a scoped `verify_fact` instead of the full search toolset.
+7. **Choose `tool_choice` deliberately (2.3)**:  
+   `auto` may return plain text. `any` must call some tool (use it when the tool is unknown but text is not acceptable). A forced `{"type": "tool", "name": ...}` calls that tool (use it to run a step first). With extended thinking on, only `auto` or `none` is valid. `any` or forced returns HTTP 400.
+8. **Config and secrets (2.4)**:  
+   `.mcp.json` is project-level and shared through version control. `~/.claude.json` is personal. Reference secrets as `${ENV_VAR}` so nothing sensitive is committed. All configured servers are discovered at connection time and available together.
+9. **Resources expose catalogs; descriptions beat built-ins (2.4)**:  
+   Use MCP resources for content catalogs (issue lists, schemas, doc trees) so the agent does not explore blindly. If the agent prefers built-in Grep over a better MCP tool, improve the MCP tool description rather than hiding Grep.
+10. **Edit has a fallback (2.5)**:  
+    `Edit` needs a unique anchor. If it fails on a non-unique match, use a longer unique anchor, or Read the file and Write the whole result. Do not retry the same call. Use Grep for content, Glob for file names, and build understanding incrementally.
 
 ---
 
