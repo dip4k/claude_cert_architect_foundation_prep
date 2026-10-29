@@ -163,7 +163,7 @@ dev = [
 ]
 
 [tool.uv]
-default-groups = []
+default-groups = ["dev"]
 
 [tool.uv.workspace]
 members = [
