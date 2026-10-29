@@ -57,6 +57,11 @@ claude -p "Review this PR diff against our CLAUDE.md criteria" \
 ## Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     PR["Pull request opened"] --> Cmd["claude -p ...<br>--output-format json<br>--json-schema"]
     Cmd --> JSON["JSON findings"]

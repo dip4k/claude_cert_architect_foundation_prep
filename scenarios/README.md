@@ -15,6 +15,11 @@ For the study plan, exam-day tips, decision trees, and a 60-question bank, see [
 ## The Six Scenarios
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Exam["CCAR-F exam<br>(4 of 6 scenarios at random)"] --> S1["1. Customer Support<br>Resolution Agent"]
     Exam --> S2["2. Code Generation<br>with Claude Code"]

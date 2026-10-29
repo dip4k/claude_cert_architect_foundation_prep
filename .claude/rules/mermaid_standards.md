@@ -21,9 +21,13 @@ All Mermaid diagrams in Markdown files and Jupyter notebooks must follow these s
 3. **No Fragile Init Directives**:
    - Never include `%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%`. GitHub's theme engine manages layout padding natively.
 
-4. **Explicit Flow Direction**:
+4. **SVG Labels via Frontmatter**:
+   - Every `flowchart` starts with this frontmatter so GitHub does not clip node text (HTML label width is mis-measured):
+     `---` / `config:` / `  flowchart:` / `    htmlLabels: false` / `---`
+
+5. **Explicit Flow Direction**:
    - Always declare an explicit diagram orientation: `flowchart TD` (top-down) or `flowchart LR` (left-to-right).
 
-5. **Safe Edge Syntax**:
+6. **Safe Edge Syntax**:
    - Format edge text with valid syntax: `-->|"Link Text"|` or `-- "Link Text" -->`.
    - Never leave unquoted special characters in transition labels.

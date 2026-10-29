@@ -94,6 +94,11 @@ The plan changed because of what was found. A fixed script could not do that.
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     subgraph Bad["Single pass over 14 files"]
         Many["14 changed files"] --> One["One big review prompt"]

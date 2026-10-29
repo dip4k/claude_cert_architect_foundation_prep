@@ -71,6 +71,11 @@ Give a worker a small toolbox that fits the job. Do not hand over the whole ware
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user, escalate_to_human"]
     Coord --> Search["Search agent<br>claude-haiku-4-5<br>web_search, load_document, extract_metadata"]

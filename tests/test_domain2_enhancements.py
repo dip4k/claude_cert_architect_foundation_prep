@@ -2,6 +2,7 @@
 Offline tests for Domain 2 enhancements (TS 2.1-2.5). Uses lib.mock_claude; zero API cost.
 """
 
+import re
 from pathlib import Path
 from typing import Any, List
 
@@ -298,7 +299,8 @@ def test_readmes_have_required_sections_and_clean_mermaid(ts_dir: Path) -> None:
     assert text.count("**Q") >= 6  # 3 questions + 3 answers
     assert "%%{init" not in text and "<b>" not in text
     for block in text.split("```mermaid")[1:]:
-        assert block.lstrip().startswith(("flowchart TD", "flowchart LR"))
+        body = re.sub(r"\A\s*---\r?\n.*?\r?\n---\r?\n", "", block, flags=re.S)
+        assert body.lstrip().startswith(("flowchart TD", "flowchart LR"))
 
 
 @pytest.mark.parametrize("ts_dir", TS_DIRS, ids=lambda p: p.name)

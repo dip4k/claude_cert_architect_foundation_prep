@@ -16,6 +16,11 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Dev["Developer question"] --> Agent["Agent"]
     Agent --> Find{"What is needed?"}

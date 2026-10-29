@@ -98,6 +98,11 @@ Claude chose search first, then the calculator. The host never hard-coded that o
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Start["User prompt"] --> Send["Call Claude Messages API<br>(claude-sonnet-4-5)"]
     Send --> Check{"Read response.stop_reason"}

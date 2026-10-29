@@ -9,6 +9,11 @@ Deeper reference: [KEY_CONCEPTS.md](KEY_CONCEPTS.md). Other domains: [Domain 1](
 Learn what loads (3.1 to 3.3), then how you work (3.4, 3.5), then automate (3.6).
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart LR
     A["3.1 CLAUDE.md<br>hierarchy"] --> B["3.2 Commands<br>and skills"]
     B --> C["3.3 Path-scoped<br>rules"]

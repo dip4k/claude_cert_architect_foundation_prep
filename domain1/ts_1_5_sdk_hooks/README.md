@@ -92,6 +92,11 @@ The tool never runs. The loop sends this back as an `is_error` `tool_result`, so
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart LR
     Model["Claude tool_use<br>(claude-sonnet-4-5)"] --> Pre["Pre-tool hook<br>(policy check)"]
     Pre --> Allowed{"Allowed?<br>e.g. amount at most 500"}

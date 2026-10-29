@@ -52,6 +52,11 @@ If your standards live only in your home folder, your teammates and the CI job n
 ## Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     User["User scope<br>~/.claude/CLAUDE.md<br>(personal, not in git)"]
     Project["Project scope<br>CLAUDE.md or .claude/CLAUDE.md<br>(shared via git)"]

@@ -112,6 +112,11 @@ Request shape (see `build_extraction_request()` in [main.py](main.py)):
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Doc["Document"] --> Choice{"Which tool_choice?"}
     Choice -->|"type unknown, several tools"| Any["any"]

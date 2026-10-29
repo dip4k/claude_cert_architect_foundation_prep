@@ -65,6 +65,11 @@ Write the criteria in the prompt. Add examples that show the boundary, such as "
 ## Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Msg["Customer message"] --> Human{"Asks for a human?"}
     Human -->|"Yes"| Esc1["Escalate now<br>(no investigation first)"]

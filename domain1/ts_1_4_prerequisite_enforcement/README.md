@@ -98,6 +98,11 @@ The unsafe call in turn 1 never executed. No prompt wording could have promised 
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Req["Customer request"] --> Claude["Claude turn<br>(claude-sonnet-4-5)"]
     Claude --> Call["tool_use: process_refund"]

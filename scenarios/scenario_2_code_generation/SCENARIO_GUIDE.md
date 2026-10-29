@@ -16,6 +16,11 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Dev["Developer request"] --> Mode{"Scope of change?"}
     Mode -->|"Small, clear, one file"| Direct["Direct execution"]

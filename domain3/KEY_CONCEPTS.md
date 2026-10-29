@@ -5,6 +5,11 @@
 ## Map
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart LR
     subgraph Config["What loads"]
         T1["3.1 CLAUDE.md<br>scopes"]
@@ -38,6 +43,11 @@ flowchart LR
 - **Diagnosis**: a new teammate misses instructions means they sit in user-level config. `/memory` shows loaded memory files.
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     U["User scope<br>personal"] --> P["Project scope<br>shared"]
     P --> D["Directory scope<br>shared"]
@@ -59,6 +69,11 @@ flowchart TD
 - Best for conventions spread across directories (tests beside code). A rule without `paths:` always loads.
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     E["Edit a file"] --> M{"Matches a<br>paths: glob?"}
     M -->|"Yes"| L["Rule loads"]
@@ -88,6 +103,11 @@ flowchart TD
 - Message Batches API fits overnight jobs, not blocking pre-merge checks (see Domain 4, TS 4.5, in the [Domain 4 README](../domain4/README.md)).
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart LR
     PR["PR opened"] --> C["claude -p<br>--output-format json<br>--json-schema"]
     C --> F["JSON findings"]

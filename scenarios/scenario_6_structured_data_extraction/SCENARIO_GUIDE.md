@@ -16,6 +16,11 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Doc["Document"] --> Req["Request:<br>forced tool_choice + JSON schema<br>(claude-haiku-4-5, no thinking)"]
     Req --> Out["tool_use result"]

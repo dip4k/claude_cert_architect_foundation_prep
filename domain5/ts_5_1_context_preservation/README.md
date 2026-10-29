@@ -67,6 +67,11 @@ Run `main.py` to see this offline: `lossy_summary()` shows the drift, `facts_sur
 ## Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     UserMsg["Customer message"] --> Extract["Extract case facts<br>(IDs, amounts, dates)"]
     ToolRaw["Raw tool result<br>(40+ fields)"] --> Trim["PostToolUse trim<br>(5 fields)"]

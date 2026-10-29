@@ -59,6 +59,11 @@ paths:
 ## Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Edit["Claude edits a file"] --> Check{"Does the path match<br>a rule's paths: globs?"}
     Check -->|"Yes"| Load["Rule loaded into context"]

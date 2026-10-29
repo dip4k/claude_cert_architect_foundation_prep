@@ -58,6 +58,11 @@ If a shared `/review` command sits in your home folder, teammates cannot use it.
 ## Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Dev["Developer runs a skill<br>with context: fork"] --> Fork["Forked context<br>reads many files, runs searches"]
     Fork --> Summary["Short summary"]

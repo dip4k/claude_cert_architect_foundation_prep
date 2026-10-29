@@ -24,6 +24,11 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart LR
     subgraph Single["Single-Agent Core"]
         direction TB
@@ -61,6 +66,11 @@ flowchart LR
 #### 1. The Autonomous Loop Lifecycle
 An autonomous agent is fundamentally a stateful client-side loop orchestrating conversational turns between the user, the Claude API, and backend tool execution environments.
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     S1["1. Init History (messages)"] --> S2["2. Call Messages API"]
     S2 --> S3{"stop_reason?"}
@@ -174,6 +184,11 @@ In enterprise architectures, multi-agent systems must follow a **Hub-and-Spoke**
 - **Deterministic Escalation**: The coordinator enforces business policies and SLA boundaries before presenting output to the client.
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Coord["Coordinator Agent<br>(State & Routing Hub)"]
     Coord -->|Prompt Injection| Sub1["Web Search<br>Subagent<br>(Context: 0K)"]
@@ -333,6 +348,11 @@ The Claude Agent SDK provides lifecycle hooks allowing developers to execute arb
 2. `PostToolUse` (Normalization Hook): Fires **after** the tool executes but **before** the output is added to the message array and fed back to Claude. Can redact PII, transform schemas, normalize units, or prune extraneous tokens.
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Emit["Claude Emits tool_use"] --> Pre{"Policy Check Passed?"}
     Pre -->|No: Violation| Abort["Abort & Return Error"]
@@ -376,6 +396,11 @@ When an agent is presented with a complex, multi-file code review (e.g. 15 files
 The proven architectural pattern for complex multi-file tasks is **Two-Pass Prompt Chaining**:
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into<br>Per-File Tasks"]
     
@@ -690,6 +715,11 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 ### 🧠 Domain 1 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br>Never parse text or regex"]
     Q1 -->|No| Q2["2. Enforcing business rules?"]

@@ -16,6 +16,11 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     PR["Pull request opened"] --> CI["CI job:<br>claude -p ... --output-format json<br>--json-schema"]
     CI --> Files["Pass 1: per-file review<br>(local issues)"]

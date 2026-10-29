@@ -70,6 +70,11 @@ Each tool has one job. Use the one that matches the question you are asking.
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Start["Need to change code"] --> Find["Grep for entry points<br>or Glob for paths"]
     Find --> Read["Read the file<br>(imports first)"]

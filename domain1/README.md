@@ -23,6 +23,11 @@ Domain 1 is the biggest part of the **Claude Certified Architect - Foundations (
 Read in this order. Each step builds on the last.
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart LR
     T11["1.1 Agentic loop"] --> T14["1.4 Enforcement<br>and handoff"]
     T14 --> T15["1.5 Hooks"]

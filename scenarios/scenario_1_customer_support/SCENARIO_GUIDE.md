@@ -16,6 +16,11 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     User["Customer message"] --> Loop["Agent loop<br>(stop_reason decides)"]
     Loop -->|"stop_reason: tool_use"| Hook{"Code gate / hook<br>(prerequisites, refund limit)"}
@@ -42,6 +47,11 @@ Ask these in order.
 7. **Several matches?** Ask for another identifier. Never guess by recency.
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Q{"What does the question describe?"} -->|"Rule must hold every time"| Code["Programmatic gate or hook"]
     Q -->|"Agent picks the wrong tool"| Desc["Expand tool descriptions first"]

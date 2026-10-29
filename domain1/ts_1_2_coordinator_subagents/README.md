@@ -80,6 +80,11 @@ The gap was found by an explicit check, then fixed by a **targeted** follow-up. 
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     User["User request"] --> Coord["Coordinator<br>(claude-sonnet-4-5)"]
     Coord --> Decide{"Query complexity<br>and scope"}

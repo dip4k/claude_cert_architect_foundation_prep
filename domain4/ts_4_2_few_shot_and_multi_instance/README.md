@@ -91,6 +91,11 @@ See `FEW_SHOT_EXTRACTION_EXAMPLES`, `VARIED_STRUCTURE_EXAMPLES`, and `REVIEW_FEW
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: false
+---
 flowchart TD
     Task["Ambiguous task"] --> Pick["Pick 2-4 targeted examples"]
     Pick --> Pair["Acceptable pattern<br>+ genuine issue"]
