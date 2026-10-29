@@ -8,8 +8,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     subgraph Precision["Precision & Enforcement"]
@@ -70,8 +69,7 @@ A common failure mode in LLM prompting is attempting to tune precision using sub
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Spectrum["Prompt Precision Spectrum"]
@@ -158,8 +156,7 @@ When extracting structured data, prompting Claude to *"Return raw valid JSON"* i
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Tech["Structured Data Extraction"]
@@ -226,8 +223,7 @@ A crucial architectural concept on the certification exam:
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Start["Validation Error Occurs"] --> Check{"Is data present in document?"}
@@ -314,8 +310,7 @@ For pull requests spanning multiple files:
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     PR["Multi-File PR (5+ Files)"] --> Split["Split Files into Isolated Contexts"]
@@ -623,8 +618,7 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax (semantics still need validation)"]

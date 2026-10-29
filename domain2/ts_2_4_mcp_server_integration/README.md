@@ -83,8 +83,7 @@ A catalog as a resource means the agent sees what exists **before** it starts gu
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Repo[".mcp.json<br>(version controlled)<br>GitHub, Jira servers<br>tokens as ${VAR}"] --> Claude["Claude Code<br>connects at startup"]

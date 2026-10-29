@@ -94,8 +94,7 @@ The tool never runs. The loop sends this back as an `is_error` `tool_result`, so
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     Model["Claude tool_use<br>(claude-sonnet-4-5)"] --> Pre["Pre-tool hook<br>(policy check)"]

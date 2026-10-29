@@ -70,8 +70,7 @@ The bank below was written for this repository. It follows the official scenario
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches >= 3 files<br>or core schemas?"}
@@ -94,8 +93,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Workload["Inference Workload"] --> LatencyCheck{"Pre-merge or<br>developer blocking?"}
@@ -113,8 +111,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     ExtractDoc["Extracting Field<br>from Document"] --> FactPresent{"Fact physically<br>in document?"}
@@ -133,8 +130,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     UserTurn["Incoming Customer Turn"] --> DemandHuman{"Explicit human<br>supervisor demand?"}
@@ -156,8 +152,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Coord["Coordinator Receives<br>Complex Research Prompt"] --> FanOut["Turn 1: Emit Multiple<br>Task Calls Concurrently"]
@@ -185,8 +180,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Task["Developer Codebase<br>Exploration Task"] --> KnowPath{"Target file path<br>known?"}

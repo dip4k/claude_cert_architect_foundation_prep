@@ -70,8 +70,7 @@ The final report says which sources answered and which did not. Readers can then
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Coord["Coordinator"] --> SubA["Subagent A"]

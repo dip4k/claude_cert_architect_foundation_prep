@@ -105,8 +105,7 @@ none_deref        3 findings, 0 dismissed ->  0%  -> keep
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Extract["Extraction"] --> Validate{"Validate in code"}

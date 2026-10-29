@@ -17,8 +17,7 @@ For the study plan, exam-day tips, decision trees, and a 60-question bank, see [
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Exam["CCAR-F exam<br>(4 of 6 scenarios at random)"] --> S1["1. Customer Support<br>Resolution Agent"]

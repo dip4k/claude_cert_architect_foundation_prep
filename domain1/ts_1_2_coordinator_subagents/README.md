@@ -82,8 +82,7 @@ The gap was found by an explicit check, then fixed by a **targeted** follow-up. 
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     User["User request"] --> Coord["Coordinator<br>(claude-sonnet-4-5)"]

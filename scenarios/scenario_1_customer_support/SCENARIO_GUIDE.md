@@ -18,8 +18,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     User["Customer message"] --> Loop["Agent loop<br>(stop_reason decides)"]
@@ -49,8 +48,7 @@ Ask these in order.
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Q{"What does the question describe?"} -->|"Rule must hold every time"| Code["Programmatic gate or hook"]

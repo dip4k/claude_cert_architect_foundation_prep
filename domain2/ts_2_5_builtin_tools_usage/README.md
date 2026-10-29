@@ -72,8 +72,7 @@ Each tool has one job. Use the one that matches the question you are asking.
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Start["Need to change code"] --> Find["Grep for entry points<br>or Glob for paths"]

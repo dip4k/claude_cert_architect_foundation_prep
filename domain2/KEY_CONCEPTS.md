@@ -16,8 +16,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     T1["2.1 Descriptions<br>and boundaries"] --> T2["2.2 Structured<br>errors"]
@@ -37,8 +36,7 @@ A strong description has: purpose, input formats, example queries, edge cases, b
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Intent["User asks about order status"] --> Eval["Claude reads descriptions"]
@@ -129,8 +127,7 @@ tool_choice = {"type": "auto", "disable_parallel_tool_use": True}
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     E1["Edit with an anchor"] --> E2{"Anchor unique?"}

@@ -61,8 +61,7 @@ paths:
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Edit["Claude edits a file"] --> Check{"Does the path match<br>a rule's paths: globs?"}

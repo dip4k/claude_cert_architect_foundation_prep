@@ -100,8 +100,7 @@ Claude chose search first, then the calculator. The host never hard-coded that o
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Start["User prompt"] --> Send["Call Claude Messages API<br>(claude-sonnet-4-5)"]

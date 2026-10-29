@@ -69,8 +69,7 @@ Run `main.py` to see this offline: `lossy_summary()` shows the drift, `facts_sur
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     UserMsg["Customer message"] --> Extract["Extract case facts<br>(IDs, amounts, dates)"]

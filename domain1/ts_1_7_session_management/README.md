@@ -88,8 +88,7 @@ Each choice matches how much of the old context is still true.
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Base["Baseline session<br>(analysis done)"] --> Choice{"What changed?"}

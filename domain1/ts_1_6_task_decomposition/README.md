@@ -96,8 +96,7 @@ The plan changed because of what was found. A fixed script could not do that.
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     subgraph Bad["Single pass over 14 files"]

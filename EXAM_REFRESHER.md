@@ -150,8 +150,7 @@ elif response.stop_reason == "end_turn":
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Start["Explore Codebase"] --> Glob["1. Glob Tool<br>(Candidate paths)"]
@@ -172,8 +171,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     User["User Scope<br>(~/.claude/CLAUDE.md)"] --> Project["Project Scope<br>(.claude/CLAUDE.md or root)"]
@@ -229,8 +227,7 @@ flowchart LR
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Extr["Extract Structured Entity<br>via tool_use"] --> Val{"Schema & Math Valid?"}
@@ -250,8 +247,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     subgraph Facts["Immutable Case Facts Layer"]
@@ -293,8 +289,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     P1["Pass 1 (0:00 - 0:45)<br>Direct Architecture Items<br>Target: 25-30 items"] --> P2["Pass 2 (0:45 - 1:40)<br>Scenario Deep Dive<br>Target: 30-35 items"]

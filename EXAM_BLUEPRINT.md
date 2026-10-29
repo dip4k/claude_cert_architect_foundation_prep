@@ -42,8 +42,7 @@ The exam targets Solution Architects, Lead Engineers, and AI Systems Architects 
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     Exam["CCAR-F Exam Matrix<br>(60 Questions | 100%)"]
@@ -174,8 +173,7 @@ The exam questions are written by Anthropic Subject Matter Experts to evaluate a
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     Q["60 Exam Questions"] --> Syn["Synthesis & Design (35%)<br>Topologies, schema & tool design"]

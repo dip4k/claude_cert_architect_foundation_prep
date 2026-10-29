@@ -73,8 +73,7 @@ Give a worker a small toolbox that fits the job. Do not hand over the whole ware
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user, escalate_to_human"]

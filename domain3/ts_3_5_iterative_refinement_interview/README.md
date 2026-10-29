@@ -50,8 +50,7 @@ Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Start["Vague or inconsistent result"] --> Pick{"What is the cause?"}

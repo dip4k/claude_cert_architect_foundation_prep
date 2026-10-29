@@ -11,8 +11,7 @@ Learn what loads (3.1 to 3.3), then how you work (3.4, 3.5), then automate (3.6)
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     A["3.1 CLAUDE.md<br>hierarchy"] --> B["3.2 Commands<br>and skills"]

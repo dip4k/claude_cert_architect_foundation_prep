@@ -26,8 +26,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     subgraph Single["Single-Agent Core"]
@@ -68,8 +67,7 @@ An autonomous agent is fundamentally a stateful client-side loop orchestrating c
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     S1["1. Init History (messages)"] --> S2["2. Call Messages API"]
@@ -186,8 +184,7 @@ In enterprise architectures, multi-agent systems must follow a **Hub-and-Spoke**
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Coord["Coordinator Agent<br>(State & Routing Hub)"]
@@ -350,8 +347,7 @@ The Claude Agent SDK provides lifecycle hooks allowing developers to execute arb
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Emit["Claude Emits tool_use"] --> Pre{"Policy Check Passed?"}
@@ -398,8 +394,7 @@ The proven architectural pattern for complex multi-file tasks is **Two-Pass Prom
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into<br>Per-File Tasks"]
@@ -717,8 +712,7 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br>Never parse text or regex"]

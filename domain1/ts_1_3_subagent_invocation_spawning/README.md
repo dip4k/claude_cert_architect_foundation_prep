@@ -108,8 +108,7 @@ The report can cite the URL because the metadata stayed attached to the claim.
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Coord["Coordinator turn<br>(claude-sonnet-4-5)<br>allowedTools includes Task"] --> Multi["One response with<br>multiple Task tool_use blocks"]

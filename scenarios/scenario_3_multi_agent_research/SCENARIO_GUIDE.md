@@ -18,8 +18,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     User["Research question"] --> Coord["Coordinator<br>(claude-sonnet-4-5)"]

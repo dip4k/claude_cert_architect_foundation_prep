@@ -96,8 +96,7 @@ The code in [main.py](main.py) has this prompt as `build_explicit_prompt()` and 
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     Vague["Vague prompt<br>'be conservative'"] --> Noisy["Mock keys and style nits flagged"]

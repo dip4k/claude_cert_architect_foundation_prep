@@ -114,8 +114,7 @@ Request shape (see `build_extraction_request()` in [main.py](main.py)):
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Doc["Document"] --> Choice{"Which tool_choice?"}

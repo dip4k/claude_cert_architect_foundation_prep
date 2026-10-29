@@ -18,8 +18,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     PR["Pull request opened"] --> CI["CI job:<br>claude -p ... --output-format json<br>--json-schema"]

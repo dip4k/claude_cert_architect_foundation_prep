@@ -49,8 +49,7 @@ Starting big changes without a plan causes rework: edits land in the wrong place
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Task["New task"] --> Size{"Large, multi-file,<br>or several valid approaches?"}

@@ -36,8 +36,7 @@ Exam weights: D1 27%, D2 18%, D3 20%, D4 20%, **D5 15%**. Folder names are uncha
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     subgraph Preservation["Context Preservation"]
@@ -73,8 +72,7 @@ In long-running autonomous workflows (e.g. customer support sessions or complex 
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     subgraph Bad["Anti-Pattern: Naive Summarization"]
@@ -147,8 +145,7 @@ One of the most heavily tested human escalation scenarios:
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Start["Customer Request"] --> Demand{"Demands Human Agent?"}
@@ -321,8 +318,7 @@ A standard trap in enterprise AI evaluation:
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Doc["Incoming Document Extraction"] --> ValueCheck{"Financial Value > $1,000?"}
@@ -654,8 +650,7 @@ Option B is correct. In deep codebase exploration (TS 5.4), multi-turn sessions 
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Q1["1. Customer demands a human?"] -->|Yes| A1["Escalate Immediately<br>Zero friction; compile handoff manifest"]

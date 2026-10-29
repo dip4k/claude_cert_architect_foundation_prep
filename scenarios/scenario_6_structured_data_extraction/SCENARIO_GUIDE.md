@@ -18,8 +18,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Doc["Document"] --> Req["Request:<br>forced tool_choice + JSON schema<br>(claude-haiku-4-5, no thinking)"]

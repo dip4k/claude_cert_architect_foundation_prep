@@ -100,8 +100,7 @@ The unsafe call in turn 1 never executed. No prompt wording could have promised 
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Req["Customer request"] --> Claude["Claude turn<br>(claude-sonnet-4-5)"]

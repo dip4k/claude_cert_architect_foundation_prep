@@ -77,8 +77,7 @@ If you flag "no orders found" as an error, the agent retries a healthy system an
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Call["Subagent calls tool"] --> Out{"What came back?"}

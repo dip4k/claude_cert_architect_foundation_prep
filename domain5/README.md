@@ -37,8 +37,7 @@ Some folder names mix topics. **Folder names stay unchanged** (tests import them
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     subgraph Context["Keep context accurate"]
@@ -104,8 +103,7 @@ flowchart LR
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Q1["Customer asks for a human?"] -->|"Yes"| A1["Escalate now (5.2)"]

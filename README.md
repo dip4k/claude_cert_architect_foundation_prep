@@ -54,8 +54,7 @@ npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     CCAR["Claude Certified Architect – Foundations (CCAR-F)<br>Score: 720 / 1000 | 60 Questions | 120 Mins"]

@@ -54,8 +54,7 @@ If your standards live only in your home folder, your teammates and the CI job n
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     User["User scope<br>~/.claude/CLAUDE.md<br>(personal, not in git)"]

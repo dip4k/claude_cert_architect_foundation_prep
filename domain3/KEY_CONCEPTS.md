@@ -7,8 +7,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     subgraph Config["What loads"]
@@ -45,8 +44,7 @@ flowchart LR
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     U["User scope<br>personal"] --> P["Project scope<br>shared"]
@@ -71,8 +69,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     E["Edit a file"] --> M{"Matches a<br>paths: glob?"}
@@ -105,8 +102,7 @@ flowchart TD
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart LR
     PR["PR opened"] --> C["claude -p<br>--output-format json<br>--json-schema"]

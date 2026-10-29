@@ -22,8 +22,9 @@ All Mermaid diagrams in Markdown files and Jupyter notebooks must follow these s
    - Never include `%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%`. GitHub's theme engine manages layout padding natively.
 
 4. **SVG Labels via Frontmatter**:
-   - Every `flowchart` starts with this frontmatter so GitHub does not clip node text (HTML label width is mis-measured):
-     `---` / `config:` / `  flowchart:` / `    htmlLabels: false` / `---`
+   - Every `flowchart` starts with this frontmatter so node text is not clipped (HTML label width is mis-measured). Use the root-level key; `flowchart.htmlLabels` is deprecated:
+     `---` / `config:` / `  htmlLabels: false` / `---`
+   - Apply or repair it across the repo with `scripts/fix_mermaid_labels.py`.
 
 5. **Explicit Flow Direction**:
    - Always declare an explicit diagram orientation: `flowchart TD` (top-down) or `flowchart LR` (left-to-right).

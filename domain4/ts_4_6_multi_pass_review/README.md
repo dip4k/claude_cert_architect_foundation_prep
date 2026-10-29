@@ -94,8 +94,7 @@ In [main.py](main.py) the mock client scripts the model replies, so the tests pr
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Gen["Generator session<br>code + its reasoning"] --> Code["Code artifacts only"]

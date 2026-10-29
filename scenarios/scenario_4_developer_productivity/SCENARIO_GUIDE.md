@@ -18,8 +18,7 @@
 ```mermaid
 ---
 config:
-  flowchart:
-    htmlLabels: false
+  htmlLabels: false
 ---
 flowchart TD
     Dev["Developer question"] --> Agent["Agent"]
