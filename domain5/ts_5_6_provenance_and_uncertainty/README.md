@@ -8,7 +8,7 @@ Understand how to construct structured claim-source mappings, maintain provenanc
 ## 🏗️ Architecture: Conflict Preservation & Provenance Graph
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     SourceA["Source A (Earnings Call, Oct 1)<br/>'Q3 Cloud Revenue: $1.2B'"] --> Synthesizer["Provenance Synthesizer"]
     SourceB["Source B (10-Q Filing, Oct 15)<br/>'Q3 Cloud Revenue: $1.4B'"] --> Synthesizer

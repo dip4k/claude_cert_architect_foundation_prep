@@ -6,7 +6,7 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     subgraph Tools["Tool Interfaces & Execution"]
         direction TB
@@ -46,7 +46,7 @@ In LLM-based agent systems, the language model does not see backend database tab
 Minimal, vague, or overlapping descriptions (e.g. `description: "Finds stuff"`) cause an immediate **50%+ tool selection misrouting rate**, triggering hallucinated arguments or infinite tool-hopping loops.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Intent["User Intent:<br/>'Lookup status of shipment #8812'"] --> Eval["Claude Evaluates<br/>Tool Declarations"]
     Eval -->|Minimal Description| Ambiguous["Ambiguous: order vs shipping<br/>50% Misrouting (Guesses blindly)"]
@@ -128,7 +128,7 @@ Providing an agent with 15–25 tools degrades performance:
 - **The Standard**: Restrict agents to **4–5 specialized tools** strictly aligned with their core role. If an agent requires more capabilities, decompose the workflow into a coordinator with specialized subagents.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     subgraph AntiPattern["Anti-Pattern: Monolithic Agent"]
         Mono["Single Agent with 15+ Tools<br/>High confusion & context pollution"]
@@ -243,7 +243,7 @@ The `Edit` tool relies on finding an exact, unique `old_string` anchor in the ta
   3. Formulate a replacement with expanded unique anchor context, OR use `Write` with the fully reconciled content.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start["Attempt Surgical Edit"] --> Check{"Edit Succeeded?"}
     Check -->|Yes| Done["Edit Applied"]
@@ -486,16 +486,16 @@ Option B is correct. Claude models support parallel tool use by default, emittin
 ### 🧠 Domain 2 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Q1["1. Model picks wrong tool?"] -->|Yes| A1["<b>Refine Tool Description & Boundaries</b><br/>Never build custom classifier"]
+    Q1["1. Model picks wrong tool?"] -->|Yes| A1["Refine Tool Description & Boundaries<br/>Never build custom classifier"]
     Q1 -->|No| Q2["2. Zero records returned?"]
-    Q2 -->|Yes| A2["<b>Valid Empty: isError: false</b><br/>Zero matches is ground truth"]
+    Q2 -->|Yes| A2["Valid Empty: isError: false<br/>Zero matches is ground truth"]
     Q2 -->|No| Q3["3. Backend failure / timeout?"]
-    Q3 -->|Yes| A3["<b>Structured MCP Error</b><br/>Include errorCategory & isRetryable"]
+    Q3 -->|Yes| A3["Structured MCP Error<br/>Include errorCategory & isRetryable"]
     Q3 -->|No| Q4["4. Read-only schemas / catalogs?"]
-    Q4 -->|Yes| A4["<b>MCP Resources</b><br/>Use resources/read, not active tools"]
-    Q4 -->|No| A5["<b>Read + Expand Anchor</b><br/>Fall back to Write on collision"]
+    Q4 -->|Yes| A4["MCP Resources<br/>Use resources/read, not active tools"]
+    Q4 -->|No| A5["Read + Expand Anchor<br/>Fall back to Write on collision"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

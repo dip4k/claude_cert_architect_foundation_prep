@@ -52,7 +52,7 @@ We are engineering an automated pull request (PR) gatekeeper and code review eng
 ### 🧠 Scenario 5 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{CI/CD Review Focus}
     Start -->|Runner Hangs on Stdin| D1["Pass -p / --print Flag<br/>(Never unix stdin redirects)"]
@@ -97,19 +97,19 @@ Anthropic's Message Batches API provides a **50% discount** on input and output 
 - **When to Use Batch API**: Non-blocking, asynchronous workloads that tolerate latency, such as **overnight technical debt audits**, weekly documentation updates, or bulk static security scans across 10,000 repository files.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Task["Code Review Workload"] --> LatencyCheck{"Pre-merge or blocking?"}
     
-    LatencyCheck -- "Yes (< 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br/>Immediate response; standard pricing"]
-    LatencyCheck -- "No (<= 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br/>50% cost discount; asynchronous"]
+    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br/>Immediate response; standard pricing"]
+    LatencyCheck -- "No (&le; 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br/>50% cost discount; asynchronous"]
 ```
 
 ### 3. Two-Pass Review Architecture (TS 4.6)
 Attempting to evaluate both line-by-line syntax and system-wide API contracts in a single prompt causes **attentional dilution**. The model focuses on obvious local syntax bugs while overlooking subtle cross-module contract breaks.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     PR["Incoming Multi-File PR"] --> Split["Split Files into Isolated Contexts"]
     

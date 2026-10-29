@@ -8,7 +8,7 @@ Understand how to integrate Claude Code into automated CI/CD pipelines using non
 ## 🏗️ Architecture: Non-Interactive CI Runner
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Trigger["CI Trigger<br/>(GitHub / GitLab PR)"] --> Runner["Ephemeral CI Runner<br/>Environment"]
     

@@ -8,7 +8,7 @@ Understand how to eliminate author bias through independent Claude review instan
 ## 🏗️ Architecture: Multi-Instance Two-Pass Review Pipeline
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Generator["Agent 1:<br/>Code Generator Instance"] --> Codebase["Generated Code Artifacts<br/>(auth.py, client.py)"]
     

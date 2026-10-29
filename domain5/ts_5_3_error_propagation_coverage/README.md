@@ -8,7 +8,7 @@ Understand how to propagate structured errors across multi-agent hierarchies, di
 ## 🏗️ Architecture: Coverage & Error Disambiguation
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Coordinator["Coordinator Agent"] --> SubA["Subagent A: Regulatory DB"]
     Coordinator --> SubB["Subagent B: Market Data API"]

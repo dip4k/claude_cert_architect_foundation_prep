@@ -51,11 +51,11 @@ We are engineering an AI-augmented developer onboarding and maintenance workflow
 ### 🧠 Scenario 4 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{Developer Workflow Focus}
-    Start -->|Locating Symbols| D1["Glob -> Grep -> Chunked Read<br/>(Never bulk-read all files)"]
-    Start -->|Edit Anchor Collision| D2["Read File -> Expand Anchor<br/>(Fallback to Write if needed)"]
+    Start -->|Locating Symbols| D1["Glob → Grep → Chunked Read<br/>(Never bulk-read all files)"]
+    Start -->|Edit Anchor Collision| D2["Read File → Expand Anchor<br/>(Fallback to Write if needed)"]
     Start -->|Schemas & API Specs| D3["MCP Resources (resources/read)<br/>(Never active tool calls)"]
     Start -->|Multi-Hour Exploration| D4["scratchpad.md + Explore Subagent<br/>(Use context: fork)"]
 ```
@@ -80,7 +80,7 @@ When a developer asks to fix a bug in an unfamiliar repository, a novice agent a
   3. **Chunked `Read` (Surgical Slice)**: Inspect only the surrounding 30–50 lines: `Read(path="services/billing/tax.py", offset=140, limit=40)`.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     Start["User Request"] --> Step1["1. Glob<br/>(Candidate files)"]
     Step1 --> Step2["2. Grep<br/>(Pinpoint line)"]
@@ -92,7 +92,7 @@ flowchart LR
 Claude Code's built-in `Edit` tool performs an exact string replacement (`old_string` $\rightarrow$ `new_string`). To prevent corrupting duplicate lines, the tool strictly requires that `old_string` matches **exactly one location** in the target file.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     CallEdit["1. Call Edit(path, old, new)"] --> CheckUniqueness{"Target String Unique?"}
     CheckUniqueness -->|Yes: 1 Match| Success["Commit Edit"]
@@ -289,7 +289,7 @@ stateDiagram-v2
     state SURGICAL_EDIT {
         [*] --> ATTEMPT_EDIT: Call Edit(old_string, new_string)
         ATTEMPT_EDIT --> EDIT_SUCCESS: Target unique (1 match)
-        ATTEMPT_EDIT --> COLLISION_DETECTED: Target matches > 1 location
+        ATTEMPT_EDIT --> COLLISION_DETECTED: Target matches &gt; 1 location
         
         COLLISION_DETECTED --> EXPAND_ANCHOR: Add 2-4 surrounding context lines
         EXPAND_ANCHOR --> ATTEMPT_EDIT_EXPANDED: Call Edit with expanded anchor

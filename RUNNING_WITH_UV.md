@@ -1,185 +1,131 @@
-# Running Scripts with UV - Import Fix Guide
+# Running Scripts with UV - Workspace & Execution Guide
 
-> **Terminal Environment**: All commands in this guide must be run inside **WSL Ubuntu** (`wsl -d Ubuntu`). The repository path in WSL is `<repo-root>`.
-
-## Problem
-
-When running scripts with `uv`, you might get:
-```
-ModuleNotFoundError: No module named 'lib.response_logger'
-```
-
-This happens because the Python path doesn't include the repo root.
-
-## Solution 1: Run from Repo Root (Recommended)
-
-**Always run scripts from the repository root directory:**
-
-```bash
-# From repository root:
-source .venv/bin/activate
-python stop_reason/main.py
-```
-
-NOT from a subdirectory:
-```bash
-❌ cd stop_reason
-❌ python main.py
-```
-
-## Solution 2: Use UV Run (Alternative)
-
-UV can handle this automatically:
-
-```bash
-# From repository root:
-uv run stop_reason/main.py
-```
-
-## Solution 3: Add Path Setup to Script (If Needed)
-
-If you must run from a subdirectory, add this to the top of your script:
-
-```python
-import sys
-import os
-
-# Add repo root to Python path for imports
-repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
-
-# Now imports will work
-from lib.response_logger import ResponseTrail, get_agent_trail_path
-```
-
-## What Was Fixed
-
-Created missing `__init__.py` files to make directories proper Python packages:
-
-```
-✅ lib/__init__.py                   - Makes lib a package
-✅ stop_reason/__init__.py           - Already existed
-✅ hello-world/__init__.py           - Makes hello-world a package
-```
-
-## Verification
-
-Test the import:
-
-```bash
-# From repository root:
-python3 -c "from lib.response_logger import ResponseTrail; print('✅ Works!')"
-```
-
-## Best Practices
-
-### ✅ DO
-
-```bash
-# Run from repo root
-$ python stop_reason/main.py
-
-# Or use uv run
-$ uv run stop_reason/main.py
-
-# Or activate venv and run from root
-$ source .venv/bin/activate
-$ python stop_reason/main.py
-```
-
-### ❌ DON'T
-
-```bash
-# Don't change into subdirectory and run
-❌ cd stop_reason
-❌ python main.py
-
-# Don't run without repo root in path
-❌ python <repo-root>/stop_reason/main.py
-```
-
-## Full Working Example
-
-```bash
-# Setup
-# From repository root:
-source .venv/bin/activate
-
-# Verify env
-cat .env          # Check ANTHROPIC_API_KEY is set
-
-# Run from repo root
-python stop_reason/main.py
-
-# Trails will be created at:
-# <repo-root>/stop_reason/trails/agent_trail.jsonl
-
-# Check results
-ls -la stop_reason/trails/
-cat stop_reason/trails/agent_trail.jsonl | head -20
-```
-
-## Python Path Resolution
-
-When you run `python stop_reason/main.py` from the repo root:
-
-```
-Current Directory: <repo-root>
-Python Path includes: ['.', '<repo-root>', ...]
-                           ↑     ↑
-                    Current dir (repo root)
-
-Import: from lib.response_logger import ...
-        ↓
-        Looks in: <repo-root>/lib/response_logger/
-        ✅ Found!
-```
-
-When you run `python main.py` from `stop_reason/`:
-
-```
-Current Directory: <repo-root>/stop_reason
-Python Path includes: ['.', '<repo-root>/stop_reason', ...]
-                           ↑     ↑
-                    Current dir (stop_reason)
-
-Import: from lib.response_logger import ...
-        ↓
-        Looks in: <repo-root>/stop_reason/lib/response_logger/
-        ❌ Not found!
-```
-
-## Environment Variables
-
-Make sure `.env` is in the repo root:
-
-```bash
-# Good - .env in repo root
-<repo-root>/.env
-
-# Script can find it when running from root
-python stop_reason/main.py  # Finds ../../../.env
-```
-
-The `load_dotenv()` call in scripts looks for `.env` in the current working directory and parent directories.
-
-## Summary
-
-| Method | Command | Status |
-|--------|---------|--------|
-| **From Repo Root** | `python stop_reason/main.py` | ✅ Works |
-| **UV Run** | `uv run stop_reason/main.py` | ✅ Works |
-| **From Subdirectory** | `cd stop_reason && python main.py` | ❌ Fails |
-| **Absolute Path** | `python /path/to/stop_reason/main.py` | ❌ Fails |
-
-**Always run from repo root!** 🎯
+> **Execution Policy Reminder**: Do not automate live Anthropic API calls. All interactive/API scripts must be run manually in your terminal. Offline unit tests (`pytest tests/ scenarios/`) are 100% safe to automate.
 
 ---
 
-If you still get import errors after these fixes:
+## 🏗️ Unified UV Workspace Architecture
 
-1. Verify `lib/__init__.py` exists
-2. Check you're running from repo root: `pwd`
-3. Check Python path: `python3 -c "import sys; print(sys.path)"`
-4. Try: `python3 -c "from lib.response_logger import ResponseTrail; print('OK')"`
+This repository uses a **unified UV workspace** centered around a single, shared virtual environment located at the repository root (`.venv`).
+
+```
+Claude_cert/
+├── .venv/                         # Shared virtual environment for the entire repository
+│   └── Lib/site-packages/_root.pth # Adds repo root to sys.path automatically
+├── .env                           # Single source of truth for API keys & model settings
+├── .env.example                   # Sanitized template
+├── pyproject.toml                 # Workspace root with shared dependencies & tools
+├── lib/                           # Core shared libraries (sdk_parser_py, response_logger, mock_claude)
+├── domain1/ ... domain5/          # Certification Task Statements (TS 1.1 - 5.6)
+├── scenarios/                     # 6 Production Scenarios
+└── anthropic-api-practice/        # Anthropic API & MCP Practice
+    └── MCP/
+        └── cli_project/           # Workspace member: FastMCP server & CLI chat
+            ├── pyproject.toml     # [tool.uv] package = false
+            ├── mcp_server.py      # FastMCP tools, resources & prompts
+            └── main.py            # CLI chat application
+```
+
+---
+
+## ⚡ Quick Reference: Running Scripts
+
+### 1. From Repository Root (Standard Practice Exercises)
+When working on Task Statements (Domains 1–5) or Production Scenarios:
+
+```bash
+# Windows PowerShell:
+.\.venv\Scripts\activate
+python domain1/ts_1_1_multi_tool_agent_loop/main.py
+
+# Or using uv run:
+uv run domain1/ts_1_1_multi_tool_agent_loop/main.py
+
+# Linux / WSL Ubuntu:
+source .venv/bin/activate
+python domain1/ts_1_1_multi_tool_agent_loop/main.py
+```
+
+### 2. From Subdirectories (e.g. MCP Practice)
+The root `.venv` includes a `_root.pth` path configuration file and workspace definition, so you can execute scripts from subdirectories without `ModuleNotFoundError`:
+
+```powershell
+# Navigate into the subproject
+cd anthropic-api-practice\MCP\cli_project
+
+# Option A: UV run (pointing to root workspace venv)
+uv run --no-sync main.py
+
+# Option B: Directly invoke the root virtual environment
+..\..\..\.venv\Scripts\python main.py
+```
+
+---
+
+## 🔌 Running MCP Servers & MCP Inspector
+
+The `anthropic-api-practice/MCP/cli_project` directory contains a complete **FastMCP** server (`mcp_server.py`) exposing tools, resources, and prompts.
+
+### Option A: Interactive MCP Inspector Web Dashboard (Zero Re-installs)
+The official `mcp dev` command creates an ephemeral environment and re-downloads packages on every launch. To avoid re-installations, pass your existing root Python directly to the inspector:
+
+```powershell
+cd anthropic-api-practice\MCP\cli_project
+
+# Launch Inspector with root venv Python (instant startup):
+npx @modelcontextprotocol/inspector ..\..\..\.venv\Scripts\python.exe mcp_server.py
+```
+
+This launches the web UI at `http://localhost:5173` where you can interactively test:
+- **Tools**: `read_doc_contents`, `edit_document`
+- **Resources**: `docs://documents` (list IDs), `docs://documents/{doc_id}` (read content)
+- **Prompts**: `/summarize <doc_id>`, `/rewrite_markdown <doc_id>`
+
+### Option B: Running the MCP Server Standalone
+FastMCP servers run over standard input/output (`stdio`):
+
+```powershell
+cd anthropic-api-practice\MCP\cli_project
+uv run --no-sync python mcp_server.py
+```
+
+---
+
+## 🔑 Environment Configuration (`.env`)
+
+You only need **one** `.env` file at the repository root:
+- `python-dotenv` automatically walks up parent directories until it finds the root `.env`.
+- Subprojects inherit `ANTHROPIC_API_KEY`, `CLAUDE_MODEL`, and `USE_UV=1` automatically without duplicating secrets.
+
+```bash
+# .env at repository root:
+ANTHROPIC_API_KEY=sk-ant-...
+CLAUDE_MODEL=claude-haiku-4-5
+USE_UV=1
+DEBUG=false
+```
+
+---
+
+## 🧪 Safe Offline Testing
+
+All unit tests across domains and scenarios are designed to run with **zero API tokens** using deterministic mocks (`lib.mock_claude`):
+
+```bash
+# Run all unit tests
+uv run pytest
+
+# Run tests with short traceback
+uv run pytest tests/ scenarios/ -v --tb=short
+```
+
+---
+
+## 🛠️ Troubleshooting Common UV Issues
+
+| Issue | Cause | Fix |
+| :--- | :--- | :--- |
+| `ModuleNotFoundError: No module named 'lib'` | Python doesn't have the repo root in its path | Run from repo root, or verify `.venv/Lib/site-packages/_root.pth` exists. |
+| `TypeError: Field.__init__() got unexpected keyword argument 'description'` | Imported `Field` from standard `dataclasses` instead of Pydantic | Change `from dataclasses import Field` to `from pydantic import Field`. |
+| `mcp dev` keeps downloading packages | Hardcoded `--with mcp` in CLI creates a temporary environment | Run `npx @modelcontextprotocol/inspector <path_to_venv_python> mcp_server.py` directly. |
+| Lockfile out-of-sync error offline | `uv run` attempts to sync missing packages when network is disabled | Add `--no-sync` flag: `uv run --no-sync <script>`. |

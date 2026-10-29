@@ -8,7 +8,7 @@ Understand how path-scoped rules in `.claude/rules/` are selectively loaded base
 ## 🏗️ Architecture: Rule Precedence & Conditional Injection
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Req["User Prompt Touching Files:<br/>['backend/api.py']"] --> Evaluator["Path Rule Engine"]
     

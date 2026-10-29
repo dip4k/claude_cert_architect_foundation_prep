@@ -41,6 +41,10 @@ uv run mypy lib/sdk_parser_py/
 # 4. Optional: Manual live practice (requires ANTHROPIC_API_KEY in .env)
 cp .env.example .env
 uv run domain1/ts_1_1_multi_tool_agent_loop/main.py
+
+# 5. FastMCP & Interactive Inspector Practice
+cd anthropic-api-practice/MCP/cli_project
+npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server.py
 ```
 
 ---
@@ -48,19 +52,19 @@ uv run domain1/ts_1_1_multi_tool_agent_loop/main.py
 ## 🏛️ Exam Content Domains (27 Task Statements)
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    CCAR["<b>Claude Certified Architect – Foundations (CCAR-F)</b><br/>Score: 720 / 1000 | 60 Questions | 120 Mins"]
+    CCAR["Claude Certified Architect – Foundations (CCAR-F)<br/>Score: 720 / 1000 | 60 Questions | 120 Mins"]
     
     subgraph Core["Core Architecture & Tooling"]
-        D1["<b>Domain 1: Agentic Loops & Coordination (27%)</b><br/>• stop_reason == 'end_turn'<br/>• Hub-and-spoke topology<br/>• SDK hooks"]
-        D2["<b>Domain 2: Tool Design & MCP (18%)</b><br/>• Descriptions as interfaces<br/>• Structured MCP errors<br/>• Least privilege"]
+        D1["Domain 1: Agentic Loops & Coordination (27%)<br/>• stop_reason == 'end_turn'<br/>• Hub-and-spoke topology<br/>• SDK hooks"]
+        D2["Domain 2: Tool Design & MCP (18%)<br/>• Descriptions as interfaces<br/>• Structured MCP errors<br/>• Least privilege"]
     end
     
     subgraph Workflows["Workflows, Prompting & Reliability"]
-        D3["<b>Domain 3: Claude Code Workflows (20%)</b><br/>• CLAUDE.md hierarchy<br/>• Plan Mode<br/>• Headless CI (-p)"]
-        D4["<b>Domain 4: Prompt Engineering & Output (20%)</b><br/>• JSON via tool_use<br/>• Nullable fields<br/>• Real-time vs Batch"]
-        D5["<b>Domain 5: Context & Reliability (15%)</b><br/>• Case Facts layer<br/>• Immediate escalation<br/>• Stratified audits"]
+        D3["Domain 3: Claude Code Workflows (20%)<br/>• CLAUDE.md hierarchy<br/>• Plan Mode<br/>• Headless CI (-p)"]
+        D4["Domain 4: Prompt Engineering & Output (20%)<br/>• JSON via tool_use<br/>• Nullable fields<br/>• Real-time vs Batch"]
+        D5["Domain 5: Context & Reliability (15%)<br/>• Case Facts layer<br/>• Immediate escalation<br/>• Stratified audits"]
     end
 
     CCAR --> Core
@@ -137,6 +141,20 @@ On the CCAR-F certification exam, **4 out of these 6 production scenarios are ch
 
 ---
 
+## 🔌 Anthropic API & MCP Practice Labs
+
+Dedicated hands-on sandbox for learning Anthropic API features and the **Model Context Protocol (MCP)**:
+
+- **[`anthropic-api-practice/MCP/cli_project/`](anthropic-api-practice/MCP/cli_project/)**: Production-ready FastMCP implementation integrated with the root UV workspace.
+  - **Tools (`@mcp.tool`)**: [`read_doc_contents`](anthropic-api-practice/MCP/cli_project/mcp_server.py#L18) and [`edit_document`](anthropic-api-practice/MCP/cli_project/mcp_server.py#L31) for LLM tool invocation.
+  - **Resources (`@mcp.resource`)**: Static URI (`docs://documents`) and template URI (`docs://documents/{doc_id}`) for deterministic, read-only context retrieval.
+  - **Prompts (`@mcp.prompt`)**: Pre-built user prompt templates for `/summarize <doc_id>` and `/rewrite_markdown <doc_id>`.
+  - **CLI Chat Application**: `prompt-toolkit` interface with tab-autocomplete for slash commands and `@document` mentions.
+  - **Interactive Inspector Testing**: Run `npx @modelcontextprotocol/inspector <venv-python> mcp_server.py` to inspect and execute tools/prompts in the web UI.
+- **`anthropic-api-practice/*.ipynb`**: Interactive notebooks covering messages, streaming, prompt evaluations, caching, thinking, citations, and tools.
+
+---
+
 ## 🧰 Core Shared Libraries
 
 - **`lib/sdk_parser_py/`**: Type-safe response extraction, schema validation, and block extraction ([Usage Guide](lib/sdk_parser_py/USAGE.md)).
@@ -152,5 +170,4 @@ On the CCAR-F certification exam, **4 out of these 6 production scenarios are ch
 - ⚡ [**Exam Refresher (`EXAM_REFRESHER.md`)**](EXAM_REFRESHER.md): The 10 Golden Architectural Rules and domain decision matrices.
 - 🎯 [**Master Scenario Practice (`scenarios/MASTER_SCENARIO_PRACTICE.md`)**](scenarios/MASTER_SCENARIO_PRACTICE.md): 6-scenario decision trees, trade-offs, and 60-question diagnostic exam.
 - 📖 [**Official Scenarios Guide (`scenarios/README.md`)**](scenarios/README.md): Deep-dive walkthrough of the 6 production scenarios.
-- ✅ [**Progress Tracker (`PROGRESS.md`)**](PROGRESS.md): Interactive 27-task statement and 6-scenario checklist.
 - 🛡️ [**Execution Policy (`EXECUTION_POLICY.md`)**](EXECUTION_POLICY.md): Detailed API safety and zero-token testing standards.

@@ -40,7 +40,7 @@ The exam targets Solution Architects, Lead Engineers, and AI Systems Architects 
 | **Total** | **All 5 Domains (27 Task Statements)** | **100%** | **60 questions** | [Interactive Progress Checklist](PROGRESS.md) |
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     Exam["CCAR-F Exam Matrix<br/>(60 Questions | 100%)"]
     Exam --> D1["Domain 1: Agentic Architecture (27%)<br/>~16 Questions | TS 1.1 - 1.7"]
@@ -168,7 +168,7 @@ The exam questions are written by Anthropic Subject Matter Experts to evaluate a
 1. **Synthesis & Design (~35% of exam)**: Designing end-to-end multi-agent topologies, tool distribution schemas, or context compaction strategies to meet explicit business SLAs.
 2. **Troubleshooting & Remediation (~40% of exam)**: Diagnosing misrouting, runner hangs, attention dilution, or data degradation from production logs and selecting the optimal architectural remedy.
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     Q["60 Exam Questions"] --> Syn["Synthesis & Design (35%)<br/>Topologies, schema & tool design"]
     Q --> Trb["Troubleshooting (40%)<br/>Misrouting, runner hangs, dilution"]

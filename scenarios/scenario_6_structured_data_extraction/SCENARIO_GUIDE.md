@@ -52,7 +52,7 @@ We are architecting an enterprise data ingestion and document processing pipelin
 ### 🧠 Scenario 6 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{Extraction Scenario Focus}
     Start -->|Guarantee 100% Valid JSON| D1["Enforce Schema via tool_use<br/>(Forced tool_choice,<br/>never regex/text)"]
@@ -177,11 +177,11 @@ Rigid enums force the model to categorize edge-case items into the nearest incor
 When deterministic validation fails, the orchestrator must decide whether to retry or abort:
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     ValidationError["Validation Failure Triggered"] --> FailureType{"Failure Root Cause"}
     
-    FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count < 2?"}
+    FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count &lt; 2?"}
     
     RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br/>Send targeted math error<br/>via tool_result"]
     RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human<br/>Exception Queue"]
@@ -358,15 +358,15 @@ stateDiagram-v2
         FACT_ABSENCE_CHECK --> [*]
     }
     
-    DETERMINISTIC_VALIDATION --> CLOSED_LOOP_RETRY: Math mismatch (Attempts < 2)
+    DETERMINISTIC_VALIDATION --> CLOSED_LOOP_RETRY: Math mismatch (Attempts &lt; 2)
     CLOSED_LOOP_RETRY --> SCHEMA_EXTRACTION: Re-prompt with exact math error
     
     DETERMINISTIC_VALIDATION --> FAST_FAIL_HUMAN: Fact fundamentally absent OR Retries exhausted
     
     DETERMINISTIC_VALIDATION --> CONFIDENCE_EVALUATION: All validations passed
     
-    CONFIDENCE_EVALUATION --> HIGH_CONFIDENCE: Score >= 0.90
-    CONFIDENCE_EVALUATION --> LOW_CONFIDENCE: Score < 0.90
+    CONFIDENCE_EVALUATION --> HIGH_CONFIDENCE: Score &ge; 0.90
+    CONFIDENCE_EVALUATION --> LOW_CONFIDENCE: Score &lt; 0.90
     
     LOW_CONFIDENCE --> HUMAN_TRIAGE_QUEUE: Flagged for manual review
     
