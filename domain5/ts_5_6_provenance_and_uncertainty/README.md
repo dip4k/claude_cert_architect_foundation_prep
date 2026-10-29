@@ -3,7 +3,7 @@
 ## 📌 Executive Overview: Goal, Scope & Exam Importance
 
 ### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (18% of exam weighting)
+- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
 - **Scenario Alignment**: Scenario 3 (Multi-Agent Research & Competitive Synthesis)
 - **Core Goal**: Architect verifiable research and data synthesis pipelines that preserve claim-to-source provenance, maintain exact publication dates and extraction methodologies, and transparently synthesize conflicting statistics without generating hallucinated averages or artificial consensus.
 

@@ -9,18 +9,18 @@
 flowchart LR
     subgraph Single["Single-Agent Core"]
         direction TB
-        S1["TS 1.1:<br/>stop_reason Lifecycle"]
-        S2["TS 1.4:<br/>Programmatic Gates"]
-        S3["TS 1.5:<br/>Pre/Post SDK Hooks"]
-        S4["TS 1.7:<br/>Session Resumption"]
+        S1["TS 1.1:<br>stop_reason Lifecycle"]
+        S2["TS 1.4:<br>Programmatic Gates"]
+        S3["TS 1.5:<br>Pre/Post SDK Hooks"]
+        S4["TS 1.7:<br>Session Resumption"]
     end
 
     subgraph Multi["Multi-Agent Orchestration"]
         direction TB
-        M1["TS 1.2:<br/>Hub-and-Spoke Topology"]
-        M2["TS 1.3:<br/>Parallel Task Spawning"]
-        M3["TS 1.6:<br/>Two-Pass Decomposition"]
-        M4["TS 1.7:<br/>Session Forking"]
+        M1["TS 1.2:<br>Hub-and-Spoke Topology"]
+        M2["TS 1.3:<br>Parallel Task Spawning"]
+        M3["TS 1.6:<br>Two-Pass Decomposition"]
+        M4["TS 1.7:<br>Session Forking"]
     end
 ```
 
@@ -46,11 +46,11 @@ An autonomous agent is fundamentally a stateful client-side loop orchestrating c
 flowchart TD
     S1["1. Init History (messages)"] --> S2["2. Call Messages API"]
     S2 --> S3{"stop_reason?"}
-    S3 -->|"tool_use"| S4["3. Append Assistant Turn<br/>(tool_use blocks)"]
+    S3 -->|"tool_use"| S4["3. Append Assistant Turn<br>(tool_use blocks)"]
     S4 --> S5["4. Execute Tools Locally"]
-    S5 --> S6["5. Append User Turn<br/>(tool_result blocks)"]
+    S5 --> S6["5. Append User Turn<br>(tool_result blocks)"]
     S6 --> S2
-    S3 -->|"end_turn"| SEnd["Complete:<br/>Return Text to User"]
+    S3 -->|"end_turn"| SEnd["Complete:<br>Return Text to User"]
 ```
 
 #### 2. Deterministic Loop Control: `response.stop_reason`
@@ -153,10 +153,10 @@ In enterprise architectures, multi-agent systems must follow a **Hub-and-Spoke**
 
 ```mermaid
 flowchart TD
-    Coord["Coordinator Agent<br/>(State & Routing Hub)"]
-    Coord -->|Prompt Injection| Sub1["Web Search<br/>Subagent<br/>(Context: 0K)"]
-    Coord -->|Prompt Injection| Sub2["Doc Extraction<br/>Subagent<br/>(Context: 0K)"]
-    Coord -->|Prompt Injection| Sub3["Fact Checker<br/>Subagent<br/>(Context: 0K)"]
+    Coord["Coordinator Agent<br>(State & Routing Hub)"]
+    Coord -->|Prompt Injection| Sub1["Web Search<br>Subagent<br>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub2["Doc Extraction<br>Subagent<br>(Context: 0K)"]
+    Coord -->|Prompt Injection| Sub3["Fact Checker<br>Subagent<br>(Context: 0K)"]
 ```
 
 #### 2. The Context Isolation Contract
@@ -314,9 +314,9 @@ The Claude Agent SDK provides lifecycle hooks allowing developers to execute arb
 flowchart TD
     Emit["Claude Emits tool_use"] --> Pre{"Policy Check Passed?"}
     Pre -->|No: Violation| Abort["Abort & Return Error"]
-    Pre -->|Yes: Allowed| Exec["Execute Tool<br/>(API / DB Call)"]
-    Exec --> Post["PostToolUse Hook<br/>(Normalize, Trim, Redact PII)"]
-    Post --> Done["Append Clean tool_result<br/>to Context"]
+    Pre -->|Yes: Allowed| Exec["Execute Tool<br>(API / DB Call)"]
+    Exec --> Post["PostToolUse Hook<br>(Normalize, Trim, Redact PII)"]
+    Post --> Done["Append Clean tool_result<br>to Context"]
 ```
 
 #### 2. Tool Call Interception for Regulatory and Financial Compliance
@@ -355,7 +355,7 @@ The proven architectural pattern for complex multi-file tasks is **Two-Pass Prom
 
 ```mermaid
 flowchart TD
-    PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into<br/>Per-File Tasks"]
+    PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into<br>Per-File Tasks"]
     
     subgraph Pass1["Pass 1: Isolated Local Reviews"]
         Decomp --> F1["File 1 Reviewer"]
@@ -366,14 +366,14 @@ flowchart TD
         Fn --> Mn["Local Manifest N"]
     end
     
-    M1 & M2 & Mn --> Agg["Aggregate Findings<br/>+ Signatures"]
+    M1 & M2 & Mn --> Agg["Aggregate Findings<br>+ Signatures"]
     
     subgraph Pass2["Pass 2: System Integration Review"]
         Agg --> Reviewer["Integration Reviewer"]
         Reviewer --> Gate{"Contract Violations?"}
     end
     
-    Gate -->|Yes| Fail["Block Merge &<br/>Report Findings"]
+    Gate -->|Yes| Fail["Block Merge &<br>Report Findings"]
     Gate -->|No| Pass["Approve Merge Gate"]
 ```
 
@@ -669,14 +669,14 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 
 ```mermaid
 flowchart TD
-    Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br/>Never parse text or regex"]
+    Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br>Never parse text or regex"]
     Q1 -->|No| Q2["2. Enforcing business rules?"]
-    Q2 -->|Yes| A2["Programmatic Gate / PreToolUse<br/>Never rely on prompts alone"]
+    Q2 -->|Yes| A2["Programmatic Gate / PreToolUse<br>Never rely on prompts alone"]
     Q2 -->|No| Q3["3. Spawning subagents?"]
-    Q3 -->|Yes| A3["Multiple Task Calls in Turn 1<br/>Concurrent parallel fan-out"]
+    Q3 -->|Yes| A3["Multiple Task Calls in Turn 1<br>Concurrent parallel fan-out"]
     Q3 -->|No| Q4["4. Multi-file code review?"]
-    Q4 -->|Yes| A4["Two-Pass Prompt Chaining<br/>Pass 1: Local / Pass 2: Integration"]
-    Q4 -->|No| A5["Fresh Session + Summary<br/>Discard stale context on rebase"]
+    Q4 -->|Yes| A4["Two-Pass Prompt Chaining<br>Pass 1: Local / Pass 2: Integration"]
+    Q4 -->|No| A5["Fresh Session + Summary<br>Discard stale context on rebase"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

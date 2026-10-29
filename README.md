@@ -53,17 +53,17 @@ npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server
 
 ```mermaid
 flowchart TD
-    CCAR["Claude Certified Architect – Foundations (CCAR-F)<br/>Score: 720 / 1000 | 60 Questions | 120 Mins"]
+    CCAR["Claude Certified Architect – Foundations (CCAR-F)<br>Score: 720 / 1000 | 60 Questions | 120 Mins"]
     
     subgraph Core["Core Architecture & Tooling"]
-        D1["Domain 1: Agentic Loops & Coordination (27%)<br/>• stop_reason == 'end_turn'<br/>• Hub-and-spoke topology<br/>• SDK hooks"]
-        D2["Domain 2: Tool Design & MCP (18%)<br/>• Descriptions as interfaces<br/>• Structured MCP errors<br/>• Least privilege"]
+        D1["Domain 1: Agentic Loops & Coordination (27%)<br>• stop_reason == 'end_turn'<br>• Hub-and-spoke topology<br>• SDK hooks"]
+        D2["Domain 2: Tool Design & MCP (18%)<br>• Descriptions as interfaces<br>• Structured MCP errors<br>• Least privilege"]
     end
     
     subgraph Workflows["Workflows, Prompting & Reliability"]
-        D3["Domain 3: Claude Code Workflows (20%)<br/>• CLAUDE.md hierarchy<br/>• Plan Mode<br/>• Headless CI (-p)"]
-        D4["Domain 4: Prompt Engineering & Output (20%)<br/>• JSON via tool_use<br/>• Nullable fields<br/>• Real-time vs Batch"]
-        D5["Domain 5: Context & Reliability (15%)<br/>• Case Facts layer<br/>• Immediate escalation<br/>• Stratified audits"]
+        D3["Domain 3: Claude Code Workflows (20%)<br>• CLAUDE.md hierarchy<br>• Plan Mode<br>• Headless CI (-p)"]
+        D4["Domain 4: Prompt Engineering & Output (20%)<br>• JSON via tool_use<br>• Nullable fields<br>• Real-time vs Batch"]
+        D5["Domain 5: Context & Reliability (15%)<br>• Case Facts layer<br>• Immediate escalation<br>• Stratified audits"]
     end
 
     CCAR --> Core

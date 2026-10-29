@@ -9,18 +9,18 @@
 flowchart LR
     subgraph Precision["Precision & Enforcement"]
         direction TB
-        P1["TS 4.1:<br/>Explicit Criteria"]
-        P2["TS 4.2:<br/>Targeted Few-Shot"]
-        P3["TS 4.3:<br/>JSON via tool_use"]
-        P4["TS 4.4:<br/>Validation & Retry"]
+        P1["TS 4.1:<br>Explicit Criteria"]
+        P2["TS 4.2:<br>Targeted Few-Shot"]
+        P3["TS 4.3:<br>JSON via tool_use"]
+        P4["TS 4.4:<br>Validation & Retry"]
     end
 
     subgraph Pipelines["High-Throughput Pipelines"]
         direction TB
-        H1["TS 4.5:<br/>Message Batches (50% Off)"]
-        H2["TS 4.5:<br/>custom_id Correlation"]
-        H3["TS 4.6:<br/>Multi-Instance Reviews"]
-        H4["TS 4.6:<br/>Two-Pass Review"]
+        H1["TS 4.5:<br>Message Batches (50% Off)"]
+        H2["TS 4.5:<br>custom_id Correlation"]
+        H3["TS 4.6:<br>Multi-Instance Reviews"]
+        H4["TS 4.6:<br>Two-Pass Review"]
     end
 ```
 
@@ -52,8 +52,8 @@ A common failure mode in LLM prompting is attempting to tune precision using sub
 ```mermaid
 flowchart TD
     Spectrum["Prompt Precision Spectrum"]
-    Spectrum -->|Vague Directives| Vague["Vague: 'Be conservative'<br/>High false positives; erodes trust"]
-    Spectrum -->|Explicit Criteria| Explicit["Explicit: Negative boundaries & rubrics<br/>Low false positives; reproducible"]
+    Spectrum -->|Vague Directives| Vague["Vague: 'Be conservative'<br>High false positives; erodes trust"]
+    Spectrum -->|Explicit Criteria| Explicit["Explicit: Negative boundaries & rubrics<br>Low false positives; reproducible"]
 ```
 
 #### 2. Negative Boundaries (Defining What NOT to Flag)
@@ -132,8 +132,8 @@ When extracting structured data, prompting Claude to *"Return raw valid JSON"* i
 ```mermaid
 flowchart TD
     Tech["Structured Data Extraction"]
-    Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br/>Syntax errors & parse failures"]
-    Tech -->|Forced tool_use| ToolMode["tool_use with JSON Schema<br/>100% Valid syntax via tool_choice"]
+    Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br>Syntax errors & parse failures"]
+    Tech -->|Forced tool_use| ToolMode["tool_use with JSON Schema<br>100% Valid syntax via tool_choice"]
 ```
 
 #### 2. Hallucination Prevention via Nullable Schema Fields
@@ -194,8 +194,8 @@ A crucial architectural concept on the certification exam:
 ```mermaid
 flowchart TD
     Start["Validation Error Occurs"] --> Check{"Is data present in document?"}
-    Check -- "YES" --> Rec["Recoverable Error<br/>(Formatting / Math)<br/>Send targeted feedback"]
-    Check -- "NO" --> Unrec["Unrecoverable Error<br/>(Data missing from source)<br/>Escalate to human review"]
+    Check -- "YES" --> Rec["Recoverable Error<br>(Formatting / Math)<br>Send targeted feedback"]
+    Check -- "NO" --> Unrec["Unrecoverable Error<br>(Data missing from source)<br>Escalate to human review"]
 ```
 
 #### 3. Semantic Cross-Validation
@@ -572,14 +572,14 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
 
 ```mermaid
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br/>Guaranteed valid JSON schema"]
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Guaranteed valid JSON schema"]
     Q1 -->|No| Q2["2. Document attributes missing?"]
-    Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br/>Prevents hallucinated values"]
+    Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br>Prevents hallucinated values"]
     Q2 -->|No| Q3["3. Missing physical source facts?"]
-    Q3 -->|Yes| A3["Fast-Fail to Human Review<br/>Retries cannot invent absent data"]
+    Q3 -->|Yes| A3["Fast-Fail to Human Review<br>Retries cannot invent absent data"]
     Q3 -->|No| Q4["4. Message Batches for PR checks?"]
-    Q4 -->|Yes| A4["Reject: Use Real-Time API<br/>Batches have 24h SLA; use for audits"]
-    Q4 -->|No| A5["Two-Pass Review Pipeline<br/>Pass 1 Local + Pass 2 Integration"]
+    Q4 -->|Yes| A4["Reject: Use Real-Time API<br>Batches have 24h SLA; use for audits"]
+    Q4 -->|No| A5["Two-Pass Review Pipeline<br>Pass 1 Local + Pass 2 Integration"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

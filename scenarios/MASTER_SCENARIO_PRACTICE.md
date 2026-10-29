@@ -38,7 +38,7 @@ On the authentic 60-question CCAR-F certification exam:
 ### Decision Tree 1: Operational Mode Selection (Domain 3)
 ```mermaid
 flowchart TD
-    TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches &ge; 3 files<br>or core schemas?"}
+    TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches >= 3 files<br>or core schemas?"}
     
     ScopeCheck -- "Yes" --> PlanMode["Plan Mode<br>(Read-Only)"]
     PlanMode --> DraftBlueprint["Draft Step-by-Step<br>Blueprint"]
@@ -59,9 +59,9 @@ flowchart TD
 flowchart TD
     Workload["Inference Workload"] --> LatencyCheck{"Pre-merge or<br>developer blocking?"}
     
-    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTimeAPI["Use Real-Time Messages API<br>(/v1/messages)<br>Immediate response,<br>standard price"]
+    LatencyCheck -- "Yes (< 5 min SLA)" --> RealTimeAPI["Use Real-Time Messages API<br>(/v1/messages)<br>Immediate response,<br>standard price"]
     
-    LatencyCheck -- "No (Async / Non-blocking)" --> SLA24Check{"Tolerates &le; 24h<br>turnaround?"}
+    LatencyCheck -- "No (Async / Non-blocking)" --> SLA24Check{"Tolerates <= 24h<br>turnaround?"}
     
     SLA24Check -- "Yes (Overnight audits)" --> BatchesAPI["Use Message Batches API<br>(/v1/messages/batches)<br>50% cost discount,<br>custom_id correlation"]
     
@@ -96,7 +96,7 @@ flowchart TD
     
     IntentCheck -- "Yes" --> AuthCheck{"Customer 2FA<br>verified?"}
     AuthCheck -- "No" --> AuthGate["Programmatic Prerequisite Gate<br>Blocks Tool (Prompt for 2FA)"]
-    AuthCheck -- "Yes" --> PolicyCheck{"Within 30-day window<br>and &le; $50 limit?"}
+    AuthCheck -- "Yes" --> PolicyCheck{"Within 30-day window<br>and <= $50 limit?"}
     PolicyCheck -- "Yes" --> ExecuteRefund["Execute process_refund Tool"]
     PolicyCheck -- "No" --> PolicyEscalate["Escalate to Human Supervisor<br>with Case Facts"]
 ```

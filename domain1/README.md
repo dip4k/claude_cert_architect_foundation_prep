@@ -12,45 +12,45 @@ Domain 1 represents the highest-weighted domain on the **Claude Certified Archit
 - **Loop Lifecycle**: `client.messages.create()` -> inspect `response.stop_reason` -> if `"tool_use"`, append assistant message, execute tools, append user message with `tool_result` blocks -> repeat until `"end_turn"`.
 - **Sole Deterministic Signal**: `response.stop_reason == "end_turn"` is the only reliable signal of task completion.
 - **Anti-Patterns**: Parsing assistant text for keywords ("Done", "Complete"), relying on regex, or using loop turn limits as completion triggers.
-- **Reference Exercise**: [ts_1_1_multi_tool_agent_loop/](ts_1_1_multi_tool_agent_loop/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_1_multi_tool_agent_loop/README.md) · [Interactive Workbook](ts_1_1_multi_tool_agent_loop/ts_1_1_multi_tool_agent_loop.ipynb) · [Executable Code](ts_1_1_multi_tool_agent_loop/main.py)
 
 ### [TS 1.2: Orchestrate Multi-Agent Systems with Coordinator-Subagent Patterns](ts_1_2_coordinator_subagents/main.py)
 - **Hub-and-Spoke Topology**: All communication, state management, audit logging, and routing flows through the coordinator.
 - **Context Isolation Contract**: Subagents **do not** inherit coordinator history, memory, or permissions. Subagents start with empty context.
 - **Dynamic Routing**: Coordinator dynamically routes by query complexity (direct resolution vs specialized subagent delegation).
 - **Iterative Synthesis**: Coordinator evaluates subagent outputs against requirements and re-delegates if gaps exist.
-- **Reference Exercise**: [ts_1_2_coordinator_subagents/](ts_1_2_coordinator_subagents/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_2_coordinator_subagents/README.md) · [Interactive Workbook](ts_1_2_coordinator_subagents/ts_1_2_coordinator_subagents.ipynb) · [Executable Code](ts_1_2_coordinator_subagents/main.py)
 
 ### [TS 1.3: Configure Subagent Invocation, Context Passing, and Spawning](ts_1_3_subagent_invocation_spawning/main.py)
 - **Spawning Mechanism**: The `Task` tool (must be explicitly whitelisted in `allowedTools` or `tools`).
 - **Parallel Spawning**: Emitting multiple `Task` tool use blocks in a single coordinator response/turn enables concurrent subagent execution, reducing latency by 40%–60%.
 - **Structured Context**: Separate content/findings from metadata (source URLs, page numbers, timestamps) to preserve provenance.
 - **Goal-Oriented Prompts**: Specify clear goals, constraints, and schemas rather than rigid procedural steps.
-- **Reference Exercise**: [ts_1_3_subagent_invocation_spawning/](ts_1_3_subagent_invocation_spawning/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_3_subagent_invocation_spawning/README.md) · [Interactive Workbook](ts_1_3_subagent_invocation_spawning/ts_1_3_subagent_invocation_spawning.ipynb) · [Executable Code](ts_1_3_subagent_invocation_spawning/main.py)
 
 ### [TS 1.4: Implement Multi-Step Workflows with Enforcement and Handoff Patterns](ts_1_4_prerequisite_enforcement/main.py)
 - **Programmatic Prerequisite Gates**: State machine / code checks (e.g., blocking `process_refund` until `get_customer` verifies ID) provide 100% deterministic compliance guarantees that prompts cannot ensure.
 - **Structured Handoff Manifests**: Compile comprehensive case manifests (customer ID, verified identity, issue summary, actions attempted, root cause, recommended action) for human agents.
 - **Escalation Triggers**: Immediate escalation on explicit customer demand, unhandled policy gaps, or technical barriers.
-- **Reference Exercise**: [ts_1_4_prerequisite_enforcement/](ts_1_4_prerequisite_enforcement/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_4_prerequisite_enforcement/README.md) · [Interactive Workbook](ts_1_4_prerequisite_enforcement/ts_1_4_prerequisite_enforcement.ipynb) · [Executable Code](ts_1_4_prerequisite_enforcement/main.py)
 
 ### [TS 1.5: Apply Agent SDK Hooks for Tool Call Interception and Data Normalization](ts_1_5_sdk_hooks/main.py)
 - **Hook Lifecycle**: `PreToolUse` (interception / gating) and `PostToolUse` (normalization).
 - **Interception Hooks**: Enforce hard regulatory, security, and financial boundaries (e.g. blocking transactions > $500).
 - **PostToolUse Normalization**: Normalize heterogeneous data (Unix timestamps -> ISO 8601, status codes -> uniform enums, PII redaction) before returning to Claude.
-- **Reference Exercise**: [ts_1_5_sdk_hooks/](ts_1_5_sdk_hooks/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_5_sdk_hooks/README.md) · [Interactive Workbook](ts_1_5_sdk_hooks/ts_1_5_sdk_hooks.ipynb) · [Executable Code](ts_1_5_sdk_hooks/main.py)
 
 ### [TS 1.6: Design Task Decomposition Strategies for Complex Workflows](ts_1_6_task_decomposition/main.py)
 - **Attention Dilution**: Large multi-file changes (10+ files) degrade model focus if evaluated in a single prompt.
 - **Two-Pass Prompt Chaining**: Pass 1 (isolated per-file analysis for local bugs) + Pass 2 (cross-file integration pass for contracts, shared state, and end-to-end security).
 - **Adaptive Decomposition**: Dynamic generation of subtasks based on intermediate discoveries during open-ended troubleshooting.
-- **Reference Exercise**: [ts_1_6_task_decomposition/](ts_1_6_task_decomposition/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_6_task_decomposition/README.md) · [Interactive Workbook](ts_1_6_task_decomposition/ts_1_6_task_decomposition.ipynb) · [Executable Code](ts_1_6_task_decomposition/main.py)
 
 ### [TS 1.7: Manage Session State, Resumption, and Forking](ts_1_7_session_management/main.py)
 - **Session Continuation**: `--resume <session-id>` reloads historical message trails for continuous work.
 - **Session Forking**: `fork_session` branches from a shared baseline checkpoint into isolated threads for divergent exploration.
 - **Stale Context Trap**: Resuming long sessions after source code changes leads to hallucinations over cached outputs. Remedy: Discard stale session, inject a structured summary into a fresh session.
-- **Reference Exercise**: [ts_1_7_session_management/](ts_1_7_session_management/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_1_7_session_management/README.md) · [Interactive Workbook](ts_1_7_session_management/ts_1_7_session_management.ipynb) · [Executable Code](ts_1_7_session_management/main.py)
 
 ---
 
@@ -126,14 +126,14 @@ Domain 1 represents the highest-weighted domain on the **Claude Certified Archit
 
 ```mermaid
 flowchart TD
-    Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br/>Never parse text or regex"]
+    Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br>Never parse text or regex"]
     Q1 -->|No| Q2["2. Enforcing business rules?"]
-    Q2 -->|Yes| A2["Programmatic Gate / PreToolUse<br/>Never rely on prompts alone"]
+    Q2 -->|Yes| A2["Programmatic Gate / PreToolUse<br>Never rely on prompts alone"]
     Q2 -->|No| Q3["3. Spawning subagents?"]
-    Q3 -->|Yes| A3["Multiple Task Calls in Turn 1<br/>Concurrent parallel fan-out"]
+    Q3 -->|Yes| A3["Multiple Task Calls in Turn 1<br>Concurrent parallel fan-out"]
     Q3 -->|No| Q4["4. Multi-file code review?"]
-    Q4 -->|Yes| A4["Two-Pass Prompt Chaining<br/>Pass 1: Local / Pass 2: Integration"]
-    Q4 -->|No| A5["Fresh Session + Summary<br/>Discard stale context on rebase"]
+    Q4 -->|Yes| A4["Two-Pass Prompt Chaining<br>Pass 1: Local / Pass 2: Integration"]
+    Q4 -->|No| A5["Fresh Session + Summary<br>Discard stale context on rebase"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

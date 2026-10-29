@@ -3,7 +3,7 @@
 ## 📌 Executive Overview: Goal, Scope & Exam Importance
 
 ### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (18% of exam weighting)
+- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
 - **Scenario Alignment**: Scenario 4 (Incident Remediation & Root Cause Analysis) & Scenario 6 (Automated Refactoring & Cross-Module Review)
 - **Core Goal**: Architect context isolation and persistent state tracking during large codebase exploration: maintaining external scratchpads (`scratchpad.md`) to counteract context degradation, structuring state manifests for crash recovery, and delegating verbose grep/AST investigations to ephemeral subagents.
 

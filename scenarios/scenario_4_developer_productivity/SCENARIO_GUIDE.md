@@ -286,7 +286,7 @@ stateDiagram-v2
     state SURGICAL_EDIT {
         [*] --> ATTEMPT_EDIT: Call Edit(old_string, new_string)
         ATTEMPT_EDIT --> EDIT_SUCCESS: Target unique (1 match)
-        ATTEMPT_EDIT --> COLLISION_DETECTED: Target matches &gt; 1 location
+        ATTEMPT_EDIT --> COLLISION_DETECTED: Target matches > 1 location
         
         COLLISION_DETECTED --> EXPAND_ANCHOR: Add 2-4 surrounding context lines
         EXPAND_ANCHOR --> ATTEMPT_EDIT_EXPANDED: Call Edit with expanded anchor
@@ -695,3 +695,14 @@ class DeveloperProductivityToolbox:
 
 **Architect Defense**:
 > "Wholesale `Write` is one of the most dangerous anti-patterns in automated coding. When an agent rewrites a 1,000-line file just to modify 3 lines, it must accurately reproduce the other 997 lines. If the model truncates output, hallucinates a method signature, or replaces a helper function with `// ... rest of code`, production logic is silently erased. Surgical `Edit` acts like a localized `git patch`—guaranteeing that untouched methods remain 100% byte-for-byte identical."
+
+---
+
+## 🛠️ Production Verification & Interactive Workbench
+
+- **Interactive Jupyter Lab**: [scenario_workbench.ipynb](scenario_workbench.ipynb) (Cell-by-cell pedagogical walkthrough with offline simulations)
+- **Full End-to-End CLI Pipeline**: [simulation.py](simulation.py) (Deterministic Python implementation of the complete scenario)
+- **Zero-Token Offline Verification**:
+  `ash
+  uv run pytest scenarios/scenario_4_developer_productivity/
+  `

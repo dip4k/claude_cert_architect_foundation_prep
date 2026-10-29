@@ -99,8 +99,8 @@ Anthropic's Message Batches API provides a **50% discount** on input and output 
 flowchart TD
     Task["Code Review Workload"] --> LatencyCheck{"Pre-merge or blocking?"}
     
-    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br>Immediate response; standard pricing"]
-    LatencyCheck -- "No (&le; 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br>50% cost discount; asynchronous"]
+    LatencyCheck -- "Yes (< 5 min SLA)" --> RealTime["Real-Time API: POST /v1/messages<br>Immediate response; standard pricing"]
+    LatencyCheck -- "No (<= 24h SLA)" --> BatchAPI["Message Batches API: POST /v1/messages/batches<br>50% cost discount; asynchronous"]
 ```
 
 ### 3. Two-Pass Review Architecture (TS 4.6)
@@ -651,3 +651,14 @@ How should the CI review orchestrator prevent this prompt injection from hijacki
 
 **Architect Defense**:
 > "In practice, asking a single prompt to simultaneously check local syntax bugs and cross-file API contracts triggers severe attentional dilution. The model's attention heads saturate on obvious local syntax defects (null checks, off-by-one loops) and miss subtle cross-module contract breaks (e.g. deleting an exported parameter that breaks a consumer service 4 directories away). Decoupling into Pass 1 (local correctness) and Pass 2 (contract integration) dramatically increases defect detection accuracy for breaking changes, far outweighing the negligible token cost of a second pass."
+
+---
+
+## 🛠️ Production Verification & Interactive Workbench
+
+- **Interactive Jupyter Lab**: [scenario_workbench.ipynb](scenario_workbench.ipynb) (Cell-by-cell pedagogical walkthrough with offline simulations)
+- **Full End-to-End CLI Pipeline**: [simulation.py](simulation.py) (Deterministic Python implementation of the complete scenario)
+- **Zero-Token Offline Verification**:
+  `ash
+  uv run pytest scenarios/scenario_5_continuous_integration/
+  `

@@ -9,16 +9,16 @@
 flowchart LR
     subgraph Tools["Tool Interfaces & Execution"]
         direction TB
-        T1["TS 2.1:<br/>Descriptions & Boundaries"]
-        T2["TS 2.2:<br/>MCP Structured Errors"]
-        T3["TS 2.3:<br/>Least Privilege & tool_choice"]
+        T1["TS 2.1:<br>Descriptions & Boundaries"]
+        T2["TS 2.2:<br>MCP Structured Errors"]
+        T3["TS 2.3:<br>Least Privilege & tool_choice"]
     end
 
     subgraph MCP["MCP Integration & Scoping"]
         direction TB
-        M1["TS 2.4:<br/>Project vs User Scoping"]
-        M2["TS 2.4:<br/>MCP Resources for Catalogs"]
-        M3["TS 2.5:<br/>Built-in Tool Selection & Edit"]
+        M1["TS 2.4:<br>Project vs User Scoping"]
+        M2["TS 2.4:<br>MCP Resources for Catalogs"]
+        M3["TS 2.5:<br>Built-in Tool Selection & Edit"]
     end
 ```
 
@@ -46,9 +46,9 @@ Minimal, vague, or overlapping descriptions (e.g. `description: "Finds stuff"`) 
 
 ```mermaid
 flowchart TD
-    Intent["User Intent:<br/>'Lookup status of shipment #8812'"] --> Eval["Claude Evaluates<br/>Tool Declarations"]
-    Eval -->|Minimal Description| Ambiguous["Ambiguous: order vs shipping<br/>50% Misrouting (Guesses blindly)"]
-    Eval -->|Boundary Description| Clear["Differentiated: lookup_shipment<br/>100% Deterministic Routing"]
+    Intent["User Intent:<br>'Lookup status of shipment #8812'"] --> Eval["Claude Evaluates<br>Tool Declarations"]
+    Eval -->|Minimal Description| Ambiguous["Ambiguous: order vs shipping<br>50% Misrouting (Guesses blindly)"]
+    Eval -->|Boundary Description| Clear["Differentiated: lookup_shipment<br>100% Deterministic Routing"]
 ```
 
 #### 2. The 4 Essential Components of Production Tool Descriptions
@@ -128,13 +128,13 @@ Providing an agent with 15–25 tools degrades performance:
 ```mermaid
 flowchart TD
     subgraph AntiPattern["Anti-Pattern: Monolithic Agent"]
-        Mono["Single Agent with 15+ Tools<br/>High confusion & context pollution"]
+        Mono["Single Agent with 15+ Tools<br>High confusion & context pollution"]
     end
 
     subgraph BestPractice["Production: Least Privilege"]
-        Coord["Coordinator<br/>(allowedTools: Task)"]
-        Coord --> Sub1["Billing Subagent<br/>[query_billing, process_refund]"]
-        Coord --> Sub2["Order Support Subagent<br/>[lookup_order, track_shipment]"]
+        Coord["Coordinator<br>(allowedTools: Task)"]
+        Coord --> Sub1["Billing Subagent<br>[query_billing, process_refund]"]
+        Coord --> Sub2["Order Support Subagent<br>[lookup_order, track_shipment]"]
     end
 ```
 
@@ -243,9 +243,9 @@ The `Edit` tool relies on finding an exact, unique `old_string` anchor in the ta
 flowchart TD
     Start["Attempt Surgical Edit"] --> Check{"Edit Succeeded?"}
     Check -->|Yes| Done["Edit Applied"]
-    Check -->|No: Anchor Collision| Read["1. Invoke Read<br/>(Inspect exact lines)"]
+    Check -->|No: Anchor Collision| Read["1. Invoke Read<br>(Inspect exact lines)"]
     Read --> Reconcile["2. Expand Anchor Context"]
-    Reconcile --> Fallback["3. Retry Edit OR<br/>Fallback to Write"]
+    Reconcile --> Fallback["3. Retry Edit OR<br>Fallback to Write"]
 ```
 
 ---
@@ -483,14 +483,14 @@ Option B is correct. Claude models support parallel tool use by default, emittin
 
 ```mermaid
 flowchart TD
-    Q1["1. Model picks wrong tool?"] -->|Yes| A1["Refine Tool Description & Boundaries<br/>Never build custom classifier"]
+    Q1["1. Model picks wrong tool?"] -->|Yes| A1["Refine Tool Description & Boundaries<br>Never build custom classifier"]
     Q1 -->|No| Q2["2. Zero records returned?"]
-    Q2 -->|Yes| A2["Valid Empty: isError: false<br/>Zero matches is ground truth"]
+    Q2 -->|Yes| A2["Valid Empty: isError: false<br>Zero matches is ground truth"]
     Q2 -->|No| Q3["3. Backend failure / timeout?"]
-    Q3 -->|Yes| A3["Structured MCP Error<br/>Include errorCategory & isRetryable"]
+    Q3 -->|Yes| A3["Structured MCP Error<br>Include errorCategory & isRetryable"]
     Q3 -->|No| Q4["4. Read-only schemas / catalogs?"]
-    Q4 -->|Yes| A4["MCP Resources<br/>Use resources/read, not active tools"]
-    Q4 -->|No| A5["Read + Expand Anchor<br/>Fall back to Write on collision"]
+    Q4 -->|Yes| A4["MCP Resources<br>Use resources/read, not active tools"]
+    Q4 -->|No| A5["Read + Expand Anchor<br>Fall back to Write on collision"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

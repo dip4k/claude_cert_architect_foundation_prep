@@ -3,7 +3,7 @@
 ## 📌 Executive Overview: Goal, Scope & Exam Importance
 
 ### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (18% of exam weighting)
+- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
 - **Scenario Alignment**: Scenario 1 (Customer Support Resolution Agent with Strict SLAs)
 - **Core Goal**: Architect resilient context preservation strategies for long multi-turn interactions, avoiding the loss of transactional numbers and identifiers caused by progressive summarization, trimming verbose tool outputs, and mitigating the "lost-in-the-middle" attention degradation.
 
@@ -89,6 +89,7 @@ flowchart TD
 - **Lost-in-the-Middle Effect**: The empirical phenomenon where large language models exhibit high retrieval and instruction adherence at the beginning and end of long contexts, with a noticeable dip in attention in the middle 60% of the window.
 - **Tool Output Trimming**: Normalizing and filtering verbose third-party or database JSON responses down to essential semantic fields before appending them to the message history.
 - **Rolling Dialogue Buffer**: Preserving the most recent $K$ turns (typically 2 to 3) in verbatim detail so the model retains natural conversational continuity.
+- **Prompt Caching (`cache_control`)**: Explicit prefix-based caching mechanism (`cache_control: {"type": "ephemeral"}`) requiring $\ge 1,024$ tokens (Sonnet/Opus) or $\ge 2,048$ tokens (Haiku), providing a 90% discount on cache reads ($0.10\times$ base input price) with a 5-minute rolling TTL. Ordering must strictly place static content (tools, system prompts) before dynamic turns.
 
 ---
 
@@ -100,6 +101,7 @@ flowchart TD
 | **Handling Verbose Tool Payloads** | **Post-Tool Trimming**: Filter JSON responses to only the fields needed for the prompt before appending to the context. | **TRAP: Raw Payload Ingestion**: Appending the complete 50-field database row to message history, bloating the context window with warehouse noise. |
 | **Mitigating 'Lost-in-the-Middle'** | Place critical system instructions, policy constraints, and Case Facts at the **top** or **bottom** of the context. | **TRAP: Mid-Context Ingestion**: Appending critical policy instructions or case state in the middle of a 100,000-token conversation history. |
 | **Conversation Memory Strategy** | Hybrid Architecture: Case Facts (Immutable) + Verbatim Recent Turns (Recency) + Compressed Narrative (History). | **TRAP: All-or-Nothing Memory**: Either keeping 100% of raw conversation history until context overflow, or throwing away everything except a 1-sentence summary. |
+| **Prompt Caching Structure** | Place static elements (tools, schemas, system prompts) at the top before breakpoints. Dynamic input comes after. | **TRAP: Inverting Cache Order**: Placing dynamic user IDs, timestamps, or transient turns before cached tool blocks, which invalidates the entire cache block on every turn. |
 
 ---
 
@@ -111,6 +113,7 @@ flowchart TD
 | **Multi-Turn Service (5–20 turns)** | **Case Facts + Rolling 2-Turn Window + Narrative Summary** | Predictable & Bound | **100% Deterministic for Facts** |
 | **Extremely Long Audit (> 50 turns)** | Case Facts + Vector Search / Subagent Exploration Scratchpad | Fixed baseline | High (Facts isolated, details fetched on-demand) |
 | **High-Volume DB Tool Responses** | PostToolUse Whitelist Trimming (4–5 fields max) | 80% reduction | Eliminates token waste and schema confusion |
+| **Repetitive Tool/System Prompts (>1,024 tokens)** | Prompt Caching (`cache_control: {"type": "ephemeral"}`) | 90% cost savings on reads | Preserves full fidelity across 5-minute rolling TTL |
 
 ---
 
@@ -124,6 +127,7 @@ When managing context in Claude 4.5:
   ```
 - **Temperature Omission**: **Do NOT specify `temperature`**, `top_p`, or `top_k`. Claude 4.5 enforces default sampling parameters when thinking is active; supplying custom values results in an HTTP `400 Bad Request`.
 - **Thinking Continuity**: When replaying multi-turn conversation histories, any previous assistant turns containing `thinking` blocks must be preserved intact with their cryptographic signatures. Never strip thinking blocks from history.
+- **Prompt Caching Configuration**: Place up to 4 explicit breakpoints (`cache_control: {"type": "ephemeral"}`) on static system prompts or tool sets. Remember that Sonnet 4.5 requires a minimum prefix of 1,024 tokens, and even a 1-character discrepancy will invalidate the cache.
 
 ---
 

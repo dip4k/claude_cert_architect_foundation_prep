@@ -306,8 +306,8 @@ stateDiagram-v2
     AUTHENTICATED --> ACTIVE_INQUIRY: Disambiguate Order ID
     ACTIVE_INQUIRY --> EVALUATING_POLICY: Order located & verified
     
-    EVALUATING_POLICY --> REFUND_EXECUTED: Days &le; 30 & Auth valid
-    EVALUATING_POLICY --> POLICY_EXCEPTION: Days &gt; 30
+    EVALUATING_POLICY --> REFUND_EXECUTED: Days <= 30 & Auth valid
+    EVALUATING_POLICY --> POLICY_EXCEPTION: Days > 30
     
     POLICY_EXCEPTION --> OFFER_ALTERNATIVE: Offer store credit / warranty
     OFFER_ALTERNATIVE --> ESCALATED_HUMAN: Customer rejects store credit
@@ -780,3 +780,14 @@ The customer has not asked to speak with a human representative, and standard da
 > 1. **Financial Cost**: Input tokens are billed on every turn of a multi-turn conversation. Ingesting 2,500 redundant tokens across 15 turns burns 37,500 unnecessary tokens per session.
 > 2. **Latency Degradation**: Time-to-first-token (TTFT) scales with prompt token volume. Trimming keeps turn latency under our 2.5-second SLA.
 > 3. **Attentional Degradation ('Lost in the Middle')**: Dumping raw server shard IDs, database keys, and carrier timestamps pollutes the model's attention heads, increasing the risk that it overlooks subtle customer constraints."
+
+---
+
+## 🛠️ Production Verification & Interactive Workbench
+
+- **Interactive Jupyter Lab**: [scenario_workbench.ipynb](scenario_workbench.ipynb) (Cell-by-cell pedagogical walkthrough with offline simulations)
+- **Full End-to-End CLI Pipeline**: [simulation.py](simulation.py) (Deterministic Python implementation of the complete scenario)
+- **Zero-Token Offline Verification**:
+  `ash
+  uv run pytest scenarios/scenario_1_customer_support/
+  `

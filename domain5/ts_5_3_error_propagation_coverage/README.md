@@ -3,7 +3,7 @@
 ## 📌 Executive Overview: Goal, Scope & Exam Importance
 
 ### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (18% of exam weighting)
+- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
 - **Scenario Alignment**: Scenario 3 (Multi-Agent Research & Competitive Synthesis)
 - **Core Goal**: Architect resilient error propagation and synthesis protocols across subagent hierarchies: strictly distinguishing between semantic zero results (`VALID_EMPTY`) and infrastructure outages (`UPSTREAM_FAILURE`), tracking partial system coverage, and transparently annotating degraded findings in executive reports.
 

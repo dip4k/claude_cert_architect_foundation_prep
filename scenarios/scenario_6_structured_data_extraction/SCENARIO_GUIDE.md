@@ -179,7 +179,7 @@ When deterministic validation fails, the orchestrator must decide whether to ret
 flowchart TD
     ValidationError["Validation Failure Triggered"] --> FailureType{"Failure Root Cause"}
     
-    FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count &lt; 2?"}
+    FailureType -- "Math Mismatch (subtotal + tax != total)" --> RetryCheck{"Retry Count < 2?"}
     
     RetryCheck -- "Yes" --> SendRetry["Closed-Loop Retry<br>Send targeted math error<br>via tool_result"]
     RetryCheck -- "No (Exhausted)" --> HumanQueue["Route to Human<br>Exception Queue"]
@@ -356,15 +356,15 @@ stateDiagram-v2
         FACT_ABSENCE_CHECK --> [*]
     }
     
-    DETERMINISTIC_VALIDATION --> CLOSED_LOOP_RETRY: Math mismatch (Attempts &lt; 2)
+    DETERMINISTIC_VALIDATION --> CLOSED_LOOP_RETRY: Math mismatch (Attempts < 2)
     CLOSED_LOOP_RETRY --> SCHEMA_EXTRACTION: Re-prompt with exact math error
     
     DETERMINISTIC_VALIDATION --> FAST_FAIL_HUMAN: Fact fundamentally absent OR Retries exhausted
     
     DETERMINISTIC_VALIDATION --> CONFIDENCE_EVALUATION: All validations passed
     
-    CONFIDENCE_EVALUATION --> HIGH_CONFIDENCE: Score &ge; 0.90
-    CONFIDENCE_EVALUATION --> LOW_CONFIDENCE: Score &lt; 0.90
+    CONFIDENCE_EVALUATION --> HIGH_CONFIDENCE: Score >= 0.90
+    CONFIDENCE_EVALUATION --> LOW_CONFIDENCE: Score < 0.90
     
     LOW_CONFIDENCE --> HUMAN_TRIAGE_QUEUE: Flagged for manual review
     
@@ -785,3 +785,14 @@ What architectural layers protect the structured extraction pipeline from this a
 
 **Architect Defense**:
 > "A 99% aggregate accuracy metric is dangerous because it is dominated by standard high-volume templates (e.g. AWS, Staples, Home Depot). It easily conceals an unacceptable 30% failure rate on complex, low-volume document classes like foreign-currency utility bills or handwritten invoices. If we disable reviews for high-confidence tiers, silent failures go undetected into accounting ledgers. A 5–10% continuous stratified random audit across all confidence tiers and document categories is non-negotiable to detect model drift and niche layout regressions."
+
+---
+
+## 🛠️ Production Verification & Interactive Workbench
+
+- **Interactive Jupyter Lab**: [scenario_workbench.ipynb](scenario_workbench.ipynb) (Cell-by-cell pedagogical walkthrough with offline simulations)
+- **Full End-to-End CLI Pipeline**: [simulation.py](simulation.py) (Deterministic Python implementation of the complete scenario)
+- **Zero-Token Offline Verification**:
+  `ash
+  uv run pytest scenarios/scenario_6_structured_data_extraction/
+  `

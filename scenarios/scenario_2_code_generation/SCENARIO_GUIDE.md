@@ -261,7 +261,7 @@ stateDiagram-v2
     
     AMBIGUITY_CHECK --> SCOPE_EVALUATION: Requirements clear and specific
     
-    SCOPE_EVALUATION --> PLAN_MODE: Touches &ge; 3 files OR API schema
+    SCOPE_EVALUATION --> PLAN_MODE: Touches >= 3 files OR API schema
     SCOPE_EVALUATION --> DIRECT_EXECUTION: Single-file localized fix
     
     PLAN_MODE --> DRAFT_BLUEPRINT: Read-only exploration (Read, Grep, Glob)
@@ -659,3 +659,14 @@ class ClaudeCodeGenerationEngine:
 
 **Architect Defense**:
 > "A monolithic `CLAUDE.md` in an enterprise monorepo easily swells to 500+ lines covering Go, React, Python, and Terraform. Ingesting those 15,000 tokens on every single turn burns substantial token budget and degrades model attention via 'lost-in-the-middle'. Worse, contradictory conventions (e.g. Go's PascalCase exports vs Python's snake_case functions) confuse the model. Path-scoped rules load dynamically only when matching files are touched, keeping context under 40k tokens and maintaining razor-sharp architectural focus."
+
+---
+
+## 🛠️ Production Verification & Interactive Workbench
+
+- **Interactive Jupyter Lab**: [scenario_workbench.ipynb](scenario_workbench.ipynb) (Cell-by-cell pedagogical walkthrough with offline simulations)
+- **Full End-to-End CLI Pipeline**: [simulation.py](simulation.py) (Deterministic Python implementation of the complete scenario)
+- **Zero-Token Offline Verification**:
+  `ash
+  uv run pytest scenarios/scenario_2_code_generation/
+  `

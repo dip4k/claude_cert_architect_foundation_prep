@@ -3,7 +3,7 @@
 ## 📌 Executive Overview: Goal, Scope & Exam Importance
 
 ### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (18% of exam weighting)
+- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
 - **Scenario Alignment**: Scenario 1 (Customer Support Resolution Agent) & Scenario 6 (Structured Data Extraction)
 - **Core Goal**: Design production-grade Human-in-the-Loop (HITL) routing architectures that combine tiered confidence thresholds with stratified random sampling, avoiding the catastrophic "selective review trap" and continuously monitoring Expected Calibration Error (ECE) to detect model drift and overconfident hallucinations.
 

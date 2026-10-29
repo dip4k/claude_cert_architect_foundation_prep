@@ -9,16 +9,16 @@
 flowchart LR
     subgraph Config["Configuration & Extensions"]
         direction TB
-        C1["TS 3.1:<br/>4-Tier Hierarchy"]
-        C2["TS 3.2:<br/>Commands & Skills (fork)"]
-        C3["TS 3.3:<br/>Path Rules (Glob)"]
+        C1["TS 3.1:<br>4-Tier Hierarchy"]
+        C2["TS 3.2:<br>Commands & Skills (fork)"]
+        C3["TS 3.3:<br>Path Rules (Glob)"]
     end
 
     subgraph Exec["Execution & Automation"]
         direction TB
-        E1["TS 3.4:<br/>Plan Mode vs Direct"]
-        E2["TS 3.5:<br/>Refinement & Interview"]
-        E3["TS 3.6:<br/>Headless Non-Interactive CI"]
+        E1["TS 3.4:<br>Plan Mode vs Direct"]
+        E2["TS 3.5:<br>Refinement & Interview"]
+        E3["TS 3.6:<br>Headless Non-Interactive CI"]
     end
 ```
 
@@ -42,10 +42,10 @@ Claude Code enforces a strict, hierarchical inheritance model when loading confi
 
 ```mermaid
 flowchart TD
-    L1["1. User Scope: ~/.claude/CLAUDE.md<br/>(Personal defaults, unversioned)"]
-    L2["2. Project Scope: .claude/CLAUDE.md<br/>(Team standards, in git)"]
-    L3["3. Directory Scope: subdir/CLAUDE.md<br/>(Subtree specific)"]
-    L4["4. Path Rules: .claude/rules/*.md<br/>(Conditionally loaded by glob)"]
+    L1["1. User Scope: ~/.claude/CLAUDE.md<br>(Personal defaults, unversioned)"]
+    L2["2. Project Scope: .claude/CLAUDE.md<br>(Team standards, in git)"]
+    L3["3. Directory Scope: subdir/CLAUDE.md<br>(Subtree specific)"]
+    L4["4. Path Rules: .claude/rules/*.md<br>(Conditionally loaded by glob)"]
     L1 -->|Overridden by| L2
     L2 -->|Overridden by| L3
     L3 -->|Overridden by| L4
@@ -266,7 +266,7 @@ Downstream CI steps can parse this JSON with `jq` to post automated PR comments 
 ```mermaid
 flowchart TD
     Event["CI Trigger (PR Event)"] --> Sandbox["Ephemeral Container Sandbox"]
-    Sandbox --> Exec["Run claude -p<br/>--dangerously-skip-permissions<br/>(--output-format json)"]
+    Sandbox --> Exec["Run claude -p<br>--dangerously-skip-permissions<br>(--output-format json)"]
     Exec --> Parse["Parse JSON Output"]
     Parse --> Check{"Critical / High Findings?"}
     Check -->|Yes| Block["Exit Code 1: Block Merge Gate"]
@@ -544,14 +544,14 @@ Option B is correct. In TS 3.5 (Iterative Refinement), a core architectural rule
 
 ```mermaid
 flowchart TD
-    Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br/>Never personal ~/.claude/"]
+    Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br>Never personal ~/.claude/"]
     Q1 -->|No| Q2["2. Verbose exploration skill?"]
-    Q2 -->|Yes| A2["Set context: fork in SKILL.md<br/>Isolates tokens in subagent"]
+    Q2 -->|Yes| A2["Set context: fork in SKILL.md<br>Isolates tokens in subagent"]
     Q2 -->|No| Q3["3. Rules across scattered paths?"]
-    Q3 -->|Yes| A3[".claude/rules/*.md with paths glob<br/>Never duplicate directory CLAUDE.md"]
+    Q3 -->|Yes| A3[".claude/rules/*.md with paths glob<br>Never duplicate directory CLAUDE.md"]
     Q3 -->|No| Q4["4. Multi-file refactor (5+ files)?"]
-    Q4 -->|Yes| A4["Plan Mode (/plan)<br/>Explore & blueprint before editing"]
-    Q4 -->|No| A5["Pass -p / --print Flag<br/>Non-interactive headless CI execution"]
+    Q4 -->|Yes| A4["Plan Mode (/plan)<br>Explore & blueprint before editing"]
+    Q4 -->|No| A5["Pass -p / --print Flag<br>Non-interactive headless CI execution"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

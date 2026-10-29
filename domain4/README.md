@@ -13,36 +13,36 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 - **Negative Boundaries**: Explicitly state what NOT to report (e.g. ignore missing types in test helper functions) to prevent over-eager classification.
 - **Managing False Positives**: Temporarily disable noisy categories entirely while refining criteria, rather than filtering by unreliable model confidence scores.
 - **Concrete Severity Tiers**: Define Critical, High, Medium, Low with unambiguous technical criteria.
-- **Reference Exercise**: [ts_4_1_explicit_criteria_classification/](ts_4_1_explicit_criteria_classification/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_1_explicit_criteria_classification/README.md) · [Interactive Workbook](ts_4_1_explicit_criteria_classification/ts_4_1_explicit_criteria_classification.ipynb) · [Executable Code](ts_4_1_explicit_criteria_classification/main.py)
 
 ### [TS 4.2: Apply Few-Shot Prompting to Improve Output Consistency and Quality](ts_4_2_few_shot_and_multi_instance/main.py)
 - **Targeted Examples**: 2–4 high-impact few-shot examples illustrating complex reasoning, boundary edge cases, and expected output formatting.
 - **Generalization**: Teach underlying principles and reasoning rather than string matching.
 - **Structural Diversity**: Include diverse layout examples (tables, key-value blocks, unstructured text) to eliminate null extraction errors on varied enterprise documents.
-- **Reference Exercise**: [ts_4_2_few_shot_and_multi_instance/](ts_4_2_few_shot_and_multi_instance/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_2_few_shot_and_multi_instance/README.md) · [Interactive Workbook](ts_4_2_few_shot_and_multi_instance/ts_4_2_few_shot_and_multi_instance.ipynb) · [Executable Code](ts_4_2_few_shot_and_multi_instance/main.py)
 
 ### [TS 4.3: Enforce Structured Output Using Tool Use and JSON Schemas](ts_4_3_structured_output_tool_use/main.py)
 - **Guaranteed Valid Syntax**: Enforcing schemas via `tool_use` with forced `tool_choice` guarantees 100% syntactically valid JSON, eliminating markdown parsing errors.
 - **Preventing Hallucinations via Nullable Fields**: Mark missing-prone fields as `type: ["string", "null"]` so Claude outputs `null` instead of fabricating data.
 - **Extensible Taxonomy**: Use enum categories with `"OTHER"` plus a companion string field `other_description`.
-- **Reference Exercise**: [ts_4_3_structured_output_tool_use/](ts_4_3_structured_output_tool_use/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_3_structured_output_tool_use/README.md) · [Interactive Workbook](ts_4_3_structured_output_tool_use/ts_4_3_structured_output_tool_use.ipynb) · [Executable Code](ts_4_3_structured_output_tool_use/main.py)
 
 ### [TS 4.4: Implement Validation, Retry, and Feedback Loops for Extraction Quality](ts_4_4_validation_retry_feedback/main.py)
 - **Targeted Error Feedback**: Feed specific Pydantic / JSON schema validator errors (field, observed value, expected format) back to Claude for self-correction.
 - **Recoverable vs Unrecoverable Errors**: Retries fix formatting and math errors; retries fail when data is fundamentally absent from source documents. Stop retries and escalate unrecoverable errors to human queues.
 - **Semantic Cross-Checking**: Compare independent fields (e.g. `sum(line_items)` vs `stated_total`) to catch calculation mismatches.
-- **Reference Exercise**: [ts_4_4_validation_retry_feedback/](ts_4_4_validation_retry_feedback/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_4_validation_retry_feedback/README.md) · [Interactive Workbook](ts_4_4_validation_retry_feedback/ts_4_4_validation_retry_feedback.ipynb) · [Executable Code](ts_4_4_validation_retry_feedback/main.py)
 
 ### [TS 4.5: Design Efficient Batch Processing Strategies](ts_4_5_message_batches_api/main.py)
 - **Message Batches API**: 50% discount on API costs with up to 24-hour turnaround window (no latency SLA).
 - **Workload Qualification**: Ideal for non-blocking overnight audits, large-scale extraction, and test generation; never use for blocking pre-merge CI checks.
 - **Correlation & Partial Recovery**: Assign deterministic `custom_id`s to correlate results and resubmit only failed requests.
-- **Reference Exercise**: [ts_4_5_message_batches_api/](ts_4_5_message_batches_api/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_5_message_batches_api/README.md) · [Interactive Workbook](ts_4_5_message_batches_api/ts_4_5_message_batches_api.ipynb) · [Executable Code](ts_4_5_message_batches_api/main.py)
 
 ### [TS 4.6: Design Multi-Instance and Multi-Pass Review Architectures](ts_4_6_multi_pass_review/main.py)
 - **Mitigating Self-Review Bias**: Independent Claude review instances (with clean context) catch subtle defects that the authoring instance overlooks.
 - **Multi-Pass Review Pipeline**: Split large PR reviews into Pass 1 (isolated per-file checks) + Pass 2 (cross-file integration pass) to prevent attention dilution.
-- **Reference Exercise**: [ts_4_6_multi_pass_review/](ts_4_6_multi_pass_review/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_6_multi_pass_review/README.md) · [Interactive Workbook](ts_4_6_multi_pass_review/ts_4_6_multi_pass_review.ipynb) · [Executable Code](ts_4_6_multi_pass_review/main.py)
 
 ---
 
@@ -118,14 +118,14 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 
 ```mermaid
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br/>Guaranteed valid JSON schema"]
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Guaranteed valid JSON schema"]
     Q1 -->|No| Q2["2. Document attributes missing?"]
-    Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br/>Prevents hallucinated values"]
+    Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br>Prevents hallucinated values"]
     Q2 -->|No| Q3["3. Missing physical source facts?"]
-    Q3 -->|Yes| A3["Fast-Fail to Human Review<br/>Retries cannot invent absent data"]
+    Q3 -->|Yes| A3["Fast-Fail to Human Review<br>Retries cannot invent absent data"]
     Q3 -->|No| Q4["4. Message Batches for PR checks?"]
-    Q4 -->|Yes| A4["Reject: Use Real-Time API<br/>Batches have 24h SLA; use for audits"]
-    Q4 -->|No| A5["Two-Pass Review Pipeline<br/>Pass 1 Local + Pass 2 Integration"]
+    Q4 -->|Yes| A4["Reject: Use Real-Time API<br>Batches have 24h SLA; use for audits"]
+    Q4 -->|No| A5["Two-Pass Review Pipeline<br>Pass 1 Local + Pass 2 Integration"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

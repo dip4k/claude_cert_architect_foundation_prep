@@ -674,3 +674,14 @@ What architectural pattern protects the Multi-Agent Research System from this In
 
 **Architect Defense**:
 > "Calculating a synthetic average between two official figures is the definition of AI hallucination—you are generating a financial number that exists in zero source documents. In due diligence, the *fact that the numbers conflict* is often the most critical finding (signaling restatements, accounting adjustments, or channel stuffing). Under **TS 5.6**, an enterprise system must preserve both figures, cite their respective accession dates and filing types, and empower human analysts to make informed decisions."
+
+---
+
+## 🛠️ Production Verification & Interactive Workbench
+
+- **Interactive Jupyter Lab**: [scenario_workbench.ipynb](scenario_workbench.ipynb) (Cell-by-cell pedagogical walkthrough with offline simulations)
+- **Full End-to-End CLI Pipeline**: [simulation.py](simulation.py) (Deterministic Python implementation of the complete scenario)
+- **Zero-Token Offline Verification**:
+  `ash
+  uv run pytest scenarios/scenario_3_multi_agent_research/
+  `

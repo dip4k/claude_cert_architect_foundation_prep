@@ -9,18 +9,18 @@
 flowchart LR
     subgraph Preservation["Context Preservation"]
         direction TB
-        P1["TS 5.1:<br/>Case Facts Layer"]
-        P2["TS 5.1:<br/>Payload Trimming"]
-        P3["TS 5.4:<br/>scratchpad & /compact"]
-        P4["TS 5.4:<br/>Explore Subagents"]
+        P1["TS 5.1:<br>Case Facts Layer"]
+        P2["TS 5.1:<br>Payload Trimming"]
+        P3["TS 5.4:<br>scratchpad & /compact"]
+        P4["TS 5.4:<br>Explore Subagents"]
     end
 
     subgraph Reliability["Reliability & Provenance"]
         direction TB
-        R1["TS 5.2:<br/>Immediate Escalation"]
-        R2["TS 5.3:<br/>Structured Errors"]
-        R3["TS 5.5:<br/>5-10% Stratified QA"]
-        R4["TS 5.6:<br/>Provenance Tracking"]
+        R1["TS 5.2:<br>Immediate Escalation"]
+        R2["TS 5.3:<br>Structured Errors"]
+        R3["TS 5.5:<br>5-10% Stratified QA"]
+        R4["TS 5.6:<br>Provenance Tracking"]
     end
 ```
 
@@ -50,13 +50,13 @@ In long-running autonomous workflows (e.g. customer support sessions or complex 
 flowchart TD
     subgraph Bad["Anti-Pattern: Naive Summarization"]
         B1["Raw Turns 1-4"] --> B2["Summarize History"]
-        B2 --> B3["Order IDs & amounts<br/>washed away into prose"]
+        B2 --> B3["Order IDs & amounts<br>washed away into prose"]
     end
 
     subgraph Good["Production: Immutable Case Facts Layer"]
-        G1["Immutable Case Facts<br/>(Order ID, Amounts, Auth)"]
+        G1["Immutable Case Facts<br>(Order ID, Amounts, Auth)"]
         G2["Summarized Dialogue History"]
-        G1 & G2 --> G3["Prompt Context:<br/>100% Ground Truth Preserved"]
+        G1 & G2 --> G3["Prompt Context:<br>100% Ground Truth Preserved"]
     end
 ```
 
@@ -110,9 +110,9 @@ One of the most heavily tested human escalation scenarios:
 ```mermaid
 flowchart TD
     Start["Customer Request"] --> Demand{"Demands Human Agent?"}
-    Demand -->|Yes| EscHuman["Escalate Immediately<br/>(Zero friction; no probing)"]
+    Demand -->|Yes| EscHuman["Escalate Immediately<br>(Zero friction; no probing)"]
     Demand -->|No| Policy{"Policy Silent / Gap?"}
-    Policy -->|Yes| EscGap["Escalate Policy Gap<br/>(Never invent company rules)"]
+    Policy -->|Yes| EscGap["Escalate Policy Gap<br>(Never invent company rules)"]
     Policy -->|No| Resolve["Autonomous Tool Resolution"]
 ```
 
@@ -260,14 +260,14 @@ A standard trap in enterprise AI evaluation:
 
 ```mermaid
 flowchart TD
-    Doc["Incoming Document Extraction"] --> ValueCheck{"Financial Value &gt; $1,000?"}
-    ValueCheck -- "Yes" --> HighValReview["Mandatory Human Review<br/>(Policy threshold overrides model)"]
+    Doc["Incoming Document Extraction"] --> ValueCheck{"Financial Value > $1,000?"}
+    ValueCheck -- "Yes" --> HighValReview["Mandatory Human Review<br>(Policy threshold overrides model)"]
     ValueCheck -- "No" --> UnrecCheck{"Missing physical source fact?"}
-    UnrecCheck -- "Yes" --> HumanTriage["Route to Human Triage<br/>(Fast-fail unrecoverable)"]
-    UnrecCheck -- "No" --> ConfCheck{"Model Confidence &ge; 95%?"}
+    UnrecCheck -- "Yes" --> HumanTriage["Route to Human Triage<br>(Fast-fail unrecoverable)"]
+    UnrecCheck -- "No" --> ConfCheck{"Model Confidence >= 95%?"}
     ConfCheck -- "No" --> HumanQueue["Route to Human Exception Queue"]
     ConfCheck -- "Yes" --> StratCheck{"Selected in 5-10% Sample?"}
-    StratCheck -- "Yes" --> Auditor["Route to QA Auditor<br/>(Drift & calibration benchmark)"]
+    StratCheck -- "Yes" --> Auditor["Route to QA Auditor<br>(Drift & calibration benchmark)"]
     StratCheck -- "No" --> STP["✅ Automated STP Processing"]
 ```
 
@@ -577,14 +577,14 @@ Option B is correct. In deep codebase exploration (TS 5.4), multi-turn sessions 
 
 ```mermaid
 flowchart TD
-    Q1["1. Customer demands a human?"] -->|Yes| A1["Escalate Immediately<br/>Zero friction; compile handoff manifest"]
+    Q1["1. Customer demands a human?"] -->|Yes| A1["Escalate Immediately<br>Zero friction; compile handoff manifest"]
     Q1 -->|No| Q2["2. Entity lookup collision?"]
-    Q2 -->|Yes| A2["Prompt for Unique ID<br/>Never pick heuristically by recency"]
+    Q2 -->|Yes| A2["Prompt for Unique ID<br>Never pick heuristically by recency"]
     Q2 -->|No| Q3["3. Conflicting metric claims?"]
-    Q3 -->|Yes| A3["Cite Both Figures & Dates<br/>Never average into synthetic mean"]
+    Q3 -->|Yes| A3["Cite Both Figures & Dates<br>Never average into synthetic mean"]
     Q3 -->|No| Q4["4. High aggregate accuracy (98%)?"]
-    Q4 -->|Yes| A4["5-10% Stratified QA Audit<br/>Sample high-confidence items for drift"]
-    Q4 -->|No| A5["Immutable Case Facts Layer<br/>Store critical facts outside summary"]
+    Q4 -->|Yes| A4["5-10% Stratified QA Audit<br>Sample high-confidence items for drift"]
+    Q4 -->|No| A5["Immutable Case Facts Layer<br>Store critical facts outside summary"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

@@ -12,7 +12,7 @@ Domain 2 accounts for 18% of the **Claude Certified Architect – Foundations (C
 - **Primary Routing Mechanism**: LLMs select tools based on descriptions and schemas. Vague descriptions cause a 50%+ misrouting rate.
 - **4 Components of Production Descriptions**: Specific capability contract, input constraints & regex formats, explicit boundary statements (when to use vs adjacent tools), and 2–3 authentic user query examples.
 - **Tool Refactoring**: Split monolithic "Swiss Army Knife" tools into focused, single-responsibility interfaces.
-- **Reference Exercise**: [ts_2_1_tool_interface_design/](ts_2_1_tool_interface_design/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_2_1_tool_interface_design/README.md) · [Interactive Workbook](ts_2_1_tool_interface_design/ts_2_1_tool_interface_design.ipynb) · [Executable Code](ts_2_1_tool_interface_design/main.py)
 
 ### [TS 2.2: Implement Structured Error Responses for MCP Tools](ts_2_2_mcp_structured_errors/main.py)
 - **The `isError` Flag**: Must be set to `true` on execution failure inside `CallToolResult`.
@@ -22,7 +22,7 @@ Domain 2 accounts for 18% of the **Claude Certified Architect – Foundations (C
   - `business`: Policy violations, insufficient balance (`isRetryable: false`, with user explanation).
   - `permission`: Authorization failures (`isRetryable: false`).
 - **The Empty Match vs Error Rule**: A successful query returning 0 records is a **VALID EMPTY RESULT** (`isError: false`, `count: 0`), NOT an error. Treating it as an error triggers wasteful retries.
-- **Reference Exercise**: [ts_2_2_mcp_structured_errors/](ts_2_2_mcp_structured_errors/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_2_2_mcp_structured_errors/README.md) · [Interactive Workbook](ts_2_2_mcp_structured_errors/ts_2_2_mcp_structured_errors.ipynb) · [Executable Code](ts_2_2_mcp_structured_errors/main.py)
 
 ### [TS 2.3: Distribute Tools Appropriately Across Agents and Configure Tool Choice](ts_2_3_tool_distribution_and_choice/main.py)
 - **Principle of Least Privilege**: Limit agents to **4–5 specialized tools** rather than 15–20 broad tools to avoid tool selection degradation.
@@ -32,19 +32,19 @@ Domain 2 accounts for 18% of the **Claude Certified Architect – Foundations (C
   - `{"type": "tool", "name": "..."}`: Forces an exact tool call (mandatory first step).
   - `{"type": "none"}`: Prevents all tool calls.
   - `disable_parallel_tool_use: True`: Forces strictly sequential execution when downstream tools depend on upstream outputs.
-- **Reference Exercise**: [ts_2_3_tool_distribution_and_choice/](ts_2_3_tool_distribution_and_choice/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_2_3_tool_distribution_and_choice/README.md) · [Interactive Workbook](ts_2_3_tool_distribution_and_choice/ts_2_3_tool_distribution_and_choice.ipynb) · [Executable Code](ts_2_3_tool_distribution_and_choice/main.py)
 
 ### [TS 2.4: Integrate MCP Servers into Claude Code and Agent Workflows](ts_2_4_mcp_server_integration/main.py)
 - **Configuration Scoping**: Project-level (`.mcp.json` in git) for team tools vs User-level (`~/.claude.json`) for local developer tools.
 - **Secure Credentials**: Never commit secrets to git; use `${ENV_VAR}` expansion in `.mcp.json`.
 - **The 3 MCP Primitives**: **Tools** (active functions with side effects), **Resources** (passive read-only data blobs/schemas via URIs), and **Prompts** (pre-parameterized slash-command templates).
 - **Transports**: `stdio` (local subprocesses) vs `sse` (Server-Sent Events over HTTP).
-- **Reference Exercise**: [ts_2_4_mcp_server_integration/](ts_2_4_mcp_server_integration/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_2_4_mcp_server_integration/README.md) · [Interactive Workbook](ts_2_4_mcp_server_integration/ts_2_4_mcp_server_integration.ipynb) · [Executable Code](ts_2_4_mcp_server_integration/main.py)
 
 ### [TS 2.5: Select and Apply Built-in Tools Effectively](ts_2_5_builtin_tools_usage/main.py)
 - **Selection Matrix**: `Grep` (content search), `Glob` (path matching), `Read` (view content), `Write` (full file write), `Edit` (surgical replacement via anchor).
 - **Edit Fallback Pattern**: When `Edit` fails due to ambiguous or non-unique anchor text, invoke `Read` to retrieve exact offsets and fall back to `Write` with the reconciled content.
-- **Reference Exercise**: [ts_2_5_builtin_tools_usage/](ts_2_5_builtin_tools_usage/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_2_5_builtin_tools_usage/README.md) · [Interactive Workbook](ts_2_5_builtin_tools_usage/ts_2_5_builtin_tools_usage.ipynb) · [Executable Code](ts_2_5_builtin_tools_usage/main.py)
 
 ---
 
@@ -121,14 +121,14 @@ Domain 2 accounts for 18% of the **Claude Certified Architect – Foundations (C
 
 ```mermaid
 flowchart TD
-    Q1["1. Model picks wrong tool?"] -->|Yes| A1["Refine Tool Description & Boundaries<br/>Never build custom classifier"]
+    Q1["1. Model picks wrong tool?"] -->|Yes| A1["Refine Tool Description & Boundaries<br>Never build custom classifier"]
     Q1 -->|No| Q2["2. Zero records returned?"]
-    Q2 -->|Yes| A2["Valid Empty: isError: false<br/>Zero matches is ground truth"]
+    Q2 -->|Yes| A2["Valid Empty: isError: false<br>Zero matches is ground truth"]
     Q2 -->|No| Q3["3. Backend failure / timeout?"]
-    Q3 -->|Yes| A3["Structured MCP Error<br/>Include errorCategory & isRetryable"]
+    Q3 -->|Yes| A3["Structured MCP Error<br>Include errorCategory & isRetryable"]
     Q3 -->|No| Q4["4. Read-only schemas / catalogs?"]
-    Q4 -->|Yes| A4["MCP Resources<br/>Use resources/read, not active tools"]
-    Q4 -->|No| A5["Read + Expand Anchor<br/>Fall back to Write on collision"]
+    Q4 -->|Yes| A4["MCP Resources<br>Use resources/read, not active tools"]
+    Q4 -->|No| A5["Read + Expand Anchor<br>Fall back to Write on collision"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

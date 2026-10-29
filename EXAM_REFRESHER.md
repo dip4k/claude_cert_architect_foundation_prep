@@ -149,13 +149,13 @@ elif response.stop_reason == "end_turn":
 
 ```mermaid
 flowchart TD
-    Start["Explore Codebase"] --> Glob["1. Glob Tool<br/>(Candidate paths)"]
-    Glob --> Grep["2. Grep Tool<br/>(Symbols & regex)"]
-    Grep --> Read["3. Read Tool<br/>(Chunked inspect)"]
-    Read --> Edit["4. Edit Tool<br/>(Surgical anchor)"]
+    Start["Explore Codebase"] --> Glob["1. Glob Tool<br>(Candidate paths)"]
+    Glob --> Grep["2. Grep Tool<br>(Symbols & regex)"]
+    Grep --> Read["3. Read Tool<br>(Chunked inspect)"]
+    Read --> Edit["4. Edit Tool<br>(Surgical anchor)"]
     Edit --> Collision{"Anchor collision?"}
     Collision -- "No" --> Done["Edit Applied"]
-    Collision -- "Yes" --> Fallback["5. Fallback Protocol<br/>Full read + Write"]
+    Collision -- "Yes" --> Fallback["5. Fallback Protocol<br>Full read + Write"]
     Fallback --> Done
 ```
 
@@ -166,9 +166,9 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    User["User Scope<br/>(~/.claude/CLAUDE.md)"] --> Project["Project Scope<br/>(.claude/CLAUDE.md or root)"]
-    Project --> Subdir["Directory Scope<br/>(subdir/CLAUDE.md)"]
-    Subdir --> PathRules["Path Rules<br/>(.claude/rules/*.md)"]
+    User["User Scope<br>(~/.claude/CLAUDE.md)"] --> Project["Project Scope<br>(.claude/CLAUDE.md or root)"]
+    Project --> Subdir["Directory Scope<br>(subdir/CLAUDE.md)"]
+    Subdir --> PathRules["Path Rules<br>(.claude/rules/*.md)"]
 ```
 
   - Use `@import ./path/to/standards.md` for modularity; verify with `/memory`.
@@ -218,13 +218,13 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Extr["Extract Structured Entity<br/>via tool_use"] --> Val{"Schema & Math Valid?"}
+    Extr["Extract Structured Entity<br>via tool_use"] --> Val{"Schema & Math Valid?"}
     Val -- "Valid" --> Success["Commit Record"]
     Val -- "Invalid" --> ErrorType{"Error Type"}
-    ErrorType -- "Calculation / Format" --> CanRetry{"Retries &lt; 2?"}
-    CanRetry -- "Yes" --> Feedback["Send targeted math error<br/>feedback to Claude"] --> Extr
+    ErrorType -- "Calculation / Format" --> CanRetry{"Retries < 2?"}
+    CanRetry -- "Yes" --> Feedback["Send targeted math error<br>feedback to Claude"] --> Extr
     CanRetry -- "No" --> HumanQueue["Route to Human Exception Queue"]
-    ErrorType -- "Physically Absent Fact" --> FastFail["Fast-Fail to Human Queue<br/>(Retries cannot invent absent data)"] --> HumanQueue
+    ErrorType -- "Physically Absent Fact" --> FastFail["Fast-Fail to Human Queue<br>(Retries cannot invent absent data)"] --> HumanQueue
 ```
 
 
@@ -235,10 +235,10 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph Facts["Immutable Case Facts Layer"]
-        CF["Customer ID: C-88129 | Order #: ORD-44102<br/>Amount: $149.99 | Tracking: 1Z9999999999"]
+        CF["Customer ID: C-88129 | Order #: ORD-44102<br>Amount: $149.99 | Tracking: 1Z9999999999"]
     end
     subgraph History["Compacted Conversation History"]
-        CH["Summarized Turns 1-12...<br/>'Customer requested return due to transit damage...'"]
+        CH["Summarized Turns 1-12...<br>'Customer requested return due to transit damage...'"]
     end
     Facts --> Context["Combined Context Injected into Next Turn Prompt"]
     History --> Context
@@ -272,8 +272,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    P1["Pass 1 (0:00 - 0:45)<br/>Direct Architecture Items<br/>Target: 25-30 items"] --> P2["Pass 2 (0:45 - 1:40)<br/>Scenario Deep Dive<br/>Target: 30-35 items"]
-    P2 --> P3["Pass 3 (1:40 - 2:00)<br/>Review & Verification<br/>Audit marked items"]
+    P1["Pass 1 (0:00 - 0:45)<br>Direct Architecture Items<br>Target: 25-30 items"] --> P2["Pass 2 (0:45 - 1:40)<br>Scenario Deep Dive<br>Target: 30-35 items"]
+    P2 --> P3["Pass 3 (1:40 - 2:00)<br>Review & Verification<br>Audit marked items"]
 ```
 
 - **Time Allocation**: 120 minutes for 60 questions = **2.0 minutes per question**.

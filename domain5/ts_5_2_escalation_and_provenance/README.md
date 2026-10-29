@@ -3,7 +3,7 @@
 ## 📌 Executive Overview: Goal, Scope & Exam Importance
 
 ### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (18% of exam weighting)
+- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
 - **Scenario Alignment**: Scenario 1 (Customer Support Resolution Agent with Strict SLAs)
 - **Core Goal**: Architect deterministic escalation logic and disambiguation protocols that protect customers and enterprise operations: immediately honoring explicit human agent requests, handling multi-match ambiguity without guessing, and escalating on policy gaps rather than hallucinating entitlements.
 

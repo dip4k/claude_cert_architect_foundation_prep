@@ -13,37 +13,37 @@ Domain 3 represents 20% of the **Claude Certified Architect – Foundations (CCA
 - **Scoping Principle**: User-level is personal and uncommitted; project-level is team-shared via git.
 - **Modular Rules**: Use `@import ./path/to/rules.md` to avoid monolithic files.
 - **Diagnostics**: Run `/memory` in Claude Code to inspect currently loaded configurations and active instructions.
-- **Reference Exercise**: [ts_3_1_claude_code_workflows/](ts_3_1_claude_code_workflows/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_3_1_claude_code_workflows/README.md) · [Interactive Workbook](ts_3_1_claude_code_workflows/ts_3_1_claude_code_workflows.ipynb) · [Executable Code](ts_3_1_claude_code_workflows/main.py)
 
 ### [TS 3.2: Create and Configure Custom Slash Commands and Skills](ts_3_2_slash_commands_and_skills/main.py)
 - **Custom Slash Commands**: `.claude/commands/*.md` with parameter substitution (`$1`, `$2`, `$@`).
 - **Agent Skills**: `.claude/skills/<name>/SKILL.md` with YAML frontmatter.
 - **The `context: fork` Directives**: Executes the skill inside an isolated subagent conversation, preventing verbose exploratory tool trails (20,000+ tokens) from polluting the main session context.
 - **Additional Directives**: `allowed-tools` (least privilege whitelist) and `argument-hint`.
-- **Reference Exercise**: [ts_3_2_slash_commands_and_skills/](ts_3_2_slash_commands_and_skills/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_3_2_slash_commands_and_skills/README.md) · [Interactive Workbook](ts_3_2_slash_commands_and_skills/ts_3_2_slash_commands_and_skills.ipynb) · [Executable Code](ts_3_2_slash_commands_and_skills/main.py)
 
 ### [TS 3.3: Apply Path-Specific Rules for Conditional Convention Loading](ts_3_3_path_specific_rules/main.py)
 - **Glob Scoping**: YAML frontmatter `paths: ["**/*.test.ts"]` or `paths: ["src/api/**/*.py"]` in `.claude/rules/*.md`.
 - **Advantage Over Directory CLAUDE.md**: Applies conventions across distributed files in arbitrary folders (co-located tests, migrations) without duplicating configuration files.
 - **Dynamic Context Loading**: Rules load into context only when matching files are accessed.
-- **Reference Exercise**: [ts_3_3_path_specific_rules/](ts_3_3_path_specific_rules/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_3_3_path_specific_rules/README.md) · [Interactive Workbook](ts_3_3_path_specific_rules/ts_3_3_path_specific_rules.ipynb) · [Executable Code](ts_3_3_path_specific_rules/main.py)
 
 ### [TS 3.4: Determine When to Use Plan Mode vs Direct Execution](ts_3_4_plan_mode_and_refinement/main.py)
 - **Plan Mode (`Shift+Tab` / `/plan`)**: Architectural changes, service decomposition, multi-file refactoring (5+ files), and irreversible schema shifts. Uses read-only **Explore subagent** and human approval gates.
 - **Direct Execution**: Localized, well-understood single-file fixes with known stack traces.
-- **Reference Exercise**: [ts_3_4_plan_mode_and_refinement/](ts_3_4_plan_mode_and_refinement/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_3_4_plan_mode_and_refinement/README.md) · [Interactive Workbook](ts_3_4_plan_mode_and_refinement/ts_3_4_plan_mode_and_refinement.ipynb) · [Executable Code](ts_3_4_plan_mode_and_refinement/main.py)
 
 ### [TS 3.5: Apply Iterative Refinement Techniques for Progressive Improvement](ts_3_5_iterative_refinement_interview/main.py)
 - **Concrete I/O Examples**: 2–3 concrete input/output pairs resolve ambiguity far better than abstract adjectives.
 - **Interview Pattern**: Instruct Claude to ask 3–5 clarifying questions before writing code in complex or ambiguous domains.
 - **Coupled vs Decoupled Issues**: Address interacting issues together in a single prompt; address independent issues sequentially.
-- **Reference Exercise**: [ts_3_5_iterative_refinement_interview/](ts_3_5_iterative_refinement_interview/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_3_5_iterative_refinement_interview/README.md) · [Interactive Workbook](ts_3_5_iterative_refinement_interview/ts_3_5_iterative_refinement_interview.ipynb) · [Executable Code](ts_3_5_iterative_refinement_interview/main.py)
 
 ### [TS 3.6: Integrate Claude Code into CI/CD Pipelines](ts_3_6_cicd_pipeline_automation/main.py)
 - **Headless Non-Interactive Mode**: Passing `-p` (or `--print`) is mandatory in CI/CD to prevent runners from hanging indefinitely on `stdin`.
 - **Machine-Readable Output**: Combine `--output-format json` with `--json-schema` for deterministic PR gating and automated comments.
 - **Mitigating Self-Review Bias**: Never use the generating session to review its own PR; spawn an independent Claude instance with a clean context.
-- **Reference Exercise**: [ts_3_6_cicd_pipeline_automation/](ts_3_6_cicd_pipeline_automation/)
+- **Study Guide & Lab**: [Study Guide (README.md)](ts_3_6_cicd_pipeline_automation/README.md) · [Interactive Workbook](ts_3_6_cicd_pipeline_automation/ts_3_6_cicd_pipeline_automation.ipynb) · [Executable Code](ts_3_6_cicd_pipeline_automation/main.py)
 
 ---
 
@@ -119,14 +119,14 @@ Domain 3 represents 20% of the **Claude Certified Architect – Foundations (CCA
 
 ```mermaid
 flowchart TD
-    Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br/>Never personal ~/.claude/"]
+    Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br>Never personal ~/.claude/"]
     Q1 -->|No| Q2["2. Verbose exploration skill?"]
-    Q2 -->|Yes| A2["Set context: fork in SKILL.md<br/>Isolates tokens in subagent"]
+    Q2 -->|Yes| A2["Set context: fork in SKILL.md<br>Isolates tokens in subagent"]
     Q2 -->|No| Q3["3. Rules across scattered paths?"]
-    Q3 -->|Yes| A3[".claude/rules/*.md with paths glob<br/>Never duplicate directory CLAUDE.md"]
+    Q3 -->|Yes| A3[".claude/rules/*.md with paths glob<br>Never duplicate directory CLAUDE.md"]
     Q3 -->|No| Q4["4. Multi-file refactor (5+ files)?"]
-    Q4 -->|Yes| A4["Plan Mode (/plan)<br/>Explore & blueprint before editing"]
-    Q4 -->|No| A5["Pass -p / --print Flag<br/>Non-interactive headless CI execution"]
+    Q4 -->|Yes| A4["Plan Mode (/plan)<br>Explore & blueprint before editing"]
+    Q4 -->|No| A5["Pass -p / --print Flag<br>Non-interactive headless CI execution"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
