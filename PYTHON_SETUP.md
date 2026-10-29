@@ -53,14 +53,42 @@ source .venv/bin/activate
 
 ### 3. Install Project with Dependencies
 ```bash
-# Install development dependencies
+# Sync all dependencies for the unified workspace:
+uv sync
+
+# Or install manually with uv pip:
 uv pip install -e ".[dev]"
+```
 
-# Or just install test dependencies
-uv pip install -e ".[test]"
+### 4. Configure Environment Variables
+```bash
+# Copy the example environment template
+cp .env.example .env
 
-# Or just linting tools
-uv pip install -e ".[lint]"
+# Set your Anthropic API Key and preferences in .env:
+# ANTHROPIC_API_KEY=sk-ant-...
+# CLAUDE_MODEL=claude-haiku-4-5
+# USE_UV=1
+```
+
+---
+
+## 🏗️ Workspace Structure & Members
+
+The repository uses a **unified UV workspace** declared in root `pyproject.toml`. All subprojects share the root `.venv`:
+
+- **Root Project**: Contains core packages (`lib.sdk_parser_py`, `lib.response_logger`, `lib.mock_claude`), certification domain modules (`domain1` - `domain5`), and 6 production scenarios.
+- **Workspace Member (`anthropic-api-practice/MCP/cli_project`)**: FastMCP server (`mcp_server.py`) and CLI chat client (`main.py`).
+
+### Running MCP Practice Modules
+
+```bash
+# 1. Run MCP server with the interactive MCP Inspector UI (zero package re-downloads)
+cd anthropic-api-practice/MCP/cli_project
+npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server.py
+
+# 2. Run the interactive CLI chat app
+uv run --no-sync main.py
 ```
 
 ## Common Development Tasks
