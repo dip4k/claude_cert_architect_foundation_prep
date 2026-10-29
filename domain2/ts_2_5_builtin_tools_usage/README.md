@@ -22,7 +22,7 @@ Understand when and how Claude Code selects and applies built-in developer tools
 
 On the exam, scenarios often ask what happens when `Edit` fails:
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     A["Attempt Edit(old_str, new_str)"] --> B{Edit Status?}
     B -- Success --> C["Code Updated"]

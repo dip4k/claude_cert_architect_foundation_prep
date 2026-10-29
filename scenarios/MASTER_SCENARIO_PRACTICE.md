@@ -37,9 +37,9 @@ On the authentic 60-question CCAR-F certification exam:
 
 ### Decision Tree 1: Operational Mode Selection (Domain 3)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches >= 3 files<br/>or core schemas?"}
+    TaskStart["Incoming Coding Task"] --> ScopeCheck{"Touches &ge; 3 files<br/>or core schemas?"}
     
     ScopeCheck -- "Yes" --> PlanMode["Plan Mode<br/>(Read-Only)"]
     PlanMode --> DraftBlueprint["Draft Step-by-Step<br/>Blueprint"]
@@ -57,13 +57,13 @@ flowchart TD
 
 ### Decision Tree 2: API Selection: Real-Time vs. Message Batches (Domain 4 & 5)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Workload["Inference Workload"] --> LatencyCheck{"Pre-merge or<br/>developer blocking?"}
     
-    LatencyCheck -- "Yes (< 5 min SLA)" --> RealTimeAPI["Use Real-Time Messages API<br/>(/v1/messages)<br/>Immediate response,<br/>standard price"]
+    LatencyCheck -- "Yes (&lt; 5 min SLA)" --> RealTimeAPI["Use Real-Time Messages API<br/>(/v1/messages)<br/>Immediate response,<br/>standard price"]
     
-    LatencyCheck -- "No (Async / Non-blocking)" --> SLA24Check{"Tolerates <= 24h<br/>turnaround?"}
+    LatencyCheck -- "No (Async / Non-blocking)" --> SLA24Check{"Tolerates &le; 24h<br/>turnaround?"}
     
     SLA24Check -- "Yes (Overnight audits)" --> BatchesAPI["Use Message Batches API<br/>(/v1/messages/batches)<br/>50% cost discount,<br/>custom_id correlation"]
     
@@ -72,7 +72,7 @@ flowchart TD
 
 ### Decision Tree 3: Handling Missing Document Attributes (Domain 4 & Scenario 6)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     ExtractDoc["Extracting Field<br/>from Document"] --> FactPresent{"Fact physically<br/>in document?"}
     
@@ -88,7 +88,7 @@ flowchart TD
 
 ### Decision Tree 4: Customer Support Resolution & Gating Flow (Domain 1, 2, 5 & Scenario 1)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     UserTurn["Incoming Customer Turn"] --> DemandHuman{"Explicit human<br/>supervisor demand?"}
     DemandHuman -- "Yes" --> Escalate["Immediate Human Escalation<br/>(Escalate without<br/>diagnostic interrogation)"]
@@ -100,14 +100,14 @@ flowchart TD
     
     IntentCheck -- "Yes" --> AuthCheck{"Customer 2FA<br/>verified?"}
     AuthCheck -- "No" --> AuthGate["Programmatic Prerequisite Gate<br/>Blocks Tool (Prompt for 2FA)"]
-    AuthCheck -- "Yes" --> PolicyCheck{"Within 30-day window<br/>and <= $50 limit?"}
+    AuthCheck -- "Yes" --> PolicyCheck{"Within 30-day window<br/>and &le; $50 limit?"}
     PolicyCheck -- "Yes" --> ExecuteRefund["Execute process_refund Tool"]
     PolicyCheck -- "No" --> PolicyEscalate["Escalate to Human Supervisor<br/>with Case Facts"]
 ```
 
 ### Decision Tree 5: Multi-Agent Research Coverage & Provenance Flow (Domain 1, 2, 5 & Scenario 3)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Coord["Coordinator Receives<br/>Complex Research Prompt"] --> FanOut["Turn 1: Emit Multiple<br/>Task Calls Concurrently"]
     
@@ -132,7 +132,7 @@ flowchart TD
 
 ### Decision Tree 6: Codebase Discovery & Edit Fallback Flow (Domain 1, 2, 3 & Scenario 4)
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Task["Developer Codebase<br/>Exploration Task"] --> KnowPath{"Target file path<br/>known?"}
     

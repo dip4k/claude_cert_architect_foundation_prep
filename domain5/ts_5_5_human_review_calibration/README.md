@@ -8,18 +8,18 @@ Understand how to design tiered routing based on calibrated confidence threshold
 ## 🏗️ Architecture: Calibrated Tiered Routing Engine
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Pred["Claude Extraction / Classification<br/>(confidence: score)"] --> Router{"Confidence Threshold Check"}
     
-    Router -- "Score >= 0.90 (High)" --> SamplingCheck{"Selected in 5-10% Audit?"}
+    Router -- "Score &ge; 0.90 (High)" --> SamplingCheck{"Selected in 5-10% Audit?"}
     
     SamplingCheck -- "Sampled (Audit)" --> HumanAudit["Human Audit Queue<br/>(Monitors Drift & ECE)"]
     SamplingCheck -- "Not Sampled" --> AutoApprove["Straight-Through Processing<br/>(Immediate Approval)"]
     
-    Router -- "0.70 <= Score < 0.90" --> AsyncReview["Secondary Spot-Check Queue"]
+    Router -- "0.70 &le; Score &lt; 0.90" --> AsyncReview["Secondary Spot-Check Queue"]
     
-    Router -- "Score < 0.70 (Low)" --> SyncEscalation["Mandatory Human Triage"]
+    Router -- "Score &lt; 0.70 (Low)" --> SyncEscalation["Mandatory Human Triage"]
 ```
 
 ---

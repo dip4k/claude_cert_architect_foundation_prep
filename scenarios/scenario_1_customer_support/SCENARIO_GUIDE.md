@@ -52,7 +52,7 @@ We are engineering an enterprise-grade autonomous customer support resolution sy
 ### 🧠 Scenario 1 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{Support Request Focus}
     Start -->|Customer Demands Human| D1["Escalate Immediately<br/>(Structured handoff;<br/>no probing)"]
@@ -81,7 +81,7 @@ LLMs are probabilistic token prediction engines. Even with high-temperature zero
 - **Implementation**: The tool execution handler or SDK middleware evaluates deterministic code assertions *before* invoking external APIs.
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart LR
     Call["Claude emits tool_use:<br/>process_refund"] --> Gate{"Policy Gate Passed?"}
     Gate -->|No: Unauthenticated / Invalid| Block["Reject: Structured Error<br/>(isError: true)"]
@@ -308,8 +308,8 @@ stateDiagram-v2
     AUTHENTICATED --> ACTIVE_INQUIRY: Disambiguate Order ID
     ACTIVE_INQUIRY --> EVALUATING_POLICY: Order located & verified
     
-    EVALUATING_POLICY --> REFUND_EXECUTED: Days <= 30 & Auth valid
-    EVALUATING_POLICY --> POLICY_EXCEPTION: Days > 30
+    EVALUATING_POLICY --> REFUND_EXECUTED: Days &le; 30 & Auth valid
+    EVALUATING_POLICY --> POLICY_EXCEPTION: Days &gt; 30
     
     POLICY_EXCEPTION --> OFFER_ALTERNATIVE: Offer store credit / warranty
     OFFER_ALTERNATIVE --> ESCALATED_HUMAN: Customer rejects store credit

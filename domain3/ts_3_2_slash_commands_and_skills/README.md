@@ -8,7 +8,7 @@ Understand how to define, configure, and isolate custom slash commands and skill
 ## 🏗️ Architecture: Commands vs Skills
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     User["Developer Prompt / UI"] --> Choice{"Command or Skill?"}
     

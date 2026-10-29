@@ -119,16 +119,16 @@ Domain 5 accounts for 15% of the **Claude Certified Architect – Foundations (C
 ### 🧠 Domain 5 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Q1["1. Customer demands a human?"] -->|Yes| A1["<b>Escalate Immediately</b><br/>Zero friction; compile handoff manifest"]
+    Q1["1. Customer demands a human?"] -->|Yes| A1["Escalate Immediately<br/>Zero friction; compile handoff manifest"]
     Q1 -->|No| Q2["2. Entity lookup collision?"]
-    Q2 -->|Yes| A2["<b>Prompt for Unique ID</b><br/>Never pick heuristically by recency"]
+    Q2 -->|Yes| A2["Prompt for Unique ID<br/>Never pick heuristically by recency"]
     Q2 -->|No| Q3["3. Conflicting metric claims?"]
-    Q3 -->|Yes| A3["<b>Cite Both Figures & Dates</b><br/>Never average into synthetic mean"]
+    Q3 -->|Yes| A3["Cite Both Figures & Dates<br/>Never average into synthetic mean"]
     Q3 -->|No| Q4["4. High aggregate accuracy (98%)?"]
-    Q4 -->|Yes| A4["<b>5-10% Stratified QA Audit</b><br/>Sample high-confidence items for drift"]
-    Q4 -->|No| A5["<b>Immutable Case Facts Layer</b><br/>Store critical facts outside summary"]
+    Q4 -->|Yes| A4["5-10% Stratified QA Audit<br/>Sample high-confidence items for drift"]
+    Q4 -->|No| A5["Immutable Case Facts Layer<br/>Store critical facts outside summary"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

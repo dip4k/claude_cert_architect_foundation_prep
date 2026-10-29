@@ -8,7 +8,7 @@ Understand how to replace vague prompt heuristics with concrete categorical crit
 ## 🏗️ Architecture: Vague vs Explicit Prompting
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     subgraph AntiPattern["Anti-Pattern: High False Positives"]
         Vague["'Be conservative.<br/>Flag code that looks risky.'"]

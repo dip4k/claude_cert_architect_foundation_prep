@@ -120,16 +120,16 @@ Domain 2 accounts for 18% of the **Claude Certified Architect – Foundations (C
 ### 🧠 Domain 2 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Q1["1. Model picks wrong tool?"] -->|Yes| A1["<b>Refine Tool Description & Boundaries</b><br/>Never build custom classifier"]
+    Q1["1. Model picks wrong tool?"] -->|Yes| A1["Refine Tool Description & Boundaries<br/>Never build custom classifier"]
     Q1 -->|No| Q2["2. Zero records returned?"]
-    Q2 -->|Yes| A2["<b>Valid Empty: isError: false</b><br/>Zero matches is ground truth"]
+    Q2 -->|Yes| A2["Valid Empty: isError: false<br/>Zero matches is ground truth"]
     Q2 -->|No| Q3["3. Backend failure / timeout?"]
-    Q3 -->|Yes| A3["<b>Structured MCP Error</b><br/>Include errorCategory & isRetryable"]
+    Q3 -->|Yes| A3["Structured MCP Error<br/>Include errorCategory & isRetryable"]
     Q3 -->|No| Q4["4. Read-only schemas / catalogs?"]
-    Q4 -->|Yes| A4["<b>MCP Resources</b><br/>Use resources/read, not active tools"]
-    Q4 -->|No| A5["<b>Read + Expand Anchor</b><br/>Fall back to Write on collision"]
+    Q4 -->|Yes| A4["MCP Resources<br/>Use resources/read, not active tools"]
+    Q4 -->|No| A5["Read + Expand Anchor<br/>Fall back to Write on collision"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

@@ -118,16 +118,16 @@ Domain 3 represents 20% of the **Claude Certified Architect – Foundations (CCA
 ### 🧠 Domain 3 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Q1["1. Team standards or slash commands?"] -->|Yes| A1["<b>Repository Root: .claude/</b><br/>Never personal ~/.claude/"]
+    Q1["1. Team standards or slash commands?"] -->|Yes| A1["Repository Root: .claude/<br/>Never personal ~/.claude/"]
     Q1 -->|No| Q2["2. Verbose exploration skill?"]
-    Q2 -->|Yes| A2["<b>Set context: fork in SKILL.md</b><br/>Isolates tokens in subagent"]
+    Q2 -->|Yes| A2["Set context: fork in SKILL.md<br/>Isolates tokens in subagent"]
     Q2 -->|No| Q3["3. Rules across scattered paths?"]
-    Q3 -->|Yes| A3["<b>.claude/rules/*.md with paths glob</b><br/>Never duplicate directory CLAUDE.md"]
+    Q3 -->|Yes| A3[".claude/rules/*.md with paths glob<br/>Never duplicate directory CLAUDE.md"]
     Q3 -->|No| Q4["4. Multi-file refactor (5+ files)?"]
-    Q4 -->|Yes| A4["<b>Plan Mode (/plan)</b><br/>Explore & blueprint before editing"]
-    Q4 -->|No| A5["<b>Pass -p / --print Flag</b><br/>Non-interactive headless CI execution"]
+    Q4 -->|Yes| A4["Plan Mode (/plan)<br/>Explore & blueprint before editing"]
+    Q4 -->|No| A5["Pass -p / --print Flag<br/>Non-interactive headless CI execution"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

@@ -51,7 +51,7 @@ We are architecting an enterprise developer productivity system using Claude Cod
 ### 🧠 Scenario 2 Rapid Exam Decision Tree
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Start{Code Generation Focus}
     Start -->|5+ Files / Restructuring| D1["Plan Mode (/plan)<br/>(Explore & require<br/>blueprint approval)"]
@@ -76,7 +76,7 @@ flowchart TD
 Enterprise developers work under multiple layers of policy. When rules conflict, Claude Code enforces strict top-down precedence:
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
     Enterprise["1. Enterprise Policy<br/>(/etc/claude/CLAUDE.md - Immutable)"]
     User["2. Global User Profile<br/>(~/.claude/CLAUDE.md - Personal)"]
@@ -263,7 +263,7 @@ stateDiagram-v2
     
     AMBIGUITY_CHECK --> SCOPE_EVALUATION: Requirements clear and specific
     
-    SCOPE_EVALUATION --> PLAN_MODE: Touches >= 3 files OR API schema
+    SCOPE_EVALUATION --> PLAN_MODE: Touches &ge; 3 files OR API schema
     SCOPE_EVALUATION --> DIRECT_EXECUTION: Single-file localized fix
     
     PLAN_MODE --> DRAFT_BLUEPRINT: Read-only exploration (Read, Grep, Glob)

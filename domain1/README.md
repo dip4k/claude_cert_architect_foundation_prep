@@ -125,16 +125,16 @@ Domain 1 represents the highest-weighted domain on the **Claude Certified Archit
 ### 🧠 Domain 1 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
-%%{init: {"flowchart": {"htmlLabels": true, "padding": 20}}}%%
+%%{init: {"flowchart": {"htmlLabels": true, "wrappingWidth": 250}}}%%
 flowchart TD
-    Q1["1. Ending an agentic loop?"] -->|Yes| A1["<b>stop_reason == 'end_turn'</b><br/>Never parse text or regex"]
+    Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br/>Never parse text or regex"]
     Q1 -->|No| Q2["2. Enforcing business rules?"]
-    Q2 -->|Yes| A2["<b>Programmatic Gate / PreToolUse</b><br/>Never rely on prompts alone"]
+    Q2 -->|Yes| A2["Programmatic Gate / PreToolUse<br/>Never rely on prompts alone"]
     Q2 -->|No| Q3["3. Spawning subagents?"]
-    Q3 -->|Yes| A3["<b>Multiple Task Calls in Turn 1</b><br/>Concurrent parallel fan-out"]
+    Q3 -->|Yes| A3["Multiple Task Calls in Turn 1<br/>Concurrent parallel fan-out"]
     Q3 -->|No| Q4["4. Multi-file code review?"]
-    Q4 -->|Yes| A4["<b>Two-Pass Prompt Chaining</b><br/>Pass 1: Local / Pass 2: Integration"]
-    Q4 -->|No| A5["<b>Fresh Session + Summary</b><br/>Discard stale context on rebase"]
+    Q4 -->|Yes| A4["Two-Pass Prompt Chaining<br/>Pass 1: Local / Pass 2: Integration"]
+    Q4 -->|No| A5["Fresh Session + Summary<br/>Discard stale context on rebase"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
