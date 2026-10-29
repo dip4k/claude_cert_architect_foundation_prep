@@ -1,127 +1,202 @@
-# Task Statement 4.1: Design Prompts with Explicit Criteria and Negative Boundaries
+# Task Statement 4.1: Explicit Criteria and Negative Boundaries
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
-
-### Certification Domain & Weight
-- **Domain**: Domain 4: Prompt Engineering & Structured Output
-- **Domain Weight**: 18% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 5 (Continuous Integration) & Scenario 6 (Structured Data Extraction)
-
-### The Core Goal
-To design classification, triage, and security auditing prompts with **explicit categorical inclusion criteria** and **negative boundary guidance ("What NOT to flag")**, eliminating false-positive inflation and developer alert fatigue.
-
-### Why This Matters in Production
-In production CI/CD scanners and compliance systems, a high false-positive rate is fatal:
-- If a security review agent flags harmless mock credentials in `tests/fixtures/mock_auth.py` or flags benign debugging loggers as *"CRITICAL SECURITY RISKS"*, developers quickly suffer from **alert fatigue**.
-- Within two weeks, developers learn to ignore or bypass the automated scanner, defeating the purpose of security automation.
-Vague prompt directives like *"Be conservative and flag anything suspicious"* cause LLMs to over-flag benign code. By defining unambiguous category boundaries and explicitly documenting what to ignore, architects achieve high precision without sacrificing recall.
-
-### Exam Importance
-Task Statement 4.1 questions test prompt calibration for classification tasks. The exam will ask how to fix an agent that is flagging test fixtures as security leaks, or how to eliminate subjective boundary disagreements between severity tiers.
+## In One Minute
+- **What**: Tell Claude exactly what to report, what to skip, and what each severity means.
+- **Why**: Vague words like "be conservative" or "only high-confidence" do not change what Claude flags. Noisy reviews make developers ignore the bot.
+- **How**: Write report and skip categories, give a code example for each severity, and add negative boundaries (for example, mock keys in `tests/`).
+- **If a category stays noisy**: switch that category off for now and fix its criteria. Do not filter by the model's confidence.
+- **Exam answer in one line**: *Explicit categorical criteria beat vague guidance.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## 📌 Overview
 
-### 1. The Alert Fatigue Anti-Pattern
-Consider an automated security scanner prompt:
-```markdown
-You are a conservative security auditor.
-Flag any code that contains hardcoded secrets, API keys, or risky configurations.
+- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; the others are D1 27%, D2 18%, D3 20%, D5 15%).
+- **Scenarios**: Scenario 5 (Claude Code for CI) and Scenario 6 (Structured Data Extraction).
+- **Goal**: Cut false positives and keep developer trust.
+- **Exam focus**: Questions show a bot that flags test fixtures or style nits and ask which prompt change fixes it.
+
+---
+
+## 📖 Concepts Explained
+
+### 1. The simple idea
+A reviewer prompt is a rulebook. If the rulebook says "be careful", Claude has to guess what you mean. If it says "report null dereferences and live secrets, skip naming style", Claude can follow it.
+
+### 2. Why it matters
+- Every false positive costs a developer a few minutes.
+- After a few weeks, developers stop reading the bot's comments.
+- A bot nobody reads also misses the real bug.
+
+### 3. How it works: four building blocks
+1. **Report categories**: behaviour bugs and security issues.
+2. **Skip categories**: minor style, and local patterns the team uses on purpose.
+3. **Severity levels with code examples**: so "HIGH" means the same thing every run.
+4. **Negative boundaries**: concrete things *not* to flag, such as `mock_` keys under `tests/`.
+
+### 4. Managing a noisy category
+Suppose "speculative race condition" findings are dismissed 60% of the time.
+- **Do**: temporarily disable that category, rewrite its criteria with examples, test on labelled samples, then switch it back on.
+- **Do not**: ask Claude for a confidence number and filter below a threshold. Claude can be confident and wrong.
+- Keep a `detected_pattern` field on each finding so you can see which patterns get dismissed (see TS 4.4).
+
+---
+
+## 🧪 Worked Example
+
+**Before (vague)**
+```text
+You are a conservative reviewer. Only report high-confidence issues. Be careful.
 ```
-When this prompt runs across a test suite:
-- It flags `TEST_API_KEY = "sk-test-12345"` in `tests/unit/test_auth.py`.
-- It flags `LOCAL_MOCK_PASSWORD = "password123"` in a fixture file.
-- It blocks the CI build.
-- **The Consequence**: The engineering team complains, and leadership disables the AI review bot.
-
-### 2. The Architectural Solution: The 3-Part Calibration Framework
-Production classification and scanning prompts follow a rigorous **3-Part Calibration Framework**:
-
-#### Part 1: Exhaustive Category Definitions
-Every severity tier or classification label has unambiguous inclusion criteria:
-- `CRITICAL`: A live, production API key or secret string matching active vendor entropy patterns with no test/mock prefix.
-- `HIGH`: Unsanitized user input concatenated directly into an SQL query string or OS command.
-- `LOW`: Missing docstrings or non-standard variable casing.
-
-#### Part 2: Explicit Negative Boundaries ("What NOT to Flag")
-State clearly what the model must ignore:
-- *"Do NOT flag strings located inside files under `tests/`, `fixtures/`, or matching `test_*.py`."*
-- *"Do NOT flag variables with prefixes `mock_`, `test_`, `dummy_`, or `example_`."*
-- *"Do NOT flag public environment variable names (e.g. `PORT`, `NODE_ENV`)."*
-
-#### Part 3: Mandatory Evidence & Reasoning First
-Force the model to cite the exact line of code and justify the vulnerability *before* selecting the category label:
-```markdown
-For each finding, provide:
-1. `evidence_quote`: The exact code snippet.
-2. `rationale`: Why this is an active production risk (not a test mock).
-3. `severity`: One of ["CRITICAL", "HIGH", "WARNING", "INFO"].
+Typical output on a PR:
+```text
+tests/test_auth.py:12  CRITICAL  hardcoded API key  (it is a mock)
+src/utils.py:3         LOW       variable name 'x' is not descriptive
+src/db.py:40           HIGH      possible SQL injection  (real)
 ```
-Requiring reasoning first dramatically improves classification precision.
+Two of three comments are noise.
+
+**After (explicit)**
+```text
+Report ONLY:
+- Bugs that change behaviour (null dereference, wrong comparison, swallowed exception)
+- Security issues (live secrets, SQL or command injection)
+Do NOT report:
+- Minor style (naming, line length, import order)
+- Local patterns the team uses on purpose (print() in CLI scripts)
+- Secrets that are obvious mocks in tests/ or fixtures/ (mock_, test_, dummy_ prefixes)
+Severity (use exactly these):
+- CRITICAL: live secret or remote code execution. Example: API_KEY = "sk-ant-live..."
+- HIGH: user input reaches SQL or a shell. Example: cursor.execute(f"SELECT ... {uid}")
+- MEDIUM: bug that fails on bad input. Example: return user.orders  # user may be None
+- LOW: never blocks a merge
+For each finding give: location, evidence_quote, rationale, severity.
+```
+Output now:
+```text
+src/db.py:40  HIGH  user input in SQL string  evidence: execute(f"SELECT ... {uid}")
+```
+
+The code in [main.py](main.py) has this prompt as `build_explicit_prompt()` and a small rule engine that behaves the same way.
 
 ---
 
-## 🔑 Key Technical Terminology Explained
+## 🔑 Key Terms
 
-- **Explicit Inclusion Criteria**: Unambiguous, objective rules defining exactly which characteristics qualify an entity for a given category.
-- **Negative Boundary Guidance**: Explicit instructions detailing which edge cases, mock data, or benign patterns must be intentionally ignored.
-- **Alert Fatigue**: The psychological exhaustion experienced by engineers when an automated tool produces high volumes of false-positive warnings, leading them to ignore all alerts.
-- **Evidence-First Generation**: Requiring the model to output verbatim evidence and intermediate reasoning before emitting the final classification label.
-- **In-Distribution vs Out-of-Distribution Data**: Distinguishing between production source code (subject to security rules) and test scaffolding (subject to test mock allowances).
+- **Explicit criteria**: objective rules that say when something belongs in a category.
+- **Negative boundary**: a rule that says what *not* to flag.
+- **Alert fatigue**: people ignore alerts because too many are wrong.
+- **Severity rubric**: one rule plus one code example per severity.
+- **`detected_pattern`**: a field recording which construct triggered a finding, so dismissals can be analysed.
 
 ---
 
-## 🏗️ Architecture: Vague vs Explicit Prompting
+## 🏗️ Architecture
 
 ```mermaid
-flowchart TD
-    subgraph AntiPattern["Anti-Pattern: High False Positives"]
-        Vague["'Be conservative.<br>Flag code that looks risky.'"]
-        ResultA["Flags mock passwords in tests<br>Flags benign helper functions<br>(Triggers Alert Fatigue)"]
-    end
-
-    subgraph Recommended["Explicit Rubric Pattern"]
-        Explicit["Concrete Category Rules<br>+ Negative Boundaries<br>(Exclude test mocks & fixtures)"]
-        ResultB["Zero false positives on fixtures<br>High precision on vulnerabilities<br>(Maintains Developer Trust)"]
-    end
+flowchart LR
+    Vague["Vague prompt<br>'be conservative'"] --> Noisy["Mock keys and style nits flagged"]
+    Noisy --> Fatigue["Alert fatigue<br>bot ignored"]
+    Explicit["Report list + skip list<br>+ severity examples"] --> Precise["Only real bugs and security issues"]
+    Precise --> Trust["Developers keep reading"]
+    Noisy -->|"category still noisy"| Disable["Disable category<br>rewrite criteria<br>re-enable after tests"]
 ```
 
 ---
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+## ⚠️ Exam Traps and Correct Patterns
 
-| Prompting Element | Correct Implementation | Exam Trap to Reject | Why the Trap Fails |
+| Goal | Correct pattern | Trap | Why the trap fails |
 |---|---|---|---|
-| **Reducing False Positives** | Add **explicit negative boundaries**: *"Do not flag mocks in tests/ or variables prefixed with mock_"*. | **TRAP**: Lowering temperature to 0.0 or instructing Claude to *"be smarter and more careful"*. | Lowering temperature does not define what a "mock" is; without definitions, Claude consistently flags test keys. |
-| **Severity Differentiation** | Provide explicit, mutually exclusive criteria for each severity tier. | **TRAP**: Providing only category names (`CRITICAL`, `HIGH`, `MEDIUM`) with no inclusion rules. | Without rules, the model applies subjective human judgment that drifts unpredictably across turns. |
-| **Classification Accuracy** | Enforce **evidence-first generation**: produce justification before category. | **TRAP**: Generating the category label as the first token of the output JSON. | Forcing the category label first deprives the model of reasoning tokens to evaluate nuanced context. |
+| Fewer false positives | Explicit report/skip categories and negative boundaries | "Be conservative" or "only high-confidence" | Claude has no objective line to apply |
+| Consistent severity | One rule and one code example per level | Level names only | The meaning drifts between runs |
+| Noisy category | Disable it temporarily, fix criteria | Filter by self-reported confidence | Confidence is not calibrated |
+| Better judgement | Evidence and rationale before the label | Label first | The label is decided before the reasoning |
+
+### Common Mistakes
+- Writing "be careful" and expecting precision to improve.
+- Listing severity names without code examples.
+- Leaving a noisy category on while "tuning" the prompt.
+- Using a confidence threshold as the fix.
+- Using temperature 0 as the fix. It makes output steadier, not more correct.
 
 ---
 
-## 💡 Architectural Decision Matrix: Prompt Refinement
+## 💡 Quick Decision Rules
 
-| Symptom in Production | Root Cause | Architectural Fix |
-|---|---|---|
-| Bot flags test credentials as security leaks | Missing negative boundary | Add explicit exclusion for `tests/` and `mock_*`. |
-| Inconsistent severity ratings across runs | Subjective tier definitions | Write concrete criteria per tier (Critical vs High). |
-| High false-positive rate on benign code | Vague directive ("be conservative") | Replace with objective checklist. |
-
----
-
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
-
-- **Reasoning Calibration**: Claude 4.5's Extended Thinking operates as a built-in reasoning buffer, allowing the model to evaluate negative boundaries and compare code context against exclusion rules during thinking.
-- **Sampling Rules**: Omit `temperature` whenever thinking is enabled.
-- **Structured Findings**: With negative boundaries established, thinking blocks cleanly dismiss test fixtures and output only actionable findings.
+| Symptom | Fix |
+|---|---|
+| Test fixtures flagged | Add a negative boundary for `tests/` and `mock_` |
+| Severity differs between runs | Add a concrete example per level |
+| One category is mostly dismissed | Disable it, rewrite, re-enable |
+| Developers ignore the bot | Cut categories to bugs and security only |
 
 ---
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+## 🧠 Claude 4.5 Notes
 
-When exploring [`ts_4_1_explicit_criteria_classification.ipynb`](ts_4_1_explicit_criteria_classification.ipynb):
-1. **Step 1: Setup & Codebase Samples**: Prepares code snippets containing both genuine secrets and test mocks.
-2. **Step 2: Simulating Vague Directives**: Demonstrates how vague prompts falsely flag test fixtures.
-3. **Step 3: Implementing Negative Boundaries**: Demonstrates how negative boundaries filter out test fixtures with zero false positives.
-4. **Step 4: Evidence-First Severity Evaluation**: Demonstrates extracting verbatim quotes before severity scoring.
-5. **Step 5: Verification Assertions**: Verifies 100% precision on true vulnerabilities and 0 false positives on fixtures.
+- Models: `claude-sonnet-4-5` for review reasoning, `claude-haiku-4-5` for cheap triage.
+- If you enable thinking, omit `temperature` (it is rejected), and leave `top_k`/`top_p` unset.
+- With thinking, `tool_choice` may only be `auto` or `none`. A forced tool call must not use thinking.
+- Better criteria help more than more thinking tokens.
+
+---
+
+## 📝 Exam-Style Practice Questions
+
+**Q1 (Scenario 5).** Your CI review bot comments on `tests/fixtures/mock_auth.py` with "CRITICAL: hardcoded secret". Developers have started ignoring the bot. What is the best fix?
+- A) Add "be conservative and only report high-confidence findings" to the prompt.
+- B) Add skip rules for `tests/` and `mock_`/`test_` prefixes, and keep the report rule for live secrets.
+- C) Set temperature to 0.
+- D) Ask Claude for a confidence score and drop findings below 0.8.
+
+**Q2 (Scenario 5).** Severity labels change from run to run: the same SQL string issue is HIGH on Monday and MEDIUM on Tuesday. What should you do?
+- A) Ask Claude to "use consistent severity".
+- B) Give each level a rule and a concrete code example.
+- C) Run each review three times and take the median.
+- D) Remove severity and sort findings alphabetically.
+
+**Q3 (Scenario 5).** The "possible race condition" category is dismissed by developers 60% of the time. Other categories are fine. What is the best action?
+- A) Filter this category by model confidence.
+- B) Disable only this category, rewrite its criteria with examples, test, then re-enable.
+- C) Disable the whole review bot.
+- D) Tell Claude to "think harder" about races.
+
+### Answers
+**Q1: B.**
+- A fails: "conservative" and "high-confidence" give Claude no objective line.
+- C fails: temperature does not define what a mock key is.
+- D fails: self-reported confidence is poorly calibrated, so mocks can still score high.
+
+**Q2: B.**
+- A fails: a request for consistency has no criteria behind it.
+- C fails: it triples cost and still has no shared definition of each level.
+- D fails: it removes the information developers need to triage.
+
+**Q3: B.**
+- A fails: Claude can be confident and wrong, so noise stays.
+- C fails: it throws away the categories that work and hurts trust more.
+- D fails: more thinking does not add missing criteria.
+
+---
+
+## ✅ Self-Check Checklist
+- [ ] I can name two report categories and two skip categories.
+- [ ] I can write a severity rule plus a code example for each level.
+- [ ] I can explain why "be conservative" does not work.
+- [ ] I know to disable a noisy category, not filter by confidence.
+- [ ] I can say why `detected_pattern` is useful.
+
+**Memory hook**: *Rules, not adjectives.*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+In [`ts_4_1_explicit_criteria_classification.ipynb`](ts_4_1_explicit_criteria_classification.ipynb):
+1. **Step 1: Setup**: finds the repo root and adds it to the import path.
+2. **Step 2: Prompts and classifier**: imports the vague prompt, the explicit prompt builder and the classifier from `main.py`.
+3. **Step 3: Simulation**: compares the vague behaviour with the explicit rules on a test file and a production file, then disables one category.
+4. **Step 4: Verification**: asserts zero false positives on fixtures, one CRITICAL finding in production, and that a disabled category stays silent.
+
+Everything runs offline. Run the exercise file by hand with `uv run domain4/ts_4_1_explicit_criteria_classification/main.py` (no API calls).

@@ -1,125 +1,182 @@
 # Task Statement 3.3: Apply Path-Specific Rules for Conditional Convention Loading
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+## In One Minute
 
-### Certification Domain & Weight
-- **Domain**: Domain 3: Claude Code Configuration & Workflows
-- **Domain Weight**: 18% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 2 (Code Generation) & Scenario 5 (Continuous Integration)
+- **What**: a path-scoped rule is a file in `.claude/rules/` with a `paths:` list of globs in its frontmatter.
+- **Why**: it loads only when Claude edits a matching file, so it saves tokens.
+- **Best for**: conventions spread across many folders, such as tests that sit next to the code.
+- **Exam answer in one line**: tests co-located across the repo means glob-pattern path-scoped rules. Not root `CLAUDE.md` inference, not a skill, not a `CLAUDE.md` in every directory.
 
-### The Core Goal
-To design and deploy **path-specific rules** in `.claude/rules/<name>.md` using YAML frontmatter `paths: [...]` glob patterns. An architect must understand how to dynamically load coding conventions, testing patterns, and architectural constraints **only when matching files are edited**, eliminating context bloat and contradictory instructions across monorepos and multi-stack applications.
+## Overview
 
-### Why This Matters in Production
-Modern production repositories rarely contain just one language or framework. A typical repository contains:
-- React / TypeScript in `frontend/` (CamelCase, functional components, JSX conventions).
-- Python / FastAPI in `backend/` (snake_case, Pydantic schemas, async endpoints).
-- Terraform in `infra/` (HCL syntax, resource naming conventions).
-If an architect places all these conventions into a single global configuration, two severe problems arise:
-1. **Contradictory Instructions**: Claude sees rules saying *"Use CamelCase for variables"* and *"Use snake_case for variables"*, leading to erratic, blended code generation.
-2. **Context Window Inflation**: Developers editing CSS files are burdened with 2,000 tokens of backend database migration guidelines.
-Path-specific rules solve this by ensuring conventions are injected **only when the developer is actively touching matching files**.
+- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
+- **Scenarios**: Scenario 2 (Code Generation).
+- **Goal**: load the right conventions at the right time.
+- **Exam focus**: the `paths:` frontmatter, and why it beats directory-level `CLAUDE.md` for scattered files.
 
-### Exam Importance
-Task Statement 3.3 is tested through multi-framework repository scenarios. Questions test whether you know where to place rule files (`.claude/rules/`), how to write YAML frontmatter `paths` glob filters, and how the rule engine resolves which files are active during a turn.
+## Concepts Explained
 
----
+### Simple idea
+A rule says "when you touch files that look like this, follow these conventions."
 
-## 📖 Deep Narrative: Why We Do What We Do
+### Why it matters
+A directory-level `CLAUDE.md` only covers its own folder. A test convention for `**/*.test.tsx` applies in dozens of folders. One glob rule covers all of them with one file.
 
-### 1. The Anatomy of a Path-Specific Rule
-A path-specific rule is a standalone markdown file placed inside `.claude/rules/`:
+### How it works
+
 ```markdown
 ---
-description: Coding standards and testing patterns for Python backend services.
 paths:
-  - "backend/**/*.py"
-  - "services/**/*.py"
+  - "**/*.test.tsx"
 ---
 
-# Python Backend Guidelines
-- Always use type annotations on all function signatures.
-- Use Pydantic v2 schemas for all request/response models.
-- All database operations must be wrapped in async context managers.
-- Tests must use `pytest-asyncio` fixtures.
+# Testing conventions
+- Use Vitest.
 ```
 
-### 2. The Dynamic Rule Injection Lifecycle
-1. **Turn Start**: The developer sends a prompt: *"Refactor `backend/api/auth.py` to support JWT rotation."*
-2. **Path Evaluation**: The Claude Code rule engine inspects the file paths touched or mentioned in the prompt (`backend/api/auth.py`).
-3. **Glob Matching**:
-   - `.claude/rules/frontend.md` (`paths: ["frontend/**"]`) $\rightarrow$ **No Match** (Excluded).
-   - `.claude/rules/infra.md` (`paths: ["infra/**"]`) $\rightarrow$ **No Match** (Excluded).
-   - `.claude/rules/backend.md` (`paths: ["backend/**/*.py"]`) $\rightarrow$ **Match Found!** (Injected into active prompt).
-   - `.claude/rules/security.md` (No `paths` filter) $\rightarrow$ **Global Rule** (Always Injected).
-4. **Execution**: Claude receives a focused context containing only general security rules and specific Python backend standards. React and Terraform rules are completely absent.
+- The file is in `.claude/rules/` (for example `testing.md`), shared via version control.
+- `paths:` is a list of globs (a single string also works, for example `"**/*.test.tsx"`).
+- Claude loads the rule when it works on a file that matches.
+- A rule **without** `paths:` is universal and loads always.
 
----
+**Glob cheat sheet** (as implemented in `main.py`)
 
-## 🔑 Key Technical Terminology Explained
+| Glob | Matches | Does not match |
+|---|---|---|
+| `**/*.test.tsx` | `src/a/b.test.tsx`, `b.test.tsx` | `src/a/b.tsx` |
+| `terraform/**/*` | `terraform/main.tf`, `terraform/modules/vpc/main.tf` | `infra/terraform/main.tf` |
+| `*.md` | `README.md` | `docs/README.md` |
 
-- **Path-Specific Rule**: A modular rule file located in `.claude/rules/<name>.md` configured to activate conditionally based on file path glob patterns.
-- **`paths` Glob Pattern**: A YAML frontmatter array of glob expressions (e.g. `["src/**/*.tsx", "tests/**/*.test.ts"]`) evaluated against files affected in the current interaction.
-- **Conditional Rule Injection**: The process of assembling the model's active system prompt by dynamically appending only the rules whose glob patterns match the files under modification.
-- **Monorepo Context Isolation**: Preventing conventions from one sub-project (e.g. mobile app) from leaking into and contaminating another sub-project (e.g. backend microservice).
-- **Global Rule (Unfiltered)**: A rule file in `.claude/rules/` that omits the `paths` frontmatter block, causing it to load unconditionally across all turns.
+`*` stays inside one folder; `**` crosses folders.
 
----
+## Key Terms
 
-## 🏗️ Architecture: Rule Precedence & Conditional Injection
+- **Path-scoped rule**: a `.claude/rules/*.md` file with a `paths:` frontmatter list.
+- **Glob**: a pattern like `**/*.test.tsx`.
+- **Conditional loading**: loading a rule only when a matching file is being worked on.
+- **Universal rule**: a rule with no `paths:`.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    Req["User Prompt Touching Files:<br>['backend/api.py']"] --> Evaluator["Path Rule Engine"]
-    
-    Evaluator --> RuleA[".claude/rules/frontend.md<br>paths: ['frontend/**']"]
-    Evaluator --> RuleB[".claude/rules/backend.md<br>paths: ['backend/**']"]
-    Evaluator --> RuleC[".claude/rules/shared.md<br>(no paths filter)"]
-    
-    RuleA -->|"No match"| DiscardA["Excluded from Context"]
-    RuleB -->|"Match found"| InjectedB["Injected into Context"]
-    RuleC -->|"Global rule"| InjectedC["Injected into Context"]
-    
-    InjectedB --> FinalPrompt["Compact System Context"]
-    InjectedC --> FinalPrompt
+    Edit["Claude edits a file"] --> Check{"Does the path match<br>a rule's paths: globs?"}
+    Check -->|"Yes"| Load["Rule loaded into context"]
+    Check -->|"No"| Skip["Rule stays out<br>(tokens saved)"]
+    Rules[".claude/rules/*.md"] --> Check
 ```
 
----
+## Worked Example
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+```text
+my-repo/
+  .claude/rules/
+    testing.md          paths: ["**/*.test.tsx"]
+    terraform.md        paths: ["terraform/**/*"]
+    style.md            (no paths: loads always)
+  src/auth/auth.tsx
+  src/auth/auth.test.tsx
+  src/billing/billing.test.tsx
+  terraform/main.tf
+```
 
-| Rule Scoping Strategy | Correct Implementation | Exam Trap to Reject | Why the Trap Fails |
+| File being edited | Rules loaded |
+|---|---|
+| `src/auth/auth.tsx` | `style` |
+| `src/auth/auth.test.tsx` | `style`, `testing` |
+| `src/billing/billing.test.tsx` | `style`, `testing` |
+| `terraform/main.tf` | `style`, `terraform` |
+
+This repo uses the same mechanism: `.claude/rules/python_quality.md` has `paths: ["**/*.py"]` and `.claude/rules/mermaid_standards.md` has `paths: ["**/*.md", "**/*.ipynb"]`. The `main.py` here reads those real files with `RuleEngine.register_rules_from_dir`.
+
+## Exam Traps and Correct Patterns
+
+| Concept | Correct | Trap | Why the trap fails |
 |---|---|---|---|
-| **Multi-Stack Repositories** | Define path-scoped rules in `.claude/rules/*.md` with `paths: [...]` globs. | **TRAP**: Putting all stack rules together in root `CLAUDE.md`. | Blends conflicting conventions (e.g. naming conventions, styling) and bloats baseline token cost. |
-| **Rule Placement** | Save rules in `.claude/rules/<name>.md` with YAML frontmatter. | **TRAP**: Creating arbitrary custom folders like `my_rules/` without configuring Claude Code. | Claude Code automatically scans only `.claude/rules/` and `CLAUDE.md` by default. |
-| **Global Baseline Rules** | Omit the `paths` frontmatter key for universal rules (e.g. git commit style, security rules). | **TRAP**: Hardcoding `paths: ["**/*"]` across 20 different rule files. | Ingests all 20 rule files simultaneously on every turn, completely defeating the purpose of modular rules. |
+| Tests next to code | One path-scoped rule with a glob | `CLAUDE.md` in each directory | Duplicated files drift apart and cannot match by file type |
+| Conditional conventions | `.claude/rules/` with `paths:` | Root `CLAUDE.md` and hoping Claude infers when to apply | Loads always; inference is unreliable |
+| Rare workflow vs file-type convention | Path-scoped rule for file patterns | A skill | Skills are invoked on demand; they do not load by file path |
+| Token cost | Conditional rules | Everything in root `CLAUDE.md` | Pays for every rule in every session |
 
----
+## Common Mistakes
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+- Creating a `CLAUDE.md` in every folder for one cross-cutting convention.
+- Writing `paths` as a bare folder name instead of a glob (`terraform` instead of `terraform/**/*`).
+- Forgetting that `*.md` matches only the repo root, while `**/*.md` matches everywhere.
+- Using a skill when the real trigger is "which file am I editing."
+- Leaving `paths:` off a rule that should be conditional (it will load always).
 
-| Rule Scope | Location | Frontmatter Filter |
-|---|---|---|
-| Universal repo policy (e.g. no secrets committed) | `.claude/rules/security.md` | Omit `paths` (loads globally). |
-| TypeScript / UI guidelines | `.claude/rules/frontend.md` | `paths: ["frontend/**", "**/*.tsx"]` |
-| Python backend guidelines | `.claude/rules/backend.md` | `paths: ["backend/**", "**/*.py"]` |
-| Monorepo package quirks | `packages/service-a/CLAUDE.md` | Scoped to directory tree. |
+## Quick Decision Rules
 
----
+| Situation | Choice |
+|---|---|
+| Convention tied to a file pattern across many folders | Path-scoped rule |
+| Convention for one subtree only | Directory-level `CLAUDE.md` |
+| Standard for every task | Project `CLAUDE.md` |
+| Workflow you invoke by name | Skill |
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## Claude 4.5 Notes
 
-- **Context Focus**: With path-specific rules keeping context lean, Claude 4.5's Extended Thinking budget is focused entirely on the relevant language idioms and testing frameworks.
-- **Sampling Rules**: Omit `temperature` whenever thinking is enabled.
-- **Dynamic Context Switching**: When a conversation shifts from editing Python to editing TypeScript, previous thinking blocks are preserved, while the rule injector dynamically rotates the active rule payload.
+- Models in this repo: `claude-sonnet-4-5`, `claude-haiku-4-5`.
+- With extended thinking in API code: leave `temperature` and `top_k`/`top_p` unset; only `tool_choice` `auto` or `none`; keep thinking blocks and signatures unchanged.
 
----
+## Exam-Style Practice Questions
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+**Q1 (Scenario 2: Code Generation).** Test files sit next to source files across the whole repo (`*.test.tsx`). You want test conventions applied when editing tests, and not otherwise. What is the best approach?
 
-When exploring [`ts_3_3_path_specific_rules.ipynb`](ts_3_3_path_specific_rules.ipynb):
-1. **Step 1: Setup & Glob Matcher**: Initializes the path matching engine with fnmatch glob evaluation.
-2. **Step 2: Defining Multi-Stack Rules**: Creates modular rules for frontend, backend, and security.
-3. **Step 3: Simulating File Touch Events**: Tests touching `backend/api.py` and verifies frontend rules are excluded.
-4. **Step 4: Cross-Stack Interaction**: Demonstrates that touching both frontend and backend files injects both rule sets cleanly.
-5. **Step 5: Verification Assertions**: Verifies that 100% of non-matching rules are excluded from the active context.
+- A) Put the conventions in the root `CLAUDE.md` and let Claude infer when they apply.
+- B) Create a skill and invoke it before each test edit.
+- C) Create a `.claude/rules/testing.md` rule with `paths: ["**/*.test.tsx"]`.
+- D) Add a `CLAUDE.md` to every directory that contains tests.
+
+**Q2 (Scenario 2).** Which frontmatter loads a Terraform rule only for Terraform files?
+
+- A) `paths: ["terraform/**/*"]`
+- B) `paths: terraform`
+- C) `applyTo: terraform`
+- D) No frontmatter; name the file `terraform.md`
+
+**Q3 (Scenario 5: CI flavour).** The root `CLAUDE.md` contains 300 lines of API conventions. Most CI review runs touch only the frontend, yet they still pay for those tokens. What should you do?
+
+- A) Shorten the API conventions to one line.
+- B) Move them to a rule with `paths: ["src/api/**/*"]`.
+- C) Move them to `~/.claude/CLAUDE.md`.
+- D) Move them to a skill and run it on every PR.
+
+### Answers
+
+**Q1: C.**
+- A fails: the file always loads and relies on inference.
+- B fails: skills are invoked, not loaded by file pattern.
+- D fails: many duplicated files, and a directory file cannot match by file type across folders.
+
+**Q2: A.**
+- B fails: `paths` needs a glob list; a bare name is not a pattern that matches files inside.
+- C fails: `applyTo` is not the key for Claude Code rules.
+- D fails: without `paths:` the rule is universal and always loads.
+
+**Q3: B.**
+- A fails: it throws away guidance instead of loading it conditionally.
+- C fails: user-level files do not reach CI or teammates.
+- D fails: running a skill on every PR adds work and still does not load by path.
+
+## Self-Check Checklist
+
+- [ ] I know rules live in `.claude/rules/` and use `paths:` globs.
+- [ ] I can write a glob for co-located tests.
+- [ ] I know a rule without `paths:` always loads.
+- [ ] I can explain why this beats a `CLAUDE.md` in every directory.
+- [ ] I can tell a path-scoped rule from a skill.
+
+**Memory hook**: *Same pattern in many places means a glob rule.*
+
+## Hands-on Workbook Guide
+
+Open [`ts_3_3_path_specific_rules.ipynb`](ts_3_3_path_specific_rules.ipynb) (offline). It uses [main.py](main.py):
+
+1. Setup and imports.
+2. Parse real frontmatter and test `glob_match`.
+3. Load this repo's `.claude/rules/` and see which rules match which files.
+4. Assertions on matching and on universal rules.
+
+Previous: [TS 3.2](../ts_3_2_slash_commands_and_skills/README.md). Next: [TS 3.4](../ts_3_4_plan_mode_and_refinement/README.md).

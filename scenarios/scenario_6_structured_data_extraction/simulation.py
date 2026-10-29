@@ -29,6 +29,71 @@ class ExtractionRoutingTier(str, Enum):
     HUMAN_TRIAGE = "MANDATORY_HUMAN_TRIAGE"      # Low confidence or unrecoverable error
 
 
+EXTRACTION_TOOL_NAME = "extract_invoice"
+EXPENSE_CATEGORIES = ["travel", "software", "office", "other", "unclear"]
+
+# Nullable optional fields stop the model from inventing values the document lacks.
+EXTRACTION_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "vendor": {"type": "string"},
+        "total": {"type": "number"},
+        "tax_id": {"type": ["string", "null"]},
+        "expense_category": {"type": "string", "enum": EXPENSE_CATEGORIES},
+        "other_category_detail": {"type": ["string", "null"]},
+    },
+    "required": ["vendor", "total", "tax_id", "expense_category"],
+}
+
+_JSON_TYPES: Dict[str, Any] = {
+    "string": str, "number": (int, float), "null": type(None), "boolean": bool,
+}
+
+
+def build_extraction_request(doc_text: str) -> Dict[str, Any]:
+    """Forced-tool extraction request. No thinking and no temperature: forced tool_choice
+    is incompatible with extended thinking (HTTP 400). Returns a dict only; no API call."""
+    return {
+        "model": "claude-haiku-4-5",
+        "max_tokens": 1024,
+        "tools": [
+            {
+                "name": EXTRACTION_TOOL_NAME,
+                "description": "Extract invoice fields; use null when the document lacks a field.",
+                "input_schema": EXTRACTION_SCHEMA,
+            }
+        ],
+        "tool_choice": {"type": "tool", "name": EXTRACTION_TOOL_NAME},
+        "messages": [{"role": "user", "content": doc_text}],
+    }
+
+
+def validate_against_schema(candidate: Dict[str, Any]) -> List[str]:
+    """Minimal schema check (required keys, types incl. null, enum). Returns error strings."""
+    errors: List[str] = []
+    props = EXTRACTION_SCHEMA["properties"]
+    for key in EXTRACTION_SCHEMA["required"]:
+        if key not in candidate:
+            errors.append(f"missing required field: {key}")
+    for key, value in candidate.items():
+        spec = props.get(key)
+        if spec is None:
+            continue
+        types = spec["type"] if isinstance(spec["type"], list) else [spec["type"]]
+        if not any(isinstance(value, _JSON_TYPES[t]) for t in types):
+            errors.append(f"wrong type for {key}")
+        if "enum" in spec and value not in spec["enum"]:
+            errors.append(f"{key} not in enum")
+    return errors
+
+
+def is_retry_eligible(
+    is_valid: bool, is_recoverable: bool, retries: int, max_retries: int = 3
+) -> bool:
+    """Retry only fixable errors (format, math). Absent source data never improves on retry."""
+    return (not is_valid) and is_recoverable and retries < max_retries
+
+
 @dataclass
 class ExtractionOutcome:
     doc_id: str
@@ -49,6 +114,19 @@ class StructuredExtractionPipeline:
     def __init__(self, random_seed: Optional[int] = 42) -> None:
         if random_seed is not None:
             random.seed(random_seed)
+
+    def route_by_confidence(self, confidence: float) -> Tuple[ExtractionRoutingTier, str]:
+        """Map calibrated confidence to a routing tier; high confidence is still sampled."""
+        if confidence >= self.HIGH_CONFIDENCE_THRESHOLD:
+            if random.random() < self.AUDIT_RATE:
+                return ExtractionRoutingTier.STRATIFIED_AUDIT, "High confidence drift audit sample"
+            return (
+                ExtractionRoutingTier.STRAIGHT_THROUGH,
+                "High confidence straight-through processing",
+            )
+        if confidence >= self.MEDIUM_CONFIDENCE_THRESHOLD:
+            return ExtractionRoutingTier.SECONDARY_SPOT_CHECK, "Medium confidence spot check"
+        return ExtractionRoutingTier.HUMAN_TRIAGE, "Low confidence triage"
 
     def validate_payload(self, raw_text: str, candidate_json: Dict[str, Any]) -> Tuple[bool, bool, str]:
         """
@@ -98,17 +176,7 @@ class StructuredExtractionPipeline:
 
             if is_valid:
                 # Routed based on calibrated confidence
-                if confidence_score >= self.HIGH_CONFIDENCE_THRESHOLD:
-                    # Stratified audit check
-                    is_sampled = random.random() < self.AUDIT_RATE
-                    tier = ExtractionRoutingTier.STRATIFIED_AUDIT if is_sampled else ExtractionRoutingTier.STRAIGHT_THROUGH
-                    reason = "High confidence drift audit sample" if is_sampled else "High confidence straight-through processing"
-                elif confidence_score >= self.MEDIUM_CONFIDENCE_THRESHOLD:
-                    tier = ExtractionRoutingTier.SECONDARY_SPOT_CHECK
-                    reason = "Medium confidence spot check"
-                else:
-                    tier = ExtractionRoutingTier.HUMAN_TRIAGE
-                    reason = "Low confidence triage"
+                tier, reason = self.route_by_confidence(confidence_score)
 
                 return ExtractionOutcome(
                     doc_id=doc_id,

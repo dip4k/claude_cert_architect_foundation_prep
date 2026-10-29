@@ -1,129 +1,233 @@
 # Task Statement 1.3: Configure Subagent Invocation, Context Passing, and Spawning
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+> Domain 1 (27% of the exam) · Scenario 3 (Multi-Agent Research System) · [Back to Domain 1](../README.md)
 
-### Certification Domain & Weight
-- **Domain**: Domain 1: Agentic Architecture & Orchestration
-- **Domain Weight**: 27% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 3 (Multi-Agent Research System)
+## In One Minute
 
-### The Core Goal
-To master the mechanics of spawning subagents via the Agent SDK `Task` tool primitive, execute **parallel subagent invocations in a single model turn**, construct **goal-oriented delegation prompts**, and preserve rigorous **source attribution metadata** across agent boundaries.
-
-### Why This Matters in Production
-In enterprise research, data extraction, and code auditing, tasks often require querying multiple independent repositories, databases, or web sources. If a coordinator agent spawns subagents sequentially—waiting for Subagent 1 to return before spawning Subagent 2—total turnaround latency scales linearly with task count ($T_{total} = \sum t_i$), violating customer latency SLAs.
-Furthermore, if context passing is informal or unstructured, subagents lose source attribution (authors, URLs, timestamps), resulting in synthetic hallucinations where the coordinator cannot verify which document contributed which fact.
-
-### Exam Importance
-Task Statement 1.3 is a cornerstone of orchestration efficiency. Exam questions frequently probe whether you recognize that multiple `Task` tool calls can and should be emitted in a **single coordinator turn**, that `Task` must be included in `allowedTools`, and that subagent prompts must be goal-oriented rather than keystroke-level procedural commands.
+- **What**: a coordinator spawns subagents with the **`Task` tool**. The coordinator's `allowedTools` must include `"Task"`.
+- **Parallel**: to run subagents at the same time, emit **several `Task` tool_use blocks in ONE coordinator response**.
+- **Context**: a subagent starts empty. Put every fact it needs **in the prompt**.
+- **Prompts**: state the goal and quality criteria. Do not write a step-by-step script.
+- **Results**: return content and metadata (source URL, document name, page) as separate fields.
+- **Exam answer in one line**: `Task` in `allowedTools`, many `Task` calls in one turn, explicit context, structured findings.
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## 📌 Overview
 
-### 1. The Problem: The Sequential Round-Trip Bottleneck
-Consider a coordinator researching three aspects of an acquisition target: Financials, Legal Liabilities, and Patent Portfolios.
-- **The Naive Sequential Pattern**:
-  - Turn 1: Coordinator calls `Task(subagent='financial')`.
-  - Turn 2: Host runs financial agent, returns findings.
-  - Turn 3: Coordinator calls `Task(subagent='legal')`.
-  - Turn 4: Host runs legal agent, returns findings.
-  - Turn 5: Coordinator calls `Task(subagent='patent')`.
-  - Turn 6: Host runs patent agent, returns findings.
-  - Turn 7: Coordinator synthesizes final response.
-- **Production Consequence**: 7 API round-trips over the network! If each subagent takes 5 seconds, total wall-clock time exceeds 35 seconds, exhausting timeouts.
+### Why it matters
+If the coordinator spawns one subagent per turn, total time is the **sum** of all subagent times. If it spawns them in one turn, total time is about the **slowest** one. Separately, a subagent that returns loose prose loses its sources, so the final report cannot cite anything.
 
-### 2. The Architectural Solution: Single-Turn Parallel Spawning
-In Claude's tool-calling architecture, Claude can emit **multiple tool calls in a single assistant turn**:
+### What the exam tests
+- `Task` is the spawning mechanism, and it must be in `allowedTools`.
+- An `AgentDefinition` describes a subagent: a description, a system prompt, and tool restrictions.
+- Subagents do not inherit the coordinator context. Context is passed explicitly in the prompt.
+- Parallel subagents means multiple `Task` tool_use blocks in a **single** coordinator response.
+- Goal and quality-criteria prompts beat procedural scripts.
+- Findings keep **content** separate from **metadata**.
+
+---
+
+## 📖 Concepts Explained
+
+### 1. The simple idea
+Spawning a subagent is a tool call. The tool is called `Task`. The coordinator "calls" it, the host runs the subagent, and the result comes back as a `tool_result`.
+
+### 2. Configure the subagent: `AgentDefinition`
+An `AgentDefinition` has a **description** (so the coordinator knows when to use it), a **system prompt** (its role), and **tool restrictions** (only the tools it needs). In [main.py](main.py), `AgentDefinition` is a dataclass with `name`, `description`, `system_prompt`, `allowed_tools`, kept in `SUBAGENT_REGISTRY` (`web_researcher`, `code_analyzer`).
+
+### 3. Allow the spawn
+The coordinator can only spawn if `"Task"` is in its `allowedTools`. Here it is `COORDINATOR_ALLOWED_TOOLS = ["Task"]`, and `run_parallel_spawning_coordinator` only offers `TASK_TOOL` to the model when `"Task"` is allowed.
+
+### 4. Pass context explicitly
+A subagent inherits nothing. A good `prompt` field contains the goal, the facts found so far, the quality bar, and the output format. If a finding from another subagent matters, the coordinator copies it in.
+
+Fork-based sessions (`fork_session`, see [TS 1.7](../ts_1_7_session_management/README.md)) are a different way to branch work from a shared baseline.
+
+### 5. Spawn in parallel
+Claude can emit more than one `tool_use` block in a single response. For independent subtasks, emit one `Task` block per subtask in the **same** response.
+
+The host in [main.py](main.py) runs those blocks with a `ThreadPoolExecutor`. `pool.map` returns results in the **same order as the tool_use blocks**. The host then answers **every** `tool_use` block in one user message. A block that is not an allowed tool gets an `is_error` `tool_result`, so the history is never left with an unanswered `tool_use`.
+
+### 6. Prompt for goals, not steps
+- Goal style: *"Find active patent cases filed after 2024 with claim amounts. Cite a source for each."*
+- Procedure style (avoid): *"Open site X, click Y, copy the third row..."*
+
+Goals let the subagent adapt when a tool fails. Procedures break the first time something is different.
+
+### 7. Content versus metadata
+Each finding is `{"content": ..., "metadata": {"source_url", "doc_title", ...}}`. The coordinator can then keep the claim and its source together when it writes the report.
+
+---
+
+## 🧪 Worked Example
+
+Goal: *"Investigate Claude Code slash commands. Use the web researcher for the official docs and the code analyzer for our local rule files."*
+
+| Step | What happens |
+|---|---|
+| 1 | Host sends the goal and `tools=[Task]`. `"Task"` is in `allowedTools` |
+| 2 | Claude replies once with `stop_reason = "tool_use"` and **two** blocks: `Task(web_researcher, ...)` id `toolu_A`, and `Task(code_analyzer, ...)` id `toolu_B` |
+| 3 | Host runs both subagents at the same time. Total time is about the slower one |
+| 4 | Host appends the assistant turn, then **one** user message with `tool_result toolu_A` and `tool_result toolu_B`, in that order |
+| 5 | Claude replies `stop_reason = "end_turn"` with a report |
+
+Each result looks like this:
+
 ```json
 {
-  "role": "assistant",
-  "content": [
-    {"type": "tool_use", "id": "task_1", "name": "Task", "input": {"subagent": "financial", "prompt": "..."}},
-    {"type": "tool_use", "id": "task_2", "name": "Task", "input": {"subagent": "legal", "prompt": "..."}},
-    {"type": "tool_use", "id": "task_3", "name": "Task", "input": {"subagent": "patent", "prompt": "..."}}
-  ]
+  "task_id": "T-WEB",
+  "status": "completed",
+  "findings": [{
+    "content": "Claude Code supports project-level and user-level slash commands and skills.",
+    "metadata": {"source_url": "https://docs.anthropic.com/en/docs/claude-code",
+                 "doc_title": "Claude Code User Guide"}
+  }]
 }
 ```
-- **The Parallel Pattern**:
-  - Turn 1: Coordinator emits all 3 `Task` calls simultaneously.
-  - Execution: The host application runs all 3 subagents concurrently in a Python `ThreadPoolExecutor` or `asyncio.gather()`.
-  - Turn 2: The host returns all 3 `tool_result` blocks in a single user turn.
-  - Turn 3: Coordinator synthesizes the complete findings.
-- **Latency Gain**: Total time drops from 35s to ~7s (the duration of the slowest subagent plus coordinator overhead).
 
-### 3. Context Passing & Attribution Preservation
-Subagents do not inherit parent memory. Therefore, the coordinator must pass:
-1. **Goal-Oriented Instructions**: State the desired objective and acceptance criteria (e.g., *"Extract all active patent litigation cases filed after 2024 with dollar claim amounts"*), rather than micromanaging low-level button clicks.
-2. **Attribution Separation**: Subagents must return data partitioned into `content` (the factual finding) and `metadata` (URL, document ID, page number, timestamp). This prevents factual contamination and ensures auditability.
+The report can cite the URL because the metadata stayed attached to the claim.
 
 ---
 
-## 🔑 Key Technical Terminology Explained
+## 🔑 Key Terms
 
-- **`Task` Tool**: The canonical Agent SDK primitive used by an orchestrator to spawn and delegate work to child subagents. The coordinator's `allowedTools` array must explicitly list `"Task"`.
-- **Parallel Tool Use**: Claude's ability to emit multiple `tool_use` blocks in a single response message when multiple independent actions are required.
-- **Goal-Oriented Delegation**: Prompting subagents with high-level objectives, quality standards, and constraints, granting the subagent autonomy to navigate its assigned tool suite.
-- **Attribution Metadata**: Provenance details (e.g. `source_url`, `filing_date`, `table_reference`) returned alongside factual claims to guarantee verifiability during final coordinator synthesis.
-- **Concurrency Pool**: The host-side execution environment (`asyncio` / worker threads) that processes parallel tool calls simultaneously.
+- **`Task` tool**: the Agent SDK tool that spawns a subagent.
+- The exam calls the subagent-spawning tool `Task`; current Claude Code docs call the same built-in tool `Agent`. Treat them as the same idea.
+- **`allowedTools`**: the tools the coordinator may use. Must include `"Task"` to spawn.
+- **`AgentDefinition`**: a subagent's description, system prompt, and tool restrictions.
+- **Parallel spawning**: multiple `Task` tool_use blocks in one response.
+- **Context passing**: putting needed facts into the subagent prompt.
+- **Content vs metadata**: the claim, and where it came from.
+- **Goal-oriented prompt**: objective plus quality criteria, no step-by-step script.
 
 ---
 
-## 🏗️ Architecture: Parallel Spawning & Attribution Flow
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    Coordinator["Coordinator Turn<br>(claude-sonnet-4-5)"] --> MultiCall["Single Turn Emits Multiple Tool Calls:<br>Task(subagent='search', query='A')<br>Task(subagent='search', query='B')"]
-    
-    MultiCall --> ExecPool["Parallel Host Execution Pool<br>(asyncio.gather / ThreadPool)"]
-    
-    ExecPool --> WorkerA["Subagent Worker A<br>(Fresh Isolated Context)"]
-    ExecPool --> WorkerB["Subagent Worker B<br>(Fresh Isolated Context)"]
-    
-    WorkerA --> ResultA["Result Payload A:<br>content + metadata(url, title, date)"]
-    WorkerB --> ResultB["Result Payload B:<br>content + metadata(url, title, date)"]
-    
-    ResultA --> Collector["Collate Tool Results into User Turn"]
-    ResultB --> Collector
-    Collector --> NextTurn["Coordinator Next Turn:<br>Synthesize with full attribution"]
+    Coord["Coordinator turn<br>(claude-sonnet-4-5)<br>allowedTools includes Task"] --> Multi["One response with<br>multiple Task tool_use blocks"]
+
+    Multi --> Pool["Host runs Task calls<br>concurrently"]
+    Pool --> A["Subagent A<br>(isolated context)"]
+    Pool --> B["Subagent B<br>(isolated context)"]
+
+    A --> RA["Result A:<br>content + metadata"]
+    B --> RB["Result B:<br>content + metadata"]
+
+    RA --> Collect["One user message<br>with all tool_results in order"]
+    RB --> Collect
+    Collect --> Next["Coordinator synthesises<br>and keeps attribution"]
 ```
 
 ---
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+## ⚠️ Exam Traps and Correct Patterns
 
-| Spawning / Delegation Technique | Correct Architectural Implementation | Exam Trap to Reject | Why the Trap Fails |
+| Topic | Correct pattern | Trap | Why the trap fails |
 |---|---|---|---|
-| **Subagent Spawning Mechanism** | Use the SDK `Task` tool with subagent specification in `allowedTools`. | **TRAP**: Calling arbitrary local shell scripts (`bash python subagent.py`) directly from model output. | Bypasses SDK lifecycle hooks, breaks structured error handling, and introduces remote code execution risks. |
-| **Spawning Latency Optimization** | **Parallel Spawning**: Emit multiple `Task` tool calls in a **single** coordinator turn. | **TRAP**: Emitting one `Task` call per turn sequentially across multiple network hops. | Multiplies turnaround time linearly by the number of subagents, violating enterprise SLAs. |
-| **Memory Inheritance** | **Explicit Context Passing**: Provide complete instructions and input parameters in the subagent prompt. | **TRAP**: Assuming the spawned subagent automatically inherits the parent conversation transcript. | Subagents run in isolated sessions; assuming shared memory causes missing variable hallucinations. |
-| **Prompting Style** | **Goal-Oriented Prompting**: Define objectives, constraints, and schemas. | **TRAP**: Procedural micromanagement detailing every intermediate CLI command. | Restricts agent adaptability when navigating tool failures or unexpected API responses. |
+| **Spawn mechanism** | `Task` tool, with `"Task"` in `allowedTools` | Coordinator without `Task` in `allowedTools` | It cannot spawn at all |
+| **Latency** | Several `Task` calls in one response | One `Task` call per turn | Time becomes the sum of the subagents |
+| **Context** | Put facts in the subagent prompt | Assume it inherits the coordinator's history | It starts empty and would work without the facts |
+| **Prompt style** | Goal and quality criteria | Step-by-step script | Breaks when anything differs. Removes the subagent's ability to adapt |
+| **Findings** | Content and metadata kept separate | Free-form prose summaries | Sources are lost and claims cannot be cited |
 
 ---
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+## ❌ Common Mistakes
 
-| Architectural Dilemma | Recommended Choice | Rapid 30-Second Decision Rule |
-|---|---|---|
-| **Sequential vs Parallel Spawning?** | Parallel in single turn | If subtasks are mutually independent, emit all `Task` calls in one turn. |
-| **How to pass context to subagents?** | Explicit parameters in prompt | Never pass the full parent chat history; pass only the specific data needed for the subtask. |
-| **How to preserve citations?** | Structured `metadata` dictionary | Separate factual snippets from source URLs, page numbers, and dates to enable clean references. |
-
----
-
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
-
-- **Parallel Tool Decision**: When Extended Thinking is enabled (`budget_tokens: 2048`), Claude evaluates the entire user query during its thinking phase, maps independent facets, and constructs multiple `Task` calls in its first output block.
-- **Sampling Rules**: Omit `temperature` across both coordinator and child subagent calls.
-- **Thinking Blocks**: Maintain thinking blocks with cryptographic signatures in subsequent coordinator turns as subagent results are evaluated.
+- Forgetting `"Task"` in `allowedTools`, then wondering why nothing spawns.
+- Emitting the Task calls over several turns when the subtasks are independent.
+- Answering only some of the `tool_use` blocks. Each one needs a `tool_result`.
+- Writing a prompt that assumes the subagent "already knows" the earlier findings.
+- Letting subagents return a paragraph with no source information.
 
 ---
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+## 💡 Quick Decision Rules
 
-When exploring [`ts_1_3_subagent_invocation_spawning.ipynb`](ts_1_3_subagent_invocation_spawning.ipynb):
-1. **Step 1: Environment & Setup**: Sets up the offline test harness and `ResponseTrail` logger.
-2. **Step 2: Subagent Worker Setup**: Implements isolated research workers that return structured `{content, metadata}` bundles.
-3. **Step 3: Single-Turn Parallel Spawning**: Simulates the coordinator emitting multiple `Task` invocations in turn 1.
-4. **Step 4: Concurrency & Aggregation**: Demonstrates parallel execution, collation into `tool_result` blocks, and multi-source synthesis.
-5. **Step 5: Verification & Safety Assertions**: Verifies that parallel invocations execute cleanly and maintain 100% source attribution.
+| Question | Answer |
+|---|---|
+| Subtasks independent? | All `Task` calls in one response |
+| Subtask B needs A's result? | Run A first. Copy A's result into B's prompt |
+| Subagent cannot be spawned? | Check `allowedTools` includes `"Task"` |
+| How to write the prompt? | Goal, criteria, output format. No script |
+| How to return findings? | `content` plus `metadata` |
+
+---
+
+## 🧠 Claude 4.5 Notes
+
+- Models: `claude-sonnet-4-5` for the coordinator, `claude-haiku-4-5` for worker subagents. The coordinator call in [main.py](main.py) uses `COORDINATOR_MODEL`.
+- Extended thinking: `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`.
+- With thinking on: no `temperature` (HTTP 400), no `top_k`, `top_p` only 0.95 to 1.0, and `tool_choice` only `auto` or `none`. Forcing `Task` with a named `tool_choice` would give HTTP 400.
+- Echo assistant content (with `thinking` blocks and `signature`) back unchanged with the `tool_result`s.
+
+---
+
+## 📝 Exam-Style Practice Questions
+
+**Q1.** A research coordinator needs three independent investigations (financials, legal, patents). It emits one `Task` call per turn, so the run takes seven round trips. What is the best fix?
+
+- A) Emit all three `Task` tool_use blocks in a single coordinator response.
+- B) Increase `max_tokens` on the coordinator.
+- C) Have each subagent spawn the next subagent in the chain.
+- D) Describe the three investigations step by step in the system prompt.
+
+**Q2.** A coordinator prompt says to delegate research to subagents, but no subagent is ever spawned. The agent configuration lists `allowedTools=["Read", "Grep"]`. What is the most likely fix?
+
+- A) Add `"Task"` to the coordinator's `allowedTools`.
+- B) Raise `budget_tokens` for extended thinking.
+- C) Give each subagent the full coordinator history.
+- D) Lower the temperature to make delegation more consistent.
+
+**Q3.** Subagents return paragraph summaries. The final report contains claims, but nobody can tell which document or page each claim came from. What is the best change?
+
+- A) Ask the coordinator to guess the sources while writing.
+- B) Require structured results that keep the claim (content) separate from metadata such as source URL, document name, and page.
+- C) Remove the sources to save tokens.
+- D) Set `temperature` to 0 on the subagents.
+
+### Answers
+
+**Q1: A.**
+- B) `max_tokens` only changes output length. It does not change how many round trips happen.
+- C) Chaining makes the work sequential and drops the coordinator as the single hub.
+- D) A step-by-step prompt does not create parallelism. Multiple tool calls in one response does.
+
+**Q2: A.**
+- B) Thinking budget does not give the coordinator the ability to spawn.
+- C) History does not enable spawning, and subagents are meant to be isolated.
+- D) Sampling settings do not control which tools are available. (Also, with thinking on, `temperature` is rejected.)
+
+**Q3: B.**
+- A) Guessing sources causes made-up citations.
+- C) This removes the information that makes claims verifiable.
+- D) Temperature does not make free text structured or add provenance.
+
+---
+
+## ✅ Self-Check Checklist
+
+- [ ] I can say why `"Task"` must be in `allowedTools`.
+- [ ] I can explain what an `AgentDefinition` contains.
+- [ ] I know parallel spawning means several `Task` blocks in one response.
+- [ ] I pass context in the prompt, because subagents inherit nothing.
+- [ ] I write goal prompts and return content and metadata separately.
+
+**Memory hook**: *"Task in the list, many in one turn, everything in the prompt."*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [ts_1_3_subagent_invocation_spawning.ipynb](ts_1_3_subagent_invocation_spawning.ipynb) (offline, mock client):
+
+1. **Setup**: test harness.
+2. **Workers**: simulated subagents that return `{content, metadata}`.
+3. **Dispatcher**: handles `Task` calls from one coordinator response.
+4. **Simulation**: one response with two `Task` blocks.
+5. **Checks**: two subagents ran, and metadata stayed attached.
+
+Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)

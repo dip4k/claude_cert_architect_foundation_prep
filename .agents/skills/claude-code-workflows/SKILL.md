@@ -10,7 +10,7 @@ description: Guide to Claude Code configuration hierarchy (CLAUDE.md), path-scop
 2. **Project-level**: `.claude/CLAUDE.md` or root `CLAUDE.md` (Shared standards committed to git).
 3. **Directory-level**: Subdirectory `CLAUDE.md` files (Local to package or folder).
 4. **Size Rule**: Keep `CLAUDE.md` **under 200 lines**. Only universal facts belong here; tier procedural workflows into skills.
-5. **Modular Rules**: Use `.claude/rules/` with `paths: [...]` or `@import ./path/to/standards.md`.
+5. **Modular Rules**: Use `.claude/rules/` with `paths: [...]` or `@path/to/standards.md` imports.
 6. **Inspection**: Use `/memory` command to verify which context files are loaded.
 
 ## 2. Skills vs Slash Commands (TS 3.2)

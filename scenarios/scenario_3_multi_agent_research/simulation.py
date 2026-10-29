@@ -34,6 +34,7 @@ class SubagentTaskResult:
     status: SubagentTaskStatus
     extracted_data: List[Dict[str, Any]] = field(default_factory=list)
     error_detail: Optional[str] = None
+    structured_error: Optional[Dict[str, Any]] = None  # Context the coordinator needs to recover
 
 
 @dataclass
@@ -59,7 +60,14 @@ class SpecializedSubagent:
             return SubagentTaskResult(
                 agent_name=self.name,
                 status=SubagentTaskStatus.UPSTREAM_FAILURE,
-                error_detail="HTTP 504 Gateway Timeout while querying upstream database"
+                error_detail="HTTP 504 Gateway Timeout while querying upstream database",
+                structured_error={
+                    "failure_type": "timeout",
+                    "attempted_query": query,
+                    "partial_results": [],
+                    "is_retryable": True,
+                    "alternatives": ["retry with narrower query", "use a different source"],
+                },
             )
         elif mock_backend_behavior == "empty":
             return SubagentTaskResult(
@@ -176,6 +184,50 @@ class ResearchCoordinator:
             conflicts_preserved=conflicts,
             source_omissions=failed_sources
         )
+
+    @staticmethod
+    def check_decomposition_coverage(
+        required_topics: List[str], subtasks: List[str]
+    ) -> Dict[str, Any]:
+        """Flag topics no subtask covers: a narrow decomposition is the coordinator's fault."""
+        lowered = [s.lower() for s in subtasks]
+        missing = [t for t in required_topics if not any(t.lower() in s for s in lowered)]
+        return {
+            "is_complete": not missing,
+            "missing_topics": missing,
+            "covered_topics": [t for t in required_topics if t not in missing],
+        }
+
+    @staticmethod
+    def route_verification(is_simple_fact_check: bool) -> str:
+        """Simple checks use a scoped verify_fact tool; complex ones go via the coordinator."""
+        return "verify_fact" if is_simple_fact_check else "coordinator"
+
+    @staticmethod
+    def error_context_for_coordinator(result: SubagentTaskResult) -> Optional[Dict[str, Any]]:
+        """Return the structured error, or None: valid-empty is not a failure."""
+        if result.status == SubagentTaskStatus.UPSTREAM_FAILURE:
+            return result.structured_error
+        return None
+
+
+def merge_claims(claims: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Merge claims by (claim, value): union sources; same claim, new value => conflict.
+
+    Each input needs claim, value, source_url, source_name and date. Values are never averaged.
+    """
+    by_claim: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    for c in claims:
+        values = by_claim.setdefault(c["claim"], {})
+        entry = values.setdefault(c["value"], {"value": c["value"], "sources": []})
+        source = {k: c.get(k) for k in ("source_name", "source_url", "date")}
+        if source not in entry["sources"]:
+            entry["sources"].append(source)
+    return [
+        {"claim": claim, "status": "CONFLICT" if len(vals) > 1 else "AGREED",
+         "values": list(vals.values())}
+        for claim, vals in by_claim.items()
+    ]
 
 
 def main() -> None:

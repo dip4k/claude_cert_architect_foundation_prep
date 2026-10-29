@@ -3,35 +3,54 @@
 
 ---
 
-## 📌 Executive Architecture & Task Statement Mapping
+> Quick version: [README.md](README.md). Per-task guides with worked examples and practice MCQs: [5.1](ts_5_1_context_preservation/README.md) | [5.2](ts_5_2_escalation_and_provenance/README.md) | [5.3](ts_5_3_error_propagation_coverage/README.md) | [5.4](ts_5_4_scratchpads_and_human_review/README.md) | [5.5](ts_5_5_human_review_calibration/README.md) | [5.6](ts_5_6_provenance_and_uncertainty/README.md).
+
+---
+
+## Study Order and Folder Map
+
+Exam weights: D1 27%, D2 18%, D3 20%, D4 20%, **D5 15%**. Folder names are unchanged because tests import them. Each guide follows the **official task statement**.
+
+| Study order | Task statement | Folder | Note |
+|:---:|---|---|---|
+| 1 | TS 5.1 Context across long interactions | `ts_5_1_context_preservation` | Matches |
+| 2 | TS 5.2 Escalation and ambiguity | `ts_5_2_escalation_and_provenance` | Provenance content lives in 5.6 |
+| 3 | TS 5.3 Error propagation | `ts_5_3_error_propagation_coverage` | Matches |
+| 4 | TS 5.4 Large-codebase context | `ts_5_4_scratchpads_and_human_review` | Human review lives in 5.5 |
+| 5 | TS 5.5 Human review and calibration | `ts_5_5_human_review_calibration` | Matches |
+| 6 | TS 5.6 Provenance and uncertainty | `ts_5_6_provenance_and_uncertainty` | Matches |
+
+## One Line Per Task Statement
+
+| TS | What it tests | Key trap |
+|---|---|---|
+| 5.1 | Case facts, trimming tool output, key findings first, structured subagent output | Trusting summaries for exact numbers |
+| 5.2 | Escalate on human request / policy gap / stuck; ask on multiple matches | Sentiment or confidence-score escalation |
+| 5.3 | Structured error context, failure vs valid empty, local recovery, coverage notes | Empty-as-success; aborting the workflow |
+| 5.4 | Scratchpad, subagents, phase summaries, manifest recovery, `/compact` | "Remind the model" instead of external memory |
+| 5.5 | Per-segment accuracy, stratified sampling, calibrated field confidence | Approving automation on aggregate accuracy |
+| 5.6 | Claim-source mappings, conflict annotation, dates, content-type rendering | Averaging conflicting numbers |
+
+## Architecture Map
 
 ```mermaid
 flowchart LR
     subgraph Preservation["Context Preservation"]
         direction TB
-        P1["TS 5.1:<br>Case Facts Layer"]
-        P2["TS 5.1:<br>Payload Trimming"]
-        P3["TS 5.4:<br>scratchpad & /compact"]
-        P4["TS 5.4:<br>Explore Subagents"]
+        P1["TS 5.1:<br>Case facts + trimming"]
+        P2["TS 5.4:<br>Scratchpad + manifest"]
     end
-
-    subgraph Reliability["Reliability & Provenance"]
+    subgraph Humans["Human Involvement"]
         direction TB
-        R1["TS 5.2:<br>Immediate Escalation"]
-        R2["TS 5.3:<br>Structured Errors"]
-        R3["TS 5.5:<br>5-10% Stratified QA"]
-        R4["TS 5.6:<br>Provenance Tracking"]
+        H1["TS 5.2:<br>Escalation + ambiguity"]
+        H2["TS 5.5:<br>Review + calibration"]
+    end
+    subgraph Reliability["Multi-Agent Reliability"]
+        direction TB
+        R1["TS 5.3:<br>Structured errors + coverage"]
+        R2["TS 5.6:<br>Provenance + uncertainty"]
     end
 ```
-
-| Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
-|---|---|---|---|
-| **TS 5.1** | Context Window Preservation | 100% Ground truth fidelity | Persistent "Case Facts" block outside summarized history; payload trimming |
-| **TS 5.2** | Escalation & Ambiguity Patterns| Deterministic SLA compliance | Immediate escalation on explicit demand; clarifying prompts on multi-match |
-| **TS 5.3** | Error Propagation Across Agents| Transparent synthesis integrity | Structured error payloads; explicit coverage gap annotations in reports |
-| **TS 5.4** | Codebase Exploration Context | Drift & hallucination prevention| `scratchpad.md`, Explore subagents, structured state manifests, `/compact` |
-| **TS 5.5** | Human Review & Calibration | Elimination of silent failures | Segmented accuracy auditing; 5–10% stratified audit of high-confidence items |
-| **TS 5.6** | Information Provenance | Traceable evidence auditability | Claim-source mappings with collection dates; preserving contradictory stats |
 
 ---
 
@@ -98,23 +117,11 @@ Large language models exhibit a **U-shaped attention curve** over extensive cont
 
 ---
 
-#### 5. Prompt Caching Architecture & Cost/Latency Optimization
-Prompt caching enables large, static prompt prefixes (such as expansive tool catalogs, policy handbooks, and standard few-shot libraries) to be cached on Anthropic servers:
-- **Prefix Matching Invariant**: Caching relies on deterministic character-for-character prefix matching. Prompts must be ordered strictly from static to dynamic:
-  1. `tools` (static schema definitions)
-  2. `system` (static system instructions and role boundaries)
-  3. `messages` (dynamic multi-turn history)
-- **The Single-Character Invalidation Rule**: If even a single whitespace character, timestamp, or dynamic user identifier changes before a cache breakpoint, the entire cache block is invalidated and billed as an uncached write.
-- **Minimum Eligibility Thresholds**:
-  - `claude-sonnet-4-5` / `claude-opus-4-5`: **1,024 tokens minimum** prefix length.
-  - `claude-haiku-4-5`: **2,048 tokens minimum** prefix length.
-  - If content preceding the breakpoint is below this threshold, `cache_control` is ignored and charged as standard input tokens.
-- **Breakpoint Limits**: Up to **4 explicit cache breakpoints** (`cache_control: {"type": "ephemeral"}`) per API request.
-- **Economic & Latency Benefits**:
-  - **Cache Write**: $1.25\times$ base input rate.
-  - **Cache Read**: $0.10\times$ base input rate (**90% discount**).
-  - **Latency Reduction**: Time-to-first-token (TTFT) drops by up to 80% on large cached prompts.
-  - **TTL**: 5-minute rolling retention; every read resets the 5-minute timer.
+#### 5. Complete History and Structured Subagent Output
+- Send the **complete conversation history** on every request. The case facts block supplements it.
+- Upstream subagents should return **structured data** (key facts, citations, relevance scores, dates), not verbose reasoning, so downstream context stays small.
+- Put **key findings at the start** of aggregated input and use **section headers** for detail.
+- Prompt caching is a cost and latency tool (static prefix first). It does not preserve facts, so it is not the answer to a lost-number question.
 
 ---
 
@@ -146,7 +153,7 @@ Autonomous agents must not invent corporate policy when documentation is silent:
 #### 3. Why Sentiment and Self-Reported Confidence are Unreliable
 - **Sentiment Scores**: A customer speaking with polite, calm language (*"Hello, could you please check why my account has a $500 discrepancy?"*) may have a critical, high-risk security issue, while an aggressive customer (*"THIS APP IS STUPID"*) may just need a password reset link.
 - **Model Confidence**: LLMs frequently express high self-reported confidence even when hallucinating.
-- **Architectural Standard**: Trigger escalations based on **explicit deterministic rules** (customer demand, transaction amounts > $500, policy gaps, repeated tool errors), not sentiment or confidence thresholds.
+- **Architectural Standard**: Trigger escalations based on **explicit deterministic rules** (customer demand, policy gaps, an explicit request for a human, inability to progress), not sentiment or confidence thresholds.
 
 #### 4. Ambiguity Resolution: Clarification over Heuristic Guessing
 When a tool query returns multiple candidate records:
@@ -163,15 +170,24 @@ sequenceDiagram
     participant DB as Backend DB
 
     User->>Agent: "Check balance for John Smith"
-    Agent->>DB: lookup_customer(name="John Smith")
+    Agent->>DB: get_customer(name="John Smith")
     DB-->>Agent: Returns 3 matching records
     Note over Agent: Collision detected: Never guess!
     Agent-->>User: "Multiple accounts found. Please provide Account ID or Zip"
     User->>Agent: "Account #AC-204"
-    Agent->>DB: lookup_customer(account_id="AC-204")
+    Agent->>DB: get_customer(account_id="AC-204")
     DB-->>Agent: Unique record verified
     Agent-->>User: "Balance is $42.50"
 ```
+
+#### 5. Frustration vs an Explicit Request
+- **Frustration alone**: acknowledge it and offer a resolution when the issue is within the agent's capability. Escalate only if the customer repeats that they want a human.
+- **Explicit request for a human**: escalate immediately, with no investigation first.
+
+#### 6. Fixing Poor First-Contact Resolution (Sample Question Pattern)
+- **Situation**: 55% first-contact resolution. The agent escalates easy damaged-item replacements but tries to approve policy exceptions such as competitor price matching (policy covers only our own site).
+- **Correct fix**: add **explicit escalation criteria with few-shot examples** to the prompt.
+- **Rejected**: self-reported confidence scores, a sentiment classifier, a separate trained model. Confidence and sentiment are unreliable proxies for case complexity.
 
 ---
 
@@ -217,6 +233,11 @@ When compiling a multi-source executive report where one data source was unavail
   > Figures represent 78% total global volume.
   ```
 
+#### 4. Local Recovery and Anti-Patterns
+- Subagents **recover transient errors locally** (retry) and propagate **only unresolved** failures, with context and partial results.
+- Anti-patterns: a generic "search unavailable" status; returning an empty result as success; aborting the whole workflow on one failure.
+- Sample pattern: a subagent times out -> return structured error context (failure type, attempted query, partial results, alternatives) to the coordinator.
+
 ---
 
 ### TS 5.4: Manage Context Effectively in Large Codebase Exploration
@@ -244,6 +265,10 @@ Instead of reading 40 files directly into the main session:
 When working interactively in Claude Code:
 - The `/compact` command compresses the conversation history into a structured summary while preserving active file references, tool state, and current goal focus.
 - Enables indefinite continuation of long development sessions without context overflow.
+
+#### 5. Phases and Crash Recovery
+- **Summarise a phase** before spawning the next phase's subagents.
+- Each agent **exports its state** to a known file; the coordinator keeps a **manifest** and loads it on resume, then runs only the missing work.
 
 ---
 
@@ -292,6 +317,12 @@ flowchart TD
 ```
 
 
+#### 4. Field-Level Confidence and Calibration
+- Ask for confidence **per field** and check it against a **labelled validation set** (reliability bins; expected calibration error, ECE).
+- **Validate accuracy per segment** (document type x field) before reducing human review for that segment.
+- Stratified sampling draws within each (document type, field) stratum. The sampling rate (for example 5-10%) is a design choice, not a fixed exam number.
+- Route low-confidence, ambiguous or contradictory-source items to humans.
+
 ---
 
 ### TS 5.6: Preserve Information Provenance and Handle Uncertainty in Multi-Source Synthesis
@@ -330,6 +361,11 @@ When two sources disagree, inspect publication dates before assuming a factual c
 - Report A (June 2025): *"Product inventory is 50,000 units."*
 - Report B (September 2026): *"Product inventory is 12,000 units."*
 - Rather than flagging a discrepancy, the agent identifies **temporal progression**: *"Inventory was drawn down from 50,000 units in June 2025 to 12,000 units by September 2026."*
+
+#### 4. Separate Established from Contested, and Render by Content Type
+- Report **well-established** findings apart from **contested** ones.
+- Financial data -> tables. News -> prose. Technical findings -> lists.
+- Keep **claim-source mappings** through summarisation and synthesis.
 
 ---
 
@@ -447,13 +483,13 @@ Option B is correct. This scenario illustrates the classic **progressive summari
 ---
 
 ### Question 4: Detecting Silent Failures via Stratified Auditing
-**Scenario**: A multinational logistics enterprise deploys Claude 3.7 Sonnet to extract customs declaration data from international shipping manifests. The automated pipeline processes 100,000 documents per month. A high-confidence automated routing gate is implemented: any extraction where Claude's confidence score is > 0.90 is posted directly to customs authorities without human review (accounting for 94% of all documents). Only extractions with confidence <= 0.90 are routed to human customs officers.
+**Scenario**: A multinational logistics enterprise deploys `claude-sonnet-4-5` to extract customs declaration data from international shipping manifests. The automated pipeline processes 100,000 documents per month. A high-confidence automated routing gate is implemented: any extraction where Claude's confidence score is > 0.90 is posted directly to customs authorities without human review (accounting for 94% of all documents). Only extractions with confidence <= 0.90 are routed to human customs officers.
 
 During an annual customs audit, authorities issue a massive regulatory fine after discovering that thousands of hazardous material declarations were misclassified over the past 9 months, despite the AI reporting 0.96 confidence on those documents.
 
 What architectural flaw in the human-in-the-loop review pipeline caused this failure?
 
-- **A)** Claude 3.7 Sonnet should not be used for logistics; only specialized fine-tuned models should be used.
+- **A)** `claude-sonnet-4-5` should not be used for logistics; only specialized fine-tuned models should be used.
 - **B)** The confidence threshold was set at 0.90; increasing it to 0.92 would have caught all errors.
 - **C)** The pipeline relied exclusively on model-reported confidence to trigger human review, failing to implement **stratified random sampling** (auditing 5–10% of high-confidence outputs) to detect silent hallucinations and miscalibrated confidence.
 - **D)** Customs manifests should be processed using OCR instead of language models.

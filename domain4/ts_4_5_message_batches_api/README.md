@@ -1,129 +1,212 @@
-# Task Statement 4.5: Design Efficient Batch Processing Strategies (Message Batches API)
+# Task Statement 4.5: Batch Processing with the Message Batches API
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
-
-### Certification Domain & Weight
-- **Domain**: Domain 4: Prompt Engineering & Structured Output
-- **Domain Weight**: 18% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 5 (Continuous Integration) & Scenario 6 (Structured Data Extraction)
-
-### The Core Goal
-To design cost-optimized asynchronous data processing pipelines using the Anthropic **Message Batches API**, evaluate the architectural trade-off between the **50% token cost discount** and the **24-hour turnaround SLA**, correlate requests via **`custom_id`**, and handle partial batch failures without reprocessing successful items.
-
-### Why This Matters in Production
-Enterprise AI workloads fall into two distinct operational profiles:
-1. **Interactive / Blocking Workloads**: A user waiting at a customer support chat, or an engineer waiting for a pre-merge PR review check. These require sub-minute response times and must use the standard, synchronous Messages API.
-2. **Asynchronous / Non-Blocking Workloads**: Nightly repository security scans, indexing 100,000 historical PDF contracts, or backfilling embeddings.
-If an architect executes a 100,000-document backfill using the synchronous Messages API:
-- The organization pays 100% full list price for tokens, wasting \$10,000s in unnecessary spend.
-- Synchronous calls trigger aggressive HTTP 429 rate limits and thread starvation.
-By adopting the Message Batches API, the organization achieves an immediate **50% cost reduction** on all input and output tokens, while offloading rate limit queueing to Anthropic's distributed infrastructure.
-
-### Exam Importance
-Task Statement 4.5 questions test architectural cost-optimization and SLA trade-offs. The exam will ask when to select the Message Batches API versus the synchronous API, how to track requests using `custom_id`, and how to recover when a small fraction of batch items fail.
+## In One Minute
+- **What**: The Message Batches API runs many requests asynchronously.
+- **Why**: **50% cheaper**, but results can take **up to 24 hours** and there is **no latency SLA**.
+- **Use for**: overnight reports, weekly audits, nightly test generation. **Not for** blocking work such as a pre-merge check.
+- **Handle failures**: match results by `custom_id`, resubmit only the failed ones (chunk oversized documents), and test your prompt on a small sample first.
+- **Exam answer in one line**: *Batch the latency-tolerant job; keep anything a human or a merge is waiting on synchronous.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## 📌 Overview
 
-### 1. The Cost vs. Latency Trade-Off Matrix
-The Message Batches API introduces a fundamental architectural contract:
-- **The Benefit**: **50% discount** on all token pricing (both prompt inputs and completion outputs).
-- **The Constraint**: Results are delivered asynchronously within a window of up to **24 hours** (though many finish much faster).
-- **The Rule of Thumb**:
-  - If a human or CI blocker is waiting $\rightarrow$ **Synchronous Messages API**.
-  - If the job runs overnight, in background queues, or on non-blocking backfills $\rightarrow$ **Message Batches API**.
-
-### 2. Request Correlation via `custom_id`
-Because batch processing is asynchronous, thousands of requests run concurrently across distributed clusters. Results do not necessarily finish in the order they were submitted:
-- Every request payload must declare a unique, application-controlled identifier:
-  ```json
-  {
-    "custom_id": "inv_rec_2025_99812",
-    "params": {
-      "model": "claude-sonnet-4-5",
-      "max_tokens": 1024,
-      "messages": [{"role": "user", "content": "..."}]
-    }
-  }
-  ```
-- When the batch finishes and results are streamed, each result record includes its matching `custom_id`. This allows the host application to write extracted facts directly into the correct database row with zero index-shifting errors.
-
-### 3. Partial Failure Recovery Protocol
-In a batch of 10,000 documents, 9,995 may succeed while 5 fail due to transient carrier timeouts:
-- **Anti-Pattern**: Re-submitting the entire 10,000-item batch (wastes tokens and creates duplicate records).
-- **Production Standard**: Inspect individual item statuses in the results stream. Filter for `result.type == "errored"`, extract only those 5 `custom_id`s, and compile a small targeted retry batch.
+- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
+- **Scenarios**: Scenario 5 (CI) and Scenario 6 (Structured Data Extraction).
+- **Goal**: Cut cost for work that can wait, without breaking SLAs.
+- **Exam focus**: Which workload goes in a batch, how to meet an SLA, and what a batch cannot do.
 
 ---
 
-## 🔑 Key Technical Terminology Explained
+## 📖 Concepts Explained
 
-- **Message Batches API**: Anthropic's asynchronous batch processing endpoint (`/v1/messages/batches`) designed for high-volume, non-time-critical workloads with a 50% token cost reduction.
-- **50% Token Discount**: The discounted pricing applied automatically to all input tokens, output tokens, and cache writes/reads executed through the Message Batches API.
-- **`custom_id`**: A mandatory client-provided string attached to each batch item, used to correlate asynchronous results with external database records.
-- **Batch Processing Status**: The lifecycle states of a batch: `in_progress` (processing), `canceling`, `ended` (completed).
-- **Targeted Partial Resubmission**: The recovery practice of isolating only the specific `custom_id` items that experienced errors and submitting a minimal follow-up batch.
+### 1. The simple idea
+Batches trade speed for price. You hand Anthropic a list of requests and come back later for the answers.
+
+### 2. Why it matters
+- Half price on large, non-urgent jobs.
+- Wrong fit for blocking work: a PR that waits up to a day for its review stalls the team.
+
+### 3. How it works
+
+**a. Shape of a batch**
+```python
+requests = [{"custom_id": "doc-001", "params": {"model": "claude-haiku-4-5", "max_tokens": 1024,
+             "messages": [{"role": "user", "content": "..."}]}}, ...]
+batch = client.messages.batches.create(requests=requests)   # real call: manual run only
+# batch.processing_status: "in_progress" -> "ended"; batch.request_counts has per-type counts
+```
+Each result has the same `custom_id` and a `result.type` of `succeeded`, `errored`, `canceled` or `expired`. Results may come back in a different order, so always match on `custom_id`.
+
+**b. No tools mid-batch.** A batch request is one shot. If Claude answers with `tool_use`, nothing runs the tool and sends the result back inside that request. Run the tool yourself and send a **new** request. Multi-turn tool calling does not fit a single batch request.
+
+**c. SLA maths.** A document may arrive just after a submission. It waits up to one **submission interval**, then up to the **24-hour window**:
+
+$$\text{worst case} = \text{interval} + 24\text{h} + \text{margin}$$
+
+For a 30-hour SLA: the interval can be at most $30 - 24 = 6$ h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
+
+**d. Failures.** Resubmit only the `errored` or `expired` `custom_id`s. If a document was too large, split it into chunks, with new ids such as `doc-002-chunk1of3`, and map them back to `doc-002`.
+
+**e. Refine on a sample.** Run 50 to 100 representative items first. Fix the prompt. Then submit the large batch. This avoids paying to redo 100,000 bad results.
 
 ---
 
-## 🏗️ Architecture: Asynchronous Message Batches Lifecycle
+## 🧪 Worked Example
+
+**Q11-style decision.** A team wants lower cost on two workloads.
+- A pre-merge check that blocks the PR until Claude's review passes.
+- A weekly technical-debt report.
+
+Decision: batch **only the technical-debt report**. The pre-merge check is blocking and needs an answer in minutes, so it stays on the synchronous API.
+
+**Timeline for a 30-hour SLA (submit every 4 hours)**
+```text
+00:00  submit batch 1 (docs that arrived 20:00-00:00)
+...    batch window: up to 24 h, often much sooner
+04:00  submit batch 2 ...
+Worst case for one document:  4 h wait + 24 h batch + 2 h margin = 30 h
+```
+
+**Partial failure**
+```text
+Submitted 3 requests:  doc-01 ok | doc-02 errored (150,000 tokens) | doc-03 ok
+Resubmit only doc-02 as: doc-02-chunk1of3, doc-02-chunk2of3, doc-02-chunk3of3
+```
+
+[main.py](main.py) mirrors these shapes offline (`create_batch`, `complete`, `results`, `request_counts`, result types) without importing `anthropic`.
+
+---
+
+## 🔑 Key Terms
+
+- **Message Batches API**: asynchronous endpoint, 50% cost saving, up to 24 h.
+- **`custom_id`**: your id on each request, returned on each result. It must be 1 to 64 characters: letters, digits, `_` or `-`, and unique in the batch.
+- **Limits**: a batch holds up to 100,000 requests or 256 MB, whichever comes first. Results stay downloadable for 29 days. Most batches end within an hour; at 24 hours unfinished requests `expire`.
+- **Result types**: `succeeded`, `errored`, `canceled`, `expired`. An `errored` result of type `invalid_request_error` needs a fixed request; other errors and `expired` requests can be resubmitted. You are not billed for errored, canceled or expired requests.
+- **No tool loop inside a batch**: each request is one call. If Claude returns `tool_use`, you run the tool yourself and send a follow-up request; a batch cannot execute tools mid-request.
+- **`processing_status`**: `in_progress` or `ended` (also `canceling`).
+- **`result.type`**: `succeeded`, `errored`, `canceled`, `expired`.
+- **Submission interval**: time between batch submissions; sets the SLA.
+- **Chunking**: splitting an oversized document into several requests.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    Client["Application Ingestion Engine"] --> BuildBatch["Construct Batch Payload<br>(List of requests with unique custom_id)"]
-    
-    BuildBatch --> SubmitAPI["Submit to Message Batches API<br>client.messages.batches.create(...)"]
-    
-    SubmitAPI --> StatusCheck{"Poll Batch Status<br>client.messages.batches.retrieve(...)"}
-    
-    StatusCheck -->|"processing_status: in_progress"| SleepPoll["Wait with exponential backoff"]
-    SleepPoll --> StatusCheck
-    
-    StatusCheck -->|"processing_status: ended"| StreamResults["Stream Results File<br>client.messages.batches.results(...)"]
-    
-    StreamResults --> InspectResults{"Evaluate Item Results"}
-    
-    InspectResults -->|"result.type: succeeded"| SaveDB["Store Extracted Record in DB<br>(Keyed by custom_id)"]
-    InspectResults -->|"result.type: errored"| RetryQueue["Enqueue only failed custom_ids<br>into targeted retry batch"]
+    Work{"Is someone waiting<br>for the result?"}
+    Work -->|"Yes: PR gate, chat"| Sync["Synchronous Messages API"]
+    Work -->|"No: nightly, weekly"| Sample["Test prompt on a small sample"]
+    Sample --> Submit["Submit batch with custom_id per item"]
+    Submit --> Wait["in_progress up to 24 h"]
+    Wait --> Ended["ended"]
+    Ended --> Results{"result.type"}
+    Results -->|"succeeded"| Save["Store by custom_id"]
+    Results -->|"errored / expired"| Retry["Chunk if oversized<br>resubmit only these ids"]
+    Retry --> Submit
 ```
 
 ---
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+## ⚠️ Exam Traps and Correct Patterns
 
-| Dimension | Message Batches API | Standard Messages API | Exam Trap to Reject |
+| Goal | Correct pattern | Trap | Why the trap fails |
 |---|---|---|---|
-| **Pricing** | **50% cost discount** on all tokens. | Standard list pricing. | **TRAP**: Using synchronous calls for massive non-urgent backfills, wasting 50% of budget. |
-| **SLA / Turnaround** | Up to **24 hours** (asynchronous). | Real-time (seconds). | **TRAP**: Selecting Message Batches for interactive developer tooling or blocking PR checks. |
-| **Request Correlation** | Correlate results using **`custom_id`**. | Immediate variable assignment. | **TRAP**: Assuming batch results return in the identical order they were submitted. |
-| **Failure Recovery** | **Retry only failed `custom_id` items**. | Retry individual API call. | **TRAP**: Resubmitting the entire batch of 10,000 items when only 5 experienced errors. |
+| Save cost on overnight work | Batch it | Run it synchronously | Pays full price |
+| Pre-merge check | Synchronous | Batch it to save 50% | Merge waits up to 24 h |
+| Match results | `custom_id` | Assume same order | Order is not guaranteed |
+| Some items failed | Resubmit those ids (chunk large ones) | Resubmit everything | Pays twice, duplicates work |
+| Meet a 30 h SLA | Submit every 4 h | One big batch at the deadline | Window alone can exceed the SLA |
+| Tool use | New request after running the tool | Expect the batch to loop | No mid-request tool execution |
+
+### Common Mistakes
+- Treating the 24 hours as a guaranteed time instead of an upper bound with no latency SLA.
+- Batching a blocking check.
+- Forgetting the submission interval in the SLA.
+- Resubmitting the full batch.
+- Launching a huge batch before checking the prompt on a sample.
 
 ---
 
-## 💡 Architectural Decision Matrix: API Selection
+## 💡 Quick Decision Rules
 
-| Workload Scenario | Optimal API | SLA Requirement | Cost Benefit |
-|---|---|---|---|
-| **Blocking Pre-Merge PR Review** | Standard Messages API | < 3 minutes | Real-time feedback |
-| **Overnight Full Repo Audit** | Message Batches API | 24 hours | 50% Token Discount |
-| **Live Customer Chatbot** | Standard Messages API | < 2.5 seconds | Streaming real-time |
-| **Backfilling 100k Legal Contracts** | Message Batches API | 24 hours | 50% Token Discount |
-
----
-
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
-
-- **Extended Thinking in Batches**: Message Batches fully support Extended Thinking (`budget_tokens`). The 50% discount applies to thinking tokens as well!
-- **Sampling Rules**: Omit `temperature` whenever thinking is enabled in batch payloads.
-- **Batch Payload Uniformity**: Ensure all items in the batch omit `temperature` when thinking is enabled to prevent individual item rejections.
+| Question | Answer |
+|---|---|
+| Does a person or merge wait on it? | Synchronous |
+| Can it wait up to 24 h? | Batch it |
+| SLA is shorter than the window? | Do not batch |
+| Results failed for some ids? | Resubmit those ids only |
+| Need tool loops? | Not inside a batch |
+| New prompt? | Test on a sample first |
 
 ---
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+## 🧠 Claude 4.5 Notes
 
-When exploring [`ts_4_5_message_batches_api.ipynb`](ts_4_5_message_batches_api.ipynb):
-1. **Step 1: Setup & Batch Simulator**: Initializes the offline Message Batches lifecycle simulator.
-2. **Step 2: Constructing Batch Payloads**: Builds batch payloads with unique `custom_id` identifiers.
-3. **Step 3: Simulating Batch Ingestion & Results**: Demonstrates polling batch status and streaming results.
-4. **Step 4: Partial Failure Resubmission**: Demonstrates filtering failed items and resubmitting only affected `custom_id`s.
-5. **Step 5: Verification Assertions**: Verifies that 100% of records correlate with database rows and zero duplicates occur.
+- `claude-haiku-4-5` for bulk extraction; `claude-sonnet-4-5` for reports that need reasoning.
+- Batch items follow the same parameter rules as normal requests: omit `temperature` when `thinking` is on; leave `top_k`/`top_p` unset; `budget_tokens` at least 1024 and below `max_tokens`.
+- A forced tool (`any` or named) cannot be combined with `thinking`.
+- Batch limits (maximum requests or size per batch) change; check the current docs rather than hard-coding them.
+
+---
+
+## 📝 Exam-Style Practice Questions
+
+**Q1 (Scenario 5).** Your team wants to cut cost on two jobs: (1) a pre-merge review that blocks the PR, and (2) a weekly technical-debt report. What should you do?
+- A) Batch both.
+- B) Batch only the technical-debt report.
+- C) Batch only the pre-merge review.
+- D) Batch neither; batches are never cheaper.
+
+**Q2 (Scenario 6).** Invoices must be processed within 30 hours of arrival, using batches with a 24-hour window. How often must you submit batches, at most?
+- A) Every 24 hours.
+- B) Every 12 hours.
+- C) Every 6 hours at most (every 4 hours if you want a 2-hour safety margin).
+- D) Only once, at the deadline.
+
+**Q3 (Scenario 6).** In a 10,000-item batch, 40 items fail: 12 because the document was too long. What is the best recovery?
+- A) Resubmit all 10,000 items.
+- B) Resubmit only the 40 failed `custom_id`s, chunking the 12 long documents.
+- C) Ignore the failures.
+- D) Move all 10,000 to the synchronous API.
+
+### Answers
+**Q1: B.**
+- A fails: the pre-merge check would wait up to 24 hours.
+- C fails: it batches the blocking job and leaves the report at full price.
+- D fails: batches do save 50% on latency-tolerant work.
+
+**Q2: C.**
+- A fails: a 24 h wait plus a 24 h window is 48 h.
+- B fails: 12 + 24 = 36 h, over the SLA.
+- D fails: one submission at the deadline cannot meet any SLA shorter than the window plus arrival wait.
+
+**Q3: B.**
+- A fails: pays again for 9,960 good results and risks duplicates.
+- C fails: the data stays missing.
+- D fails: it gives up the 50% saving and still does not fix the oversized documents.
+
+---
+
+## ✅ Self-Check Checklist
+- [ ] I can state the saving (50%) and the window (up to 24 h, no latency SLA).
+- [ ] I can explain why a pre-merge check must not be batched.
+- [ ] I can compute a submission interval from an SLA.
+- [ ] I know to resubmit only failed `custom_id`s and chunk oversized documents.
+- [ ] I know a batch cannot run tools mid-request.
+
+**Memory hook**: *Half price, day late: only if nobody is waiting.*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+In [`ts_4_5_message_batches_api.ipynb`](ts_4_5_message_batches_api.ipynb):
+1. **Step 1: Setup**: finds the repo root and adds it to the import path.
+2. **Step 2: Simulator**: imports the API-shaped batch simulator and SLA helpers from `main.py`.
+3. **Step 3: Simulation**: creates a batch, completes it, inspects `request_counts` and result types, and builds the retry batch.
+4. **Step 4: Verification**: asserts the SLA numbers, the failed-only resubmission, and that tool calls are not executed mid-batch.
+
+Everything runs offline; the simulator never imports `anthropic`.

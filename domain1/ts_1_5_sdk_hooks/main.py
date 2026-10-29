@@ -35,6 +35,13 @@ import anthropic
 
 from lib.sdk_parser_py import create_parser
 from lib.response_logger import ResponseTrail, get_agent_trail_path
+from domain1.loop_common import (
+    COORDINATOR_MODEL,
+    LoopStopped,
+    read_stop_reason,
+    response_text,
+    stop_status,
+)
 
 load_dotenv()
 
@@ -95,6 +102,10 @@ def post_tool_use_normalization_hook(tool_name: str, raw_result: Dict[str, Any])
             500: "server_error",
         }
         normalized["status"] = STATUS_MAP.get(code, "unknown")
+
+    # 3. Trim internal fields (leading underscore) so they never enter the context window
+    for key in [k for k in normalized if k.startswith("_")]:
+        normalized.pop(key)
 
     return normalized
 
@@ -177,25 +188,30 @@ def run_hook_agent(
     trail: ResponseTrail,
     max_turns: int = 4,
 ) -> str:
+    """
+    Agentic loop whose tool calls pass through the pre-tool and PostToolUse hooks.
+
+    max_turns is a safety cap (fallback only). The loop ends on stop_reason == "end_turn";
+    any other terminal stop_reason raises LoopStopped.
+    """
     session_id = str(uuid.uuid4())
-    trail.session_start(session_id, prompt, "claude-haiku-4-5")
+    trail.session_start(session_id, prompt, COORDINATOR_MODEL)
     parser = create_parser()
     messages: List[Dict[str, Any]] = [{"role": "user", "content": prompt}]
 
     for turn in range(1, max_turns + 1):
         trail.api_request(session_id, turn, messages)
         response = client.messages.create(
-            model="claude-haiku-4-5",
+            model=COORDINATOR_MODEL,
             max_tokens=1024,
             tools=TOOLS,
             messages=messages,
         )
 
-        parse_result = parser.parse(response.model_dump())
-        parsed = parse_result.get("data") if parse_result.get("success") else None
-        stop_reason = parsed.stop_reason if parsed else getattr(response, "stop_reason", "end_turn")
+        stop_reason = read_stop_reason(parser, response)
 
         if stop_reason == "tool_use":
+            # Echo assistant content unchanged (including any thinking blocks and signatures).
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
 
@@ -209,20 +225,31 @@ def run_hook_agent(
                     result = execute_with_hooks(tool_name, tool_input)
                     trail.tool_result(session_id, turn, tool_name, tool_id, result)
 
-                    tool_results.append({
+                    tool_result: Dict[str, Any] = {
                         "type": "tool_result",
                         "tool_use_id": tool_id,
                         "content": json.dumps(result),
-                    })
+                    }
+                    if result.get("blocked_by_hook"):
+                        tool_result["is_error"] = True
+                    tool_results.append(tool_result)
 
             messages.append({"role": "user", "content": tool_results})
 
+        elif stop_reason == "pause_turn":
+            messages.append({"role": "assistant", "content": response.content})
+
         elif stop_reason == "end_turn":
-            final_text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+            final_text = response_text(response)
             trail.session_end(session_id, final_text, "end_turn")
             return final_text
 
-    trail.session_end(session_id, "", "max_turns_exceeded")
+        else:
+            text = response_text(response)
+            trail.session_end(session_id, text, stop_status(stop_reason))
+            raise LoopStopped(stop_reason, text)
+
+    trail.session_end(session_id, "", "safety_cap_reached")
     return ""
 
 

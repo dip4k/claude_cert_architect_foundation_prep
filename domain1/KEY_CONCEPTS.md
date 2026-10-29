@@ -3,6 +3,24 @@
 
 ---
 
+## 🧭 Study Order, Weights, and One-Line Summaries
+
+**Exam weights**: D1 27% · D2 18% · D3 20% · D4 20% · D5 15%. Domain 1 is the largest. Start with the short guides in [README.md](README.md), then use this file for depth.
+
+**Study order**: 1.1 loop → 1.4 enforcement → 1.5 hooks → 1.2 coordinator → 1.3 spawning → 1.6 decomposition → 1.7 sessions.
+
+| TS | Study guide | What it tests | Key trap |
+|---|---|---|---|
+| 1.1 | [guide](ts_1_1_multi_tool_agent_loop/README.md) | `stop_reason` loop control, `tool_result` history | Text parsing, or an iteration cap as the normal exit |
+| 1.2 | [guide](ts_1_2_coordinator_subagents/README.md) | Hub-and-spoke, isolation, dynamic selection, refinement loop | Blaming subagents for a narrow coordinator decomposition |
+| 1.3 | [guide](ts_1_3_subagent_invocation_spawning/README.md) | `Task` in `allowedTools`, parallel `Task` calls, content vs metadata | Sequential `Task` calls, assumed inherited context |
+| 1.4 | [guide](ts_1_4_prerequisite_enforcement/README.md) | Programmatic prerequisites, structured handoff | Prompt, few-shot, or classifier instead of a gate |
+| 1.5 | [guide](ts_1_5_sdk_hooks/README.md) | Pre-tool interception, `PostToolUse` normalisation | Hard rules in the prompt only |
+| 1.6 | [guide](ts_1_6_task_decomposition/README.md) | Chaining vs adaptive, per-file plus integration pass | Bigger model, smaller PRs, or voting |
+| 1.7 | [guide](ts_1_7_session_management/README.md) | `--resume`, `fork_session`, changed-files notice, fresh summary | Resuming stale results silently |
+
+---
+
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
@@ -56,9 +74,12 @@ flowchart TD
 #### 2. Deterministic Loop Control: `response.stop_reason`
 The Claude API provides a deterministic metadata signal on every response: `response.stop_reason`.
 - `"tool_use"`: The model has reached an intermediate step where it needs external information or an external action executed. It generates one or more `tool_use` content blocks. The loop **must continue**.
-- `"end_turn"`: The model has determined that the user's objective is fully satisfied or no further tool interactions are required. This is the **sole reliable signal** to terminate the autonomous loop.
-- `"max_tokens"`: The response was truncated because it exceeded `max_tokens`. This indicates an error or undersized limit; defensive client code must log a warning and handle the incomplete turn.
+- `"end_turn"`: The model has determined that the user's objective is fully satisfied or no further tool interactions are required. This is the signal that the loop finished successfully.
+- `"max_tokens"`: The response was truncated because it exceeded `max_tokens`. This indicates an undersized limit; do not treat it as success and do not run a `tool_use` whose input may be cut off.
 - `"stop_sequence"`: A custom user-specified stop sequence was encountered.
+- `"pause_turn"`: A long-running server-tool turn was paused. Send the assistant turn back unchanged so the model can continue.
+- `"refusal"`: The model declined to answer. Surface or escalate it; do not retry blindly.
+- **Anything else**: stop and report it. Never fall back silently to `end_turn`.
 
 #### 3. The Dual-Message Appending Pattern
 The Anthropic API strictly enforces alternating turn structures and bidirectional tool correlation:
@@ -88,7 +109,7 @@ The Anthropic API strictly enforces alternating turn structures and bidirectiona
    ```
 
 #### 4. Handling Multi-Tool Parallel Calls in a Single Turn
-Claude 3.5 and Claude 3.7 can emit multiple `tool_use` blocks within a single response message.
+Claude 4.5 models can emit multiple `tool_use` blocks within a single response message.
 - Client code must iterate through **all** `tool_use` blocks in `response.content`.
 - Tools can be executed sequentially or concurrently in parallel worker threads/tasks.
 - All results must be collected into a single subsequent `user` turn before making the next API call.
@@ -102,12 +123,13 @@ When a tool fails (e.g. database connection dropped, API 404, validation error),
 In Claude 4.5 Sonnet, when extended thinking is enabled via `thinking={"type": "enabled", "budget_tokens": N}`:
 - `response.content` contains one or more `ThinkingBlock` elements (`type: "thinking"`, `thinking: "..."`, `signature: "..."`).
 - **Critical History Preservation Rule**: When appending the assistant's turn back to `messages` for subsequent tool execution turns, **the `thinking` block must be preserved verbatim in the assistant message content**. Stripping or modifying thinking blocks causes the Anthropic API to return an `invalid_request_error` (HTTP 400).
-- **Budgeting vs. Max Tokens**: `budget_tokens` specifies the target thinking budget, but thinking tokens **count directly against `max_tokens`**. If `max_tokens: 4096` and `budget_tokens: 4000`, the model has only 96 tokens remaining to emit tool calls, frequently causing premature truncation (`stop_reason == "max_tokens"`). Always set `max_tokens` substantially higher than `budget_tokens` (e.g. `max_tokens: 8192` with `budget_tokens: 4000`).
+- **Sampling and tool_choice with thinking**: omit `temperature` (HTTP 400) and `top_k`; `top_p` may only be 0.95 to 1.0; `tool_choice` may only be `auto` or `none` (`any` or a forced named tool gives HTTP 400).
+- **Budgeting vs. Max Tokens**: `budget_tokens` (minimum 1024, strictly less than `max_tokens`) specifies the target thinking budget, but thinking tokens **count directly against `max_tokens`**. If `max_tokens: 4096` and `budget_tokens: 4000`, the model has only 96 tokens remaining to emit tool calls, frequently causing premature truncation (`stop_reason == "max_tokens"`). Always set `max_tokens` substantially higher than `budget_tokens` (e.g. `max_tokens: 8192` with `budget_tokens: 4000`).
 
 #### 7. Defensive Truncation Handling (`stop_reason == "max_tokens"`)
 If `response.stop_reason == "max_tokens"`, the model ran out of token generation headroom before completing its tool invocation or synthesis:
 - The JSON arguments inside the `tool_use` block may be truncated and syntactically invalid.
-- Client code must detect this condition defensively: log an alert, append an emergency guidance turn (*"Your response was truncated due to token limits. Please output a concise completion"*), or increase `max_tokens` on subsequent requests rather than feeding malformed tool calls to backend executors.
+- Client code must detect this condition defensively: log an alert, retry with a higher `max_tokens`, or stop with an explicit error rather than feeding malformed tool calls to backend executors. Never treat `max_tokens` as `end_turn`.
 
 #### 8. Parameter Contract: Anthropic Messages API (`is_error`) vs MCP (`isError`)
 A notorious trap for architects:
@@ -138,8 +160,8 @@ tool_results.append({
 ```
 
 #### 10. Defensive Guardrails vs Completion Signals
-- A maximum iteration counter (`MAX_TURNS = 10`) is a **circuit breaker** to prevent runaway billing and infinite loops.
-- It must **never** be used as the expected exit condition. Systems that rely on hitting `MAX_TURNS` to complete are architecturally broken.
+- A maximum iteration counter (`MAX_TURNS = 10`) is a **safety cap** (fallback only) to prevent runaway billing and infinite loops.
+- It must **never** be used as the expected exit condition. The loop ends on `stop_reason`; a system that relies on hitting the safety cap to finish is architecturally broken.
 
 ---
 
@@ -199,7 +221,7 @@ Subagents running unconstrained loops can quickly exhaust team rate limits or AP
 #### 1. The `Task` Tool Spawning Mechanism
 In the Claude Agent SDK and Claude Code ecosystem, subagents are spawned via a dedicated built-in tool, typically named `Task`.
 - **Whitelisting**: The coordinator's tool configuration (`allowedTools` or `tools`) **must explicitly include `"Task"`**. If `"Task"` is omitted, the coordinator cannot spawn subagents and will attempt to perform tasks it lacks tools for.
-- **Subagent Definition**: The `Task` schema defines parameters such as `subagent_type`, `prompt`, and optionally `context_data`.
+- **Subagent Definition**: In this repo's simulation the `Task` schema has `subagent_type`, `prompt`, and `task_metadata`. An `AgentDefinition` holds a description, a system prompt, and tool restrictions.
 
 #### 2. Parallel Subagent Spawning in a Single Turn
 A critical latency optimization tested heavily on the exam:
@@ -208,7 +230,7 @@ A critical latency optimization tested heavily on the exam:
   - The runtime orchestrator intercepts all `Task` blocks simultaneously.
   - Spawns concurrent execution threads/tasks for Subagent A, Subagent B, and Subagent C.
   - Returns all `tool_result` blocks together in the subsequent turn.
-  - Latency: $\max(T_A, T_B, T_C) + T_{\text{overhead}}$ (saving 40%–60% total wall-clock time).
+  - Latency: $\max(T_A, T_B, T_C) + T_{\text{overhead}}$ (about the slowest subagent instead of the sum).
 
 ```mermaid
 sequenceDiagram
@@ -494,7 +516,7 @@ How should the architect refactor the coordinator's invocation pattern to minimi
 
 **Correct Answer**: **B**  
 **Architectural Rationale**:  
-Option B is correct. In the Claude Agent SDK and multi-agent design patterns, emitting multiple tool call blocks (such as `Task`) in a single assistant turn enables the orchestration runtime to execute all independent subagent workloads concurrently in parallel. This reduces total latency from the sum of all tasks ($\sum T_i$) to approximately the longest single subtask ($\max(T_i)$), cutting total execution time by up to 60% without violating context isolation.  
+Option B is correct. In the Claude Agent SDK and multi-agent design patterns, emitting multiple tool call blocks (such as `Task`) in a single assistant turn enables the orchestration runtime to execute all independent subagent workloads concurrently in parallel. This reduces total latency from the sum of all tasks ($\sum T_i$) to approximately the longest single subtask ($\max(T_i)$), without violating context isolation.  
 - *Distractor Analysis*:  
   - Option A is incorrect because running everything in a single monolithic prompt causes severe attention dilution, token context bloating, and reduced analytical precision.  
   - Option C is incorrect because subagents have strictly isolated contexts by architectural design; shared memory between subagents does not exist and would introduce race conditions.  
@@ -631,8 +653,8 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 
 ### 🏆 The 8 Golden Architectural Rules of Domain 1
 
-1. **The Sole Deterministic Exit Signal (`TS 1.1`)**:  
-   `response.stop_reason == "end_turn"` is the **only deterministic signal** that an agentic loop has completed its objective. Never terminate an agentic loop based on natural language text content ("Task completed", "Here is the summary") or arbitrary turn counts.
+1. **The Deterministic Exit Signal (`TS 1.1`)**:  
+   `response.stop_reason == "end_turn"` is the **deterministic signal** that an agentic loop has completed its objective. Every other `stop_reason` (`max_tokens`, `stop_sequence`, `refusal`, unknown) ends the loop as a failure or special case, never as success. Never terminate an agentic loop based on natural language text content ("Task completed", "Here is the summary") or arbitrary turn counts.
 2. **The Dual Message Alternation Contract (`TS 1.1`)**:  
    Every assistant turn containing `tool_use` blocks **must** be immediately followed by a user message containing a matching `tool_result` block for every requested `tool_use_id`. Omitting `tool_result` blocks or summarizing raw outputs breaks the API contract and triggers conversational hallucinations.
 3. **Hub-and-Spoke Governance (`TS 1.2`)**:  
@@ -640,7 +662,7 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 4. **Strict Context Isolation Contract (`TS 1.2 & 1.3`)**:  
    Subagents operate in complete context isolation. They **do not inherit** parent conversation history, system prompts, or memory. All relevant background data, search queries, constraints, and source metadata must be explicitly injected into the subagent's prompt.
 5. **Single-Turn Concurrent Spawning (`TS 1.3`)**:  
-   When subagents perform independent research or analysis, the coordinator **must emit multiple `Task` tool calls in a single response turn**. This triggers concurrent execution and cuts end-to-end task turnaround latency by 40%–60% compared to sequential turns.
+   When subagents perform independent research or analysis, the coordinator **must emit multiple `Task` tool calls in a single response turn**. This allows concurrent execution, so latency is about the slowest subagent instead of the sum of all subagents.
 6. **Deterministic Enforcement Over Probabilistic Prompts (`TS 1.4 & 1.5`)**:  
    When compliance, identity verification, or financial thresholds are at stake, **enforce ordering and boundaries via deterministic programmatic gates or SDK hooks (`PreToolUse`)**. System prompts have a non-zero failure rate under conversational ambiguity and prompt injection.
 7. **Two-Pass Prompt Chaining for Attention Preservation (`TS 1.6`)**:  
@@ -655,10 +677,10 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 | Anti-Pattern | The Exam Distractor Trap (Why Candidates Pick It) | Fatal Production Consequence | Correct Architectural Solution |
 |---|---|---|---|
 | **Natural Language Loop Parsing** | Seems intuitive: check if Claude responds with "I am done" or "The task is complete". | Model phrasing varies across temperatures and scenarios. Loops either terminate prematurely or hang indefinitely. | Inspect `response.stop_reason`: loop while `"tool_use"`, exit when `"end_turn"`. |
-| **Iteration Turn Cap as Primary Exit** | Adding `max_turns = 10` is an essential safety guardrail against infinite loops. | Using the cap as the primary completion trigger causes agents to abort complex multi-step workflows mid-execution. | Use turn caps strictly as safety timeouts; drive loop completion deterministically via `stop_reason`. |
+| **Iteration Turn Cap as Primary Exit** | Adding `max_turns = 10` is an essential safety guardrail against infinite loops. | Using the cap as the primary completion trigger causes agents to abort complex multi-step workflows mid-execution. | Use the cap strictly as a safety cap (fallback only); drive loop completion deterministically via `stop_reason`. |
 | **Tool Result Paraphrasing / Summarization** | Candidates assume summarizing tool outputs before feeding back to Claude saves tokens. | Claude loses exact timestamps, UUIDs, numeric balances, and raw error codes, causing hallucinated actions and math errors. | Append raw structured `tool_result` payloads directly to message context; trim verbose fields via SDK hooks. |
 | **Implicit Context Inheritance Assumption** | Expecting subagents spawned via `Task` to already know the user's prior chat history. | Subagent receives an empty context, hallucinates background context, or fails immediately with missing argument errors. | Inject all required facts, research goals, and metadata explicitly into the subagent's prompt. |
-| **Sequential Multi-Turn Spawning** | Spawning subagent A in turn 1, waiting for output in turn 2, then spawning subagent B in turn 3. | Introduces massive latency overhead (40%+ slowdown) and serializes independent API calls. | Emit all independent `Task` tool calls concurrently in Turn 1 of coordinator output. |
+| **Sequential Multi-Turn Spawning** | Spawning subagent A in turn 1, waiting for output in turn 2, then spawning subagent B in turn 3. | Latency becomes the sum of all subagents and independent calls are serialised. | Emit all independent `Task` tool calls concurrently in Turn 1 of coordinator output. |
 | **Prompt-Only Compliance Enforcement** | Adding *"Never issue refunds over $50 without verified identity"* to the system prompt. | Probabilistic instruction following is vulnerable to jailbreaks, confusion, and hallucinated compliance. | Programmatic prerequisite gate in Python code or `PreToolUse` hook blocking tool execution. |
 | **Overly Narrow Topic Decomposition** | Coordinator breaks down "AI in Creative Industries" into only "Digital Art", "Graphic Design", and "Photography". | Subagents execute assigned tasks flawlessly, but final synthesis completely omits Music, Film, and Literature. | Coordinator prompt must include broad scope verification and iterative gap-detection refinement loops. |
 | **Resuming Stale Sessions After Code Edits** | Using `claude --resume` on a 65-turn session after pulling 40 upstream commits. | Claude reasons over outdated file representations and stale tool outputs cached in context, producing conflicting edits. | Extract key findings to a structured Markdown summary, close session, and start a fresh session with summary injected. |

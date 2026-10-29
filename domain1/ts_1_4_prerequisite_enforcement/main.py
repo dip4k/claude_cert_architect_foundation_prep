@@ -30,6 +30,13 @@ import anthropic
 
 from lib.sdk_parser_py import create_parser
 from lib.response_logger import ResponseTrail, get_agent_trail_path
+from domain1.loop_common import (
+    COORDINATOR_MODEL,
+    LoopStopped,
+    read_stop_reason,
+    response_text,
+    stop_status,
+)
 
 load_dotenv()
 
@@ -128,13 +135,19 @@ def process_refund(order_id: str, amount: float, state: WorkflowState) -> Dict[s
     }
 
 
-def escalate_to_human(root_cause: str, recommended_action: str, state: WorkflowState) -> Dict[str, Any]:
-    """Structured handoff protocol for mid-process escalation."""
+def escalate_to_human(
+    root_cause: str,
+    recommended_action: str,
+    state: WorkflowState,
+    refund_amount: Optional[float] = None,
+) -> Dict[str, Any]:
+    """Structured handoff: a human can act on this without reading the transcript."""
     state.escalated_to_human = True
     state.escalation_summary = {
         "customer_id": state.verified_customer_id or "UNVERIFIED",
         "customer_name": state.verified_customer_name or "UNKNOWN",
         "root_cause": root_cause,
+        "refund_amount": refund_amount,
         "recommended_action": recommended_action,
         "handoff_timestamp": "2026-10-06T12:00:00Z",
     }
@@ -170,7 +183,7 @@ TOOLS = [
     },
     {
         "name": "process_refund",
-        "description": "Processes a monetary refund for an order. Strictly requires verified customer identity and order lookup.",
+        "description": "Processes a monetary refund for an order. Blocked by a code gate until get_customer has verified the customer.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -188,6 +201,7 @@ TOOLS = [
             "properties": {
                 "root_cause": {"type": "string", "description": "Root cause explanation."},
                 "recommended_action": {"type": "string", "description": "Recommended supervisor action."},
+                "refund_amount": {"type": "number", "description": "Refund amount in question, if any."},
             },
             "required": ["root_cause", "recommended_action"],
         },
@@ -212,7 +226,12 @@ def execute_dispatched_tool(tool_name: str, tool_inputs: Dict[str, Any], state: 
     elif tool_name == "process_refund":
         return process_refund(tool_inputs["order_id"], tool_inputs["amount"], state)
     elif tool_name == "escalate_to_human":
-        return escalate_to_human(tool_inputs["root_cause"], tool_inputs["recommended_action"], state)
+        return escalate_to_human(
+            tool_inputs["root_cause"],
+            tool_inputs["recommended_action"],
+            state,
+            tool_inputs.get("refund_amount"),
+        )
     return {"error": f"Unknown tool: {tool_name}"}
 
 
@@ -223,29 +242,33 @@ def run_prerequisite_agent(
     state: Optional[WorkflowState] = None,
     max_turns: int = 5,
 ) -> Tuple[str, WorkflowState]:
-    """Runs agentic loop with programmatic prerequisite enforcement."""
+    """
+    Agentic loop with programmatic prerequisite enforcement.
+
+    max_turns is a safety cap (fallback only). The loop ends on stop_reason == "end_turn";
+    any other terminal stop_reason raises LoopStopped.
+    """
     if state is None:
         state = WorkflowState()
 
     session_id = str(uuid.uuid4())
-    trail.session_start(session_id, prompt, "claude-haiku-4-5")
-    messages = [{"role": "user", "content": prompt}]
+    trail.session_start(session_id, prompt, COORDINATOR_MODEL)
+    messages: List[Dict[str, Any]] = [{"role": "user", "content": prompt}]
     parser = create_parser()
 
     for turn in range(1, max_turns + 1):
         trail.api_request(session_id, turn, messages)
         response = client.messages.create(
-            model="claude-haiku-4-5",
+            model=COORDINATOR_MODEL,
             max_tokens=1024,
             tools=TOOLS,
             messages=messages,
         )
 
-        parse_result = parser.parse(response.model_dump())
-        parsed = parse_result.get("data") if parse_result.get("success") else None
-        stop_reason = parsed.stop_reason if parsed else getattr(response, "stop_reason", "end_turn")
+        stop_reason = read_stop_reason(parser, response)
 
         if stop_reason == "tool_use":
+            # Echo assistant content unchanged (including any thinking blocks and signatures).
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
 
@@ -259,20 +282,31 @@ def run_prerequisite_agent(
                     result = execute_dispatched_tool(tool_name, tool_inputs, state)
                     trail.tool_result(session_id, turn, tool_name, tool_id, result)
 
-                    tool_results.append({
+                    tool_result: Dict[str, Any] = {
                         "type": "tool_result",
                         "tool_use_id": tool_id,
                         "content": json.dumps(result),
-                    })
+                    }
+                    if result.get("isError"):
+                        tool_result["is_error"] = True
+                    tool_results.append(tool_result)
 
             messages.append({"role": "user", "content": tool_results})
 
+        elif stop_reason == "pause_turn":
+            messages.append({"role": "assistant", "content": response.content})
+
         elif stop_reason == "end_turn":
-            final_text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+            final_text = response_text(response)
             trail.session_end(session_id, final_text, "end_turn")
             return final_text, state
 
-    trail.session_end(session_id, "", "max_turns_exceeded")
+        else:
+            text = response_text(response)
+            trail.session_end(session_id, text, stop_status(stop_reason))
+            raise LoopStopped(stop_reason, text)
+
+    trail.session_end(session_id, "", "safety_cap_reached")
     return "", state
 
 

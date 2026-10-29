@@ -1,159 +1,165 @@
-# Task Statement 5.5: Human Review Workflows & Confidence Calibration
+# Task Statement 5.5: Human Review Workflows and Confidence Calibration
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+> **Domain 5 (15% of exam)** | Scenario focus: **6 - Structured Data Extraction** (also Scenario 1) | Folder: `ts_5_5_human_review_calibration` | Previous: [TS 5.4](../ts_5_4_scratchpads_and_human_review/README.md) | Next: [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md)
 
-### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
-- **Scenario Alignment**: Scenario 1 (Customer Support Resolution Agent) & Scenario 6 (Structured Data Extraction)
-- **Core Goal**: Design production-grade Human-in-the-Loop (HITL) routing architectures that combine tiered confidence thresholds with stratified random sampling, avoiding the catastrophic "selective review trap" and continuously monitoring Expected Calibration Error (ECE) to detect model drift and overconfident hallucinations.
+## In One Minute
 
-### Why This Matters in Production
-In enterprise AI deployments (e.g., automated document extraction, claims processing, customer refunds), organizations routinely automate decisions using confidence thresholds:
-- The naive architecture sets a hard rule: *"If Claude's confidence is $\ge 0.85$, auto-approve directly (Straight-Through Processing); if confidence $< 0.85$, route to a human reviewer."*
-
-While intuitive, this setup creates the **Selective Review Trap**:
-1. **The Overconfidence Blindspot**: Large language models can be confidently wrong. When a vendor subtly shifts an invoice layout or introduces a novel tariff code, Claude may extract an incorrect figure while reporting a confidence of $0.98$.
-2. **False Negative Slippage**: Because high-confidence outputs are never reviewed, errors in the $\ge 0.85$ bucket bypass human oversight entirely. Over months, systematic compliance violations and revenue leakage compound silently.
-3. **Invisible Model Drift**: Prompt adjustments or upstream API model updates can alter confidence distributions without engineering teams realizing that accuracy has degraded.
-
-To achieve production reliability, enterprise architectures implement **Calibrated Tiered Routing with Stratified Audit Sampling**:
-- **Tier 1 (High Confidence $\ge 0.90$)**: Straight-Through Processing (STP) for operational speed, but with a mandatory **5–10% stratified random audit stream** routed to human reviewers.
-- **Tier 2 (Medium Confidence $0.70\text{--}0.89$)**: Asynchronous spot-check queue with expedited human verification.
-- **Tier 3 (Low Confidence $< 0.70$)**: Synchronous mandatory human escalation.
-- **ECE Feedback Loop**: Measuring actual empirical accuracy against reported confidence bins to dynamically recalibrate routing thresholds.
+- **What:** Decide which extracted values need a human and prove that automation is safe.
+- **Trap:** *97% overall accuracy* can hide a segment (a document type or field) that is far worse.
+- **Check accuracy per segment** before you reduce human review for that segment.
+- **Sample high-confidence outputs at random**, stratified by document type and field.
+- **Calibrate field-level confidence** on a labelled validation set. Route low-confidence, ambiguous or contradictory items to people.
+- **Exam answer in one line:** *Stratified sampling + segment accuracy + calibrated field confidence.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## Overview
 
-### The Naive Production Failure: The Selective Review Trap
-Consider an enterprise financial logistics platform processing 25,000 customs declarations daily.
-The team configures an extraction pipeline:
-```python
-# NAIVE ANTI-PATTERN: Auto-Approving 100% of High-Confidence Predictions
-if extraction.confidence >= 0.85:
-    database.approve_customs_declaration(extraction.data)  # Zero human eyes!
-else:
-    human_queue.route_for_manual_review(extraction.data)
-```
-During the first quarter, human reviewers audit 3,000 low-confidence documents and correct minor optical character recognition (OCR) glitches. The dashboard proudly displays: *"98.5% of human-reviewed cases successfully resolved; 88% Straight-Through Processing rate."*
+- **Domain:** 5 (15% of the exam).
+- **Task statement:** 5.5 - design human review workflows and confidence calibration.
+- **Scenario fit:** Scenario 6 (extraction from invoices, forms, contracts).
+- **Folder note:** The folder name matches official TS 5.5. A small older review helper also sits in the [TS 5.4](../ts_5_4_scratchpads_and_human_review/README.md) folder; it stays there only for old imports.
 
-However, in month four, a major international supplier updated their declaration layout, placing import duty fees in an annex rather than the main table. Claude confidently extracted the duty fee as `$0.00` with a confidence score of `0.96` because it cleanly parsed an empty table row.
-Because confidence was `0.96`, **zero** of these declarations were routed to human reviewers. Over 12 weeks, 14,000 declarations cleared customs with underreported duties, resulting in federal impoundment of shipments, a $3.2M penalty, and a formal compliance audit.
+## Concepts Explained
 
-### The Architectural Solution: Tiered Routing with Stratified Audit Sampling
-To catch overconfident hallucinations before they cause enterprise damage, production systems place an active audit layer over high-confidence flows:
+### 1. Aggregate accuracy can mislead
+If 90% of documents are easy and 10% are hard, a high overall number says little about the hard 10%.
+
+### 2. Stratified random sampling
+Sample **inside each stratum**: (document type, field). A flat 10% random sample may include no rare-segment items at all. Stratification guarantees coverage. Sample **high-confidence** outputs too. These are the ones automation would approve without a human seeing them.
+
+### 3. Per-segment validation first
+Before reducing review for a segment, measure its accuracy on labelled data. Require enough samples and a high enough accuracy for that segment.
+
+### 4. Field-level confidence, calibrated
+Ask the model for confidence **per field**. Then compare confidence against the truth on a **labelled validation set**. Calibrated means "items at 90% confidence are right about 90% of the time". Two simple checks:
+- **Reliability bins:** group items by stated confidence and compare with real accuracy.
+- **Expected calibration error (ECE):** size-weighted average gap between confidence and accuracy.
+
+### 5. Route to humans on risk signals
+Send items to a human when confidence is low, the source is **ambiguous**, or sources **contradict** each other.
+
+## Worked Example
+
+**Data:** 100 labelled fields. 90 are `standard_invoice/total` (all correct, confidence 0.97). 10 are `customs_form/hs_code` (7 correct, confidence 0.95).
+
+| Check | Result | Meaning |
+|---|---|---|
+| Aggregate accuracy | **97%** | Looks ready for automation. |
+| Per segment accuracy | invoice total **100%**; customs HS code **70%** | One weak segment is hidden. |
+| Overall ECE | about 0.002 | Overall calibration looks fine. |
+| ECE for customs HS code | about 0.25 | That segment is badly overconfident. |
+| Stratified sample (10%, high confidence) | 9 invoice items + **1** customs item | The weak segment is guaranteed a review. |
+| Decision | Keep human review for customs HS code; automate invoice totals. | Validated per segment. |
+
+Run `main.py` to print these numbers. The tests check them.
+
+## Key Terms
+
+- **Stratum / segment:** A group such as (document type, field).
+- **Stratified random sampling:** Random sampling within each stratum.
+- **Calibration:** Stated confidence matches real accuracy.
+- **ECE:** Expected calibration error, the weighted gap between confidence and accuracy.
+- **Labelled validation set:** Data with known correct answers used to test accuracy and calibration.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    ExtractedDoc["Claude Output Record<br>(Extracted Fields + Confidence Score)"] --> Router{"Confidence Threshold Check"}
-    
-    subgraph Tiers["Calibrated Routing Tiers"]
-        TierHigh["Tier 1: High Confidence<br>(Score >= 0.90)"]
-        TierMed["Tier 2: Medium Confidence<br>(0.70 <= Score < 0.90)"]
-        TierLow["Tier 3: Low Confidence<br>(Score < 0.70)"]
-    end
-    
-    Router -->|">= 0.90"| TierHigh
-    Router -->|"0.70 - 0.89"| TierMed
-    Router -->|"< 0.70"| TierLow
-    
-    subgraph StratifiedAudit["Stratified Random Sampling (5-10%)"]
-        SampleCheck{"Random Draw < Sampling Rate?<br>(Stratified by Document Category)"}
-    end
-    
-    TierHigh --> SampleCheck
-    SampleCheck -- "NO (90-95%)" --> STP["Straight-Through Processing<br>(Instant Production Approval)"]
-    SampleCheck -- "YES (5-10%)" --> AuditQueue["Background Human Audit Queue<br>(Measures Drift & False Negatives)"]
-    
-    TierMed --> SpotCheckQueue["Secondary Spot-Check Queue<br>(Async Human Review)"]
-    TierLow --> MandatoryQueue["Mandatory Triage Queue<br>(Synchronous Human Gate)"]
-    
-    subgraph CalibrationEngine["Expected Calibration Error (ECE) Engine"]
-        GroundTruth["Human Verified Ground Truth<br>(From Audit & Mandatory Queues)"]
-        ECEMonitor["ECE Metric Monitor<br>(Accuracy vs Confidence Bins)"]
-        ThresholdAdjuster["Dynamic Threshold Recalibration"]
-    end
-    
-    AuditQueue --> GroundTruth
-    SpotCheckQueue --> GroundTruth
-    MandatoryQueue --> GroundTruth
-    
-    GroundTruth --> ECEMonitor
-    ECEMonitor --> ThresholdAdjuster
-    ThresholdAdjuster -.->|"Tightens Thresholds if ECE Spikes"| Router
+    Doc["Extracted field + confidence"] --> Sig{"Ambiguous or<br>conflicting sources?"}
+    Sig -->|"Yes"| Human["Human review queue"]
+    Sig -->|"No"| Conf{"Confidence high enough?"}
+    Conf -->|"No"| Human
+    Conf -->|"Yes"| Seg{"Segment validated<br>on labelled data?"}
+    Seg -->|"No"| Human
+    Seg -->|"Yes"| Sample{"In stratified<br>random sample?"}
+    Sample -->|"Yes"| Audit["Human audit<br>(feeds accuracy tracking)"]
+    Sample -->|"No"| Auto["Automated approval"]
+    Audit --> Track["Update per-segment accuracy"]
 ```
 
-1. **Stratified Sampling Across Segments**: Sampling is not uniform across all traffic. It is stratified across document types, suppliers, and customer tiers. This ensures that rare document types (e.g., hand-written customs declarations representing only 2% of volume) are adequately audited rather than being drowned out by standard digital invoices.
-2. **Detection of False Negatives**: When human auditors inspect the 5–10% audit sample, any error discovered in a $\ge 0.90$ document is immediately flagged as a high-severity incident (Overconfidence Failure).
-3. **Expected Calibration Error (ECE)**: The system groups predictions into confidence bins ($[0.70, 0.80), [0.80, 0.90), [0.90, 1.00]$) and measures empirical accuracy within each bin. If items in the $0.90\text{--}1.00$ bin only achieve $81\%$ real-world accuracy, the system triggers an automated alert and dynamically raises the STP threshold from $0.90$ to $0.95$.
+## Exam Traps and Correct Patterns
 
----
-
-## 🔑 Key Technical Terminology Explained
-
-- **Straight-Through Processing (STP)**: Fully automated execution and approval of an agent's output without human intervention, reserved for high-confidence, low-risk operations.
-- **The Selective Review Trap**: The false sense of security created by reviewing only low-confidence outputs, allowing overconfident model errors and systematic false negatives to pass into production undetected.
-- **Stratified Random Sampling**: Sampling a fixed percentage (typically 5–10%) of high-confidence predictions proportionally across distinct customer segments, document types, or transaction classes to ensure rare edge cases are audited.
-- **Expected Calibration Error (ECE)**: A statistical metric that quantifies the difference between predicted confidence probabilities and actual empirical accuracy across partitioned confidence bins.
-- **Overconfidence Bias**: The tendency of language models to assign high probability scores ($\ge 0.95$) to outputs that contain factual errors or hallucinated fields.
-- **Tiered Human-in-the-Loop Routing**: A multi-stage routing strategy that directs work to different human queues (instant triage, async spot-check, background audit) based on calibrated confidence and operational impact.
-
----
-
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
-
-| Human Review / HITL Pattern | Correct Implementation (Exam Standard) | Exam Trap / Distractor to Reject |
+| Topic | Correct pattern | Trap to reject |
 |---|---|---|
-| **High-Confidence Monitoring** | **Stratified Random Audit Stream**: Route a 5–10% sample of high-confidence items to human reviewers to detect drift and overconfident errors. | **TRAP: 100% Blind Auto-Approval**: Auto-approving all items with confidence $\ge 0.90$ without background sampling. (Allows drift and false negatives to compound). |
-| **Audit Sampling Strategy** | **Stratified Sampling**: Sample across document formats, regions, and customer tiers to guarantee representation of rare edge cases. | **TRAP: Pure Random Sampling**: Taking a uniform random sample of all traffic, which over-indexes on dominant standard templates and misses rare formats. |
-| **Confidence Metric Validation** | **Calibrate against Empirical Truth**: Continually compute ECE using human audit feedback to validate that a 90% confidence score delivers 90% accuracy. | **TRAP: Trusting Raw LLM Self-Assessment**: Treating Claude's verbalized confidence ("I am 99% sure") as unassailable mathematical probability without calibration. |
-| **Handling Threshold Spikes** | Dynamically increase confidence thresholds or trigger alerts when ECE degrades beyond predefined tolerance. | **TRAP: Static Inflexible Rules**: Hardcoding fixed thresholds in configuration files that remain unchanged regardless of model version updates or drift. |
+| "97% accurate overall" | Measure accuracy per document type and field | Approve full automation on the aggregate |
+| Sampling | Stratified random sample, including high-confidence items | Review only low-confidence items |
+| Confidence | Field-level scores calibrated on a labelled set | Trust raw model confidence as-is |
+| Reducing review | Validate that segment first | Reduce review everywhere once the aggregate is high |
+| Contradictory sources | Route to a human | Let the model pick one |
 
----
+## Common Mistakes
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+- Reporting one overall accuracy number to decide on automation.
+- Sampling only the failures or only the low-confidence items.
+- Using a flat random sample and missing rare segments.
+- Never checking if "0.9 confidence" really means 90% correct.
+- Removing human review for a segment with only a few labelled examples.
 
-| Routing Tier | Confidence Score | Sampling / Routing Rule | Operational SLA |
-|---|---|---|---|
-| **Tier 1 (High Confidence)** | $\ge 0.90$ | Auto-approve 90–95%; route **5–10% stratified sample** to audit queue | Real-time / Instant |
-| **Tier 2 (Medium Confidence)** | $0.70 \le \text{Score} < 0.90$ | Route 100% to Asynchronous Spot-Check Queue | Within 2 hours |
-| **Tier 3 (Low Confidence)** | $< 0.70$ | Route 100% to Mandatory Synchronous Human Triage | Immediate blocking gate |
-| **High-Financial Impact (>\$10,000)** | Any Score | Route 100% to Dual-Key Manager Approval regardless of score | Within 24 hours |
+## Quick Decision Rules
 
----
+| Situation | Do this |
+|---|---|
+| High overall accuracy | Break it down by segment |
+| Need to monitor automation | Stratified random sample by (type, field) |
+| Want to trust confidence | Calibrate on labelled data (bins, ECE) |
+| Reduce review for a segment | Check accuracy and sample size for that segment |
+| Ambiguous or conflicting input | Human review |
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## Claude 4.5 Notes
 
-When calibrating confidence and extracting structured decisions with Claude 4.5:
-- **Model Standard**: Use `claude-sonnet-4-5` for high-precision extraction and calibration analysis; use `claude-haiku-4-5` for high-volume secondary triage.
-- **Thinking Configuration**: Enable Extended Thinking with a budget of 3,000 tokens when assessing ambiguity or extracting dense financial schedules:
-  ```python
-  thinking = {"type": "enabled", "budget_tokens": 3000}
-  ```
-- **Temperature Omission**: **Do NOT pass `temperature`**, `top_p`, or `top_k`. Anthropic returns an HTTP `400 Bad Request` if custom sampling parameters accompany `thinking`.
-- **Structured Confidence Schema**: Mandate that the extraction tool includes field-level confidence ratings and rationales:
-  ```json
-  {
-    "extracted_total": 487.50,
-    "confidence_score": 0.94,
-    "confidence_rationale": "Total explicitly matched line-item sum and subtotal invoice block."
-  }
-  ```
+- `claude-sonnet-4-5` for hard extraction and review reasoning; `claude-haiku-4-5` for high-volume extraction.
+- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
+- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
 
----
+## Exam-Style Practice Questions
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+**Q1 (Scenario 6).** An extraction pipeline reports 97% overall accuracy. Leadership wants to remove human review. What should you do first?
 
-In the accompanying notebook [`ts_5_5_human_review_calibration.ipynb`](ts_5_5_human_review_calibration.ipynb), you will follow the step-by-step implementation:
+- A. Approve; 97% is above most targets.
+- B. Measure accuracy by document type and field to find weak segments.
+- C. Raise the confidence threshold slightly.
+- D. Ask Claude to rate its own accuracy.
 
-- **Step 1: Routing Tiers & Thresholds**: Configure the `ConfidenceRouter` class and define the tiered threshold boundaries.
-- **Step 2: Simulating Extraction Traffic**: Generate a realistic synthetic dataset of extraction records with varying confidence levels and document categories.
-- **Step 3: Stratified Sampling Implementation**: Execute stratified random sampling to select audit cases across dominant and rare document categories.
-- **Step 4: Detecting the Selective Review Trap**: Compare the error catch rate between a naive pure-STP system and a calibrated audit system.
-- **Step 5: Expected Calibration Error Calculation**: Compute ECE across confidence bins to demonstrate dynamic threshold adjustment.
+**Q2 (Scenario 6).** The team already sends all low-confidence items to humans. How can they detect errors in items automation approves?
 
-Verify your implementation anytime with offline unit tests in WSL Ubuntu-26.04:
-```powershell
-wsl -d Ubuntu-26.04 bash -c "~/.local/bin/uv run pytest tests/test_domain5_full.py"
-```
+- A. They cannot; high-confidence items are always correct.
+- B. Review a flat random 2% of everything.
+- C. Draw a stratified random sample of high-confidence output by document type and field.
+- D. Review only items users complained about.
+
+**Q3 (Scenario 1).** Field confidence scores are available, but nobody knows if they are reliable. What makes them usable for routing?
+
+- A. Calibrate them against a labelled validation set.
+- B. Increase the number of digits reported.
+- C. Average them across all fields.
+- D. Use the highest score per document.
+
+### Answers
+
+- **Q1: B.** A fails: the aggregate can hide a weak segment. C fails: it does not show where errors are. D fails: self-assessment is not validation.
+- **Q2: C.** A fails: confidence can be wrong. B fails: a flat sample can miss rare segments. D fails: complaints show only some errors, late.
+- **Q3: A.** B fails: more digits do not add reliability. C fails: averaging hides weak fields. D fails: one high field says nothing about the others.
+
+## Self-Check Checklist
+
+- [ ] I can explain how 97% overall accuracy hides a weak segment.
+- [ ] I can describe stratified sampling by (document type, field).
+- [ ] I know why high-confidence items must also be sampled.
+- [ ] I can explain calibration, reliability bins and ECE in plain words.
+- [ ] I know to validate a segment before reducing review for it.
+
+**Memory hook:** *"Slice it, sample it, calibrate it, then trust it."*
+
+## Hands-on Workbook Guide
+
+Notebook: [`ts_5_5_human_review_calibration.ipynb`](ts_5_5_human_review_calibration.ipynb). Code: [`main.py`](main.py). Both run offline.
+
+1. **Data:** `demo_validation_set()` (100 labelled fields).
+2. **Accuracy:** `aggregate_accuracy()`, `segment_accuracy()`, `weak_segments()`.
+3. **Sampling:** `stratified_audit_sample()` (local `random.Random(seed)`; no global seed).
+4. **Calibration:** `reliability_bins()`, `expected_calibration_error()`, `segment_calibration()`.
+5. **Gate and routing:** `safe_to_reduce_review()`, `ConfidenceRouter`.
+6. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
+
+**Related:** [TS 5.2](../ts_5_2_escalation_and_provenance/README.md) (escalation in chat) | [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (conflicting sources).

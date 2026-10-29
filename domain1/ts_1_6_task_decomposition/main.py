@@ -34,6 +34,7 @@ import anthropic
 
 from lib.sdk_parser_py import create_parser
 from lib.response_logger import ResponseTrail, get_agent_trail_path
+from domain1.loop_common import COORDINATOR_MODEL, WORKER_MODEL
 
 load_dotenv()
 
@@ -70,6 +71,27 @@ def profile():
 ]
 
 
+def plan_adaptive_subtasks(dependencies: Dict[str, List[str]]) -> List[str]:
+    """
+    Dynamic decomposition step: after mapping structure (module -> modules it imports),
+    order the work leaf-first so each module is handled after its dependencies.
+    Modules in a cycle are appended last in sorted order.
+    """
+    remaining = {m: set(deps) & set(dependencies) for m, deps in dependencies.items()}
+    ordered: List[str] = []
+    while remaining:
+        ready = sorted(m for m, deps in remaining.items() if not deps)
+        if not ready:
+            ordered.extend(sorted(remaining))
+            break
+        ordered.extend(ready)
+        for m in ready:
+            del remaining[m]
+        for deps in remaining.values():
+            deps.difference_update(ready)
+    return ordered
+
+
 def run_prompt_chaining_review(
     files: List[CodeFile],
     client: Any,
@@ -77,11 +99,11 @@ def run_prompt_chaining_review(
 ) -> Dict[str, Any]:
     """
     Fixed Sequential Pipeline (Prompt Chaining):
-    - Pass 1: Local per-file analysis pass (avoids attention dilution).
-    - Pass 2: Cross-file integration pass examining shared contracts.
+    - Pass 1: Local per-file analysis pass (worker model, avoids attention dilution).
+    - Pass 2: Cross-file integration pass (coordinator model) over the Pass 1 findings.
     """
     session_id = str(uuid.uuid4())
-    trail.session_start(session_id, "Multi-pass review decomposition", "claude-haiku-4-5")
+    trail.session_start(session_id, "Multi-pass review decomposition", COORDINATOR_MODEL)
 
     local_file_findings: Dict[str, str] = {}
 
@@ -91,14 +113,16 @@ def run_prompt_chaining_review(
     for idx, f in enumerate(files, start=1):
         prompt = (
             f"Review Pass 1 (Local File Isolation): Analyze ONLY the following file for syntax, "
-            f"security, and error handling issues local to this file.\n\n"
+            f"security, and error handling issues local to this file. Also list the functions this "
+            f"file defines (with signatures) and the external functions it calls, so a later pass "
+            f"can check cross-file contracts.\n\n"
             f"File: {f.filename}\n"
             f"```python\n{f.content}\n```"
         )
         trail.api_request(session_id, idx, [{"role": "user", "content": prompt}])
 
         response = client.messages.create(
-            model="claude-haiku-4-5",
+            model=WORKER_MODEL,
             max_tokens=600,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -121,7 +145,7 @@ def run_prompt_chaining_review(
     trail.api_request(session_id, turn_integration, [{"role": "user", "content": integration_prompt}])
 
     response_integration = client.messages.create(
-        model="claude-haiku-4-5",
+        model=COORDINATOR_MODEL,
         max_tokens=800,
         messages=[{"role": "user", "content": integration_prompt}],
     )

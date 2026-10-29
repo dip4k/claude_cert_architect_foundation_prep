@@ -24,14 +24,27 @@ flowchart LR
     end
 ```
 
-| Task Statement | Focus Area | Deterministic Guarantee | Primary Architectural Artifact |
+## 🗺️ Study Order (Domain weight: 20%)
+
+Other domain weights for context: D1 27%, D2 18%, D3 20%, D4 20%, D5 15%.
+
+1. **TS 4.1** explicit criteria: the base skill; every later task depends on clear criteria.
+2. **TS 4.2** few-shot: show examples once the criteria are clear.
+3. **TS 4.3** structured output: put the output in a schema.
+4. **TS 4.4** validation and retry: check the output and decide when to retry.
+5. **TS 4.5** batches: run the same work cheaply at scale.
+6. **TS 4.6** multi-pass review: independent review of the results (and of code).
+
+| Task | What it tests | Key trap | Study guide |
 |---|---|---|---|
-| **TS 4.1** | Explicit Criteria & Precision | Minimizing false positives | Categorical definitions with negative boundaries & severity tiers |
-| **TS 4.2** | Few-Shot Prompting | Structural generalization | 2–4 diverse examples with reasoning & layout variety |
-| **TS 4.3** | Guaranteed Structured Output | 100% Valid JSON syntax | Forced `tool_use` with nullable fields & extensible enums |
-| **TS 4.4** | Validation & Feedback Loops | Programmatic error recovery | Pydantic validator loop; recoverable vs unrecoverable exit |
-| **TS 4.5** | Message Batches API | 50% cost savings at scale | Asynchronous non-blocking batch queue with `custom_id` |
-| **TS 4.6** | Multi-Pass Review Architectures| Attention dilution mitigation | Independent review instances; local pass + integration pass |
+| **4.1** | Explicit report/skip criteria, severity examples, disabling noisy categories | "Be conservative" or confidence filtering | [README](ts_4_1_explicit_criteria_classification/README.md) |
+| **4.2** | 2-4 targeted examples with reasons, varied layouts, null cases | Many identical examples | [README](ts_4_2_few_shot_and_multi_instance/README.md) |
+| **4.3** | Tool use + schema, `tool_choice`, nullable fields, enum `unclear`/`other` | Required fields, or forced tool + thinking | [README](ts_4_3_structured_output_tool_use/README.md) |
+| **4.4** | Retry with document + failed output + error; absent vs fixable | Retrying absent data | [README](ts_4_4_validation_retry_feedback/README.md) |
+| **4.5** | Batch fit, `custom_id`, SLA maths, failed-only resubmission | Batching a blocking check | [README](ts_4_5_message_batches_api/README.md) |
+| **4.6** | Independent instance, per-file + integration passes, confidence routing | Self-review or one giant prompt | [README](ts_4_6_multi_pass_review/README.md) |
+
+Back to the [Domain 4 overview](README.md).
 
 ---
 
@@ -123,17 +136,20 @@ Anthropic models are pre-trained to parse and respect standard XML tags as archi
 
 ### TS 4.3: Enforce Structured Output Using Tool Use and JSON Schemas
 
-#### 1. Guaranteed Syntax Validity via `tool_use`
+#### 1. Reliable Syntax Validity via `tool_use`
 When extracting structured data, prompting Claude to *"Return raw valid JSON"* in markdown text is fragile:
 - Text generation can produce markdown code fences (` ```json `), unescaped double quotes, trailing commas, or conversational prefixes (*"Here is your JSON:"*).
 - **The Production Standard**: Define the target output schema as the `input_schema` of a custom tool (e.g., `record_extracted_data`), and set `tool_choice: {"type": "tool", "name": "record_extracted_data"}`.
-- **Architectural Guarantee**: Output delivered via `tool_use` is parsed and validated directly by Anthropic's streaming JSON parser at the API layer, guaranteeing **100% syntactically valid JSON**.
+- **What this gives you**: a tool-call `input` that follows your JSON schema. This removes JSON *syntax* errors (fences, trailing commas, chatty preambles).
+- **What it does not give you**: *semantic* correctness. Line items can still fail to add up to the stated total, so validate meaning in code (TS 4.4). Strict schema mode can tighten adherence further; check the current API docs for availability.
+- **Thinking trade-off**: with extended thinking, `tool_choice` may only be `auto` or `none`. A forced named tool or `any` returns HTTP 400 when `thinking` is on. Run forced extraction without `thinking`. Never send `temperature` with thinking; leave `top_k`/`top_p` unset; echo thinking blocks and signatures unchanged in tool loops.
+- **`tool_choice` guide**: `auto` (may reply in text), `any` (must call some tool; use when the document type is unknown and several extraction tools exist), named tool (must call that one; use to run `extract_metadata` first).
 
 ```mermaid
 flowchart TD
     Tech["Structured Data Extraction"]
     Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br>Syntax errors & parse failures"]
-    Tech -->|Forced tool_use| ToolMode["tool_use with JSON Schema<br>100% Valid syntax via tool_choice"]
+    Tech -->|Forced tool_use| ToolMode["tool_use with JSON Schema<br>Valid syntax via tool_choice"]
 ```
 
 #### 2. Hallucination Prevention via Nullable Schema Fields
@@ -146,7 +162,8 @@ flowchart TD
   }
   ```
 
-#### 3. Extensible Taxonomy: Enums with "Other" + Companion String
+#### 3. Extensible Taxonomy: Enums with "Unclear", "Other" + Companion String
+Add `"unclear"` for documents that give no category signal, so the model does not force a wrong label.
 Strict enums break when novel business categories emerge in production documents.
 - **The Production Standard**: Combine enum categories with `"other"` and a required companion string:
   ```json
@@ -210,7 +227,7 @@ flowchart TD
 ### TS 4.5: Design Efficient Batch Processing Strategies
 
 #### 1. The Anthropic Message Batches API
-The Message Batches API allows developers to submit asynchronous batches of up to 10,000 requests per batch:
+The Message Batches API allows developers to submit asynchronous batches of many requests at once (check the current docs for per-batch request and size limits):
 - **Financial Advantage**: **50% discount** on all input and output tokens compared to standard on-demand pricing.
 - **Turnaround Window**: Completed within **24 hours** (usually faster, but no real-time latency SLA).
 - **Workload Qualification**:
@@ -238,7 +255,13 @@ A batch of 5,000 requests may result in 4,990 successes, 8 rate limit/server err
 - **The Anti-Pattern**: Re-submitting the entire 5,000-request batch, incurring unnecessary cost and duplicate writes.
 - **The Production Standard**: Inspect `result.type` on each record. Filter out failed `custom_id` items and submit a **targeted secondary micro-batch** containing only the 10 failed requests.
 
-#### 4. Batch Lifecycle Mechanics in Python SDK
+#### 4. SLA Maths and Tools in Batches
+- **Worst case** = submission interval + 24 h window (+ margin). For a 30 h SLA the interval is at most 6 h; with a 2 h margin submit every 4 h.
+- **No mid-request tools**: a batch request is a single shot. If the model replies with `tool_use`, you run the tool yourself and send a **new** request; the batch will not loop.
+- **Refine first**: test the prompt on a small sample set before submitting a very large batch.
+- **Blocking vs batch**: batch only the technical-debt report; the pre-merge check stays synchronous.
+
+#### 5. Batch Lifecycle Mechanics in Python SDK
 ```python
 # 1. Create asynchronous batch
 batch = client.messages.batches.create(requests=batch_requests)
@@ -292,6 +315,8 @@ flowchart TD
     Eval -->|Verified| PassGate["Exit Code 0: Approve PR"]
 ```
 
+**Verification pass.** Ask the reviewer to report a `confidence` per finding and use it to **route** (high → report, low → human review). Do not use it to drop findings silently. With extended thinking on the integration pass, `tool_choice` must be `auto`; a forced findings tool needs `thinking` off.
+
 | Review Dimension | Pass 1: Local Per-File Review | Pass 2: Systemic Cross-File Integration Review |
 | :--- | :--- | :--- |
 | **Primary Invariant** | Local syntactic correctness, null safety, local exception handling | Cross-module API contracts, data model compatibility, security boundaries |
@@ -307,8 +332,8 @@ flowchart TD
 
 1. **Explicit Criteria > Vague Advice**:
    - Never prompt "be conservative". Define concrete technical conditions and negative boundaries.
-2. **Guaranteed Syntax via `tool_use`**:
-   - Force output through a tool schema with `tool_choice: {"type": "tool", "name": "..."}` to guarantee 100% valid JSON syntax without markdown parsing issues.
+2. **Syntax Safety via `tool_use`**:
+   - Force output through a tool schema with `tool_choice: {"type": "tool", "name": "..."}` to remove JSON syntax errors (not semantic errors). A forced tool cannot be combined with extended thinking.
 3. **Missing Data Must Be Nullable**:
    - Mark fields as `type: ["string", "null"]` to prevent Claude from fabricating data when source documents lack the field.
 4. **Enums with "Other" + Detail String**:
@@ -522,7 +547,7 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
 | **Precision Improvement** | Explicit categorical criteria, concrete code examples, negative boundaries (what NOT to flag). | Vague guidance ("be conservative"), filtering by self-reported model confidence scores. |
 | **High False Positive Management** | Temporarily disable noisy categories entirely while refining criteria to preserve trust. | Relying on confidence score thresholds; instructing Claude to "think harder". |
 | **Few-Shot Prompting** | 2–4 targeted examples demonstrating diverse document layouts and explicit reasoning steps. | Providing 15+ homogeneous tabular examples; string-matching regex post-processors. |
-| **Structured Output Format** | Strict JSON schemas enforced via `tool_use` with forced `tool_choice`. | Asking for markdown ```json``` blocks; parsing free text with regex or `json.loads`. |
+| **Structured Output Format** | Strict JSON schemas enforced via `tool_use` (`any` or a named tool; no extended thinking on forced calls). | Asking for markdown ```json``` blocks; parsing free text with regex or `json.loads`. |
 | **Missing Document Data** | Nullable schema types (`type: ["string", "null"]`) so Claude returns `null`. | Marking all fields required and hoping Claude doesn't hallucinate missing data. |
 | **Extensible Categorization** | Enum values with `"OTHER"` plus a companion string field (`other_description`). | Open-ended free-text categories without enum validation. |
 | **Validation-Retry Boundaries** | Retries fix format and math mismatches; retries FAIL on fundamentally absent data. | Retrying endlessly on missing source data; treating unrecoverable missing data as a model failure. |
@@ -540,8 +565,8 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
    When a review or extraction category produces unacceptable false positives, **temporarily disable that category entirely** while engineering better prompts. Relying on self-reported confidence thresholds fails because models are often highly confident in false-positive findings.
 3. **Structural Diversity in Few-Shot Examples (`TS 4.2`)**:  
    Provide 2–4 few-shot examples featuring **structurally varied layouts** (e.g., one tabular invoice, one dense narrative paragraph, one key-value receipt). Identical layouts cause structural overfitting, causing the model to extract null when format varies.
-4. **Guaranteed Valid Schemas via Tool Use (`TS 4.3`)**:  
-   Always enforce structured output by defining tools with JSON schemas and setting `tool_choice: "any"` or `{"type": "tool", "name": "..."}`. Tool use leverages the model's native constrained decoding, guaranteeing 100% syntactically valid JSON and eliminating markdown parsing crashes.
+4. **Reliable Syntax via Tool Use (`TS 4.3`)**:  
+   Define tools with JSON schemas and set `tool_choice` to `"any"` (several extraction tools, type unknown) or `{"type": "tool", "name": "..."}` (a specific tool first). This removes JSON syntax errors and markdown parsing crashes, but not semantic errors such as totals that do not add up. A forced tool cannot be combined with extended thinking (only `auto`/`none` are allowed with thinking).
 5. **The Nullable Schema Rule for Missing Data (`TS 4.3`)**:  
    Define non-guaranteed attributes as nullable (`type: ["string", "null"]`). When a field is marked required but absent from the source document, Claude is forced to either hallucinate a plausible value or fail. Nullable fields allow Claude to return `null` truthfully.
 6. **The Limits of Validation Retries (`TS 4.4`)**:  
@@ -572,7 +597,7 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
 
 ```mermaid
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Guaranteed valid JSON schema"]
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax (semantics still need validation)"]
     Q1 -->|No| Q2["2. Document attributes missing?"]
     Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br>Prevents hallucinated values"]
     Q2 -->|No| Q3["3. Missing physical source facts?"]
@@ -584,7 +609,7 @@ flowchart TD
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
 | :--- | :---: | :--- |
-| **Eliminate JSON syntax parsing errors in extraction?** | **YES** | Enforce schema via `tool_use` and forced `tool_choice` *(NEVER parse markdown text)*. |
+| **Eliminate JSON syntax parsing errors in extraction?** | **YES** | **Enforce schema via `tool_use` and `tool_choice`** *(NEVER parse markdown text; no thinking on forced calls)*. |
 | **Prevent hallucinating absent document attributes?** | **YES** | Mark schema fields as **nullable**: `type: ["string", "null"]` *(NEVER required)*. |
 | **Validation fails due to physically absent source facts?** | **YES** | Fast-fail and abort retries immediately; route to human review *(retries cannot invent data)*. |
 | **Message Batches API for pre-merge PR blocking checks?** | **YES** | Reject: Batches have up to 24h turnaround *(reserve Batches for overnight non-blocking jobs)*. |

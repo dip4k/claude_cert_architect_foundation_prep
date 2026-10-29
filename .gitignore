@@ -853,3 +853,8 @@ ehthumbs.db
 desktop.ini
 
 anthropic-api-practice/**/*.zip
+
+# Generated audit trails and run output
+trails/
+trail_output.txt
+.pytest_cache/

@@ -90,7 +90,7 @@ Upon execution, every API call fails immediately with an HTTP `400 Bad Request` 
 
 **Question**: What is the root cause of this error and how should the architect remediate it?
 - **A)** The `budget_tokens` must be set to 4096 to match `max_tokens`.
-- **B)** The Anthropic API strictly disallows sampling parameters (`temperature`, `top_p`, `top_k`) when Extended Thinking is active; remove `temperature=0.0` from the request.
+- **B)** The API rejects a custom `temperature` when Extended Thinking is active; remove `temperature=0.0` from the request.
 - **C)** `claude-sonnet-4-5` does not support tools when thinking is enabled; disable tool calling.
 - **D)** Extended Thinking requires streaming to be enabled via `stream=True`.
 

@@ -1,163 +1,212 @@
-# Task Statement 4.6: Multi-Instance & Multi-Pass Review Architectures
+# Task Statement 4.6: Multi-Instance and Multi-Pass Review
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
-
-### Domain & Exam Weight
-- **Domain**: Domain 4 — Prompt Engineering & Output Validation (20% of exam weighting)
-- **Scenario Alignment**: Scenario 2 (Code Generation with Architectural Gates) & Scenario 6 (Automated Refactoring & Cross-Module Review)
-- **Core Goal**: Architect high-fidelity review pipelines that eliminate author confirmation bias using isolated Claude instances and decompose complex code reviews into a deterministic two-pass review architecture (per-file micro-correctness + cross-file contract coherence).
-
-### Why This Matters in Production
-When an agent writes code and is immediately asked in the same context "Is there any bug in your code?", it suffers from severe **confirmation bias**—the model generates justifications for its previous output rather than independently verifying it. Furthermore, feeding a 20-file pull request into a single monolithic prompt overwhelms the attention mechanism: the model either catches shallow syntax bugs while missing cross-module API contract drift, or hallucinates high-level architectural praise while missing critical off-by-one errors and null pointer exceptions.
-
-In enterprise software engineering pipelines, production reviews require **independent reviewer instances** with clean context and a **two-pass review workflow**:
-1. **Pass 1 (Parallel Local Pass)**: Specialized, isolated Claude instances audit individual files for syntax correctness, typing, null-safety, and edge-case handling.
-2. **Pass 2 (Cross-File Integration Pass)**: A dedicated architecture review instance inspects interface contracts, data models, import hierarchies, and token lifecycle assumptions across files.
-3. **Synthesis Aggregation**: A programmatic aggregator consolidates, deduplicates, and triages findings into an actionable, non-hallucinated audit report.
+## In One Minute
+- **What**: Review code with a *separate* Claude instance, and split big reviews into passes.
+- **Why**: The model that wrote the code keeps its own reasoning in context, so it tends to defend it. A fresh reviewer sees only the code.
+- **How**: Pass 1 reviews each file alone. Pass 2 checks how files fit together (signatures and call sites). An optional verification pass reports a confidence per finding.
+- **Better than**: asking the author to "review again", or turning on extended thinking in the same session.
+- **Exam answer in one line**: *Independent second instance, per-file passes plus one integration pass.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## 📌 Overview
 
-### The Naive Production Failure: Author Bias & Monolithic Attention Dilution
-Consider an autonomous coding agent tasked with generating a multi-file authentication module (`auth.py` and `client.py`).
-- In `auth.py`, the token generation function creates a JWT with a 15-minute expiration (`exp = now + 900`).
-- In `client.py`, the API client caches the token for 60 minutes (`cache_ttl = 3600`), causing 45 minutes of unauthorized 401 request failures in production.
-- In addition, `auth.py` has a local off-by-one error when indexing role permissions (`roles[user_role_idx + 1]`).
+- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
+- **Scenario**: Scenario 5 (Claude Code for Continuous Integration).
+- **Goal**: Catch bugs the author misses, including cross-file ones, without overloading one prompt.
+- **Exam focus**: Why self-review is weak and why one big prompt misses integration bugs.
 
-If the engineering team implements a naive review pattern:
-```python
-# NAIVE ANTI-PATTERN: Author Self-Review in Same Context
-response = client.messages.create(
-    model="claude-sonnet-4-5",
-    messages=[
-        {"role": "user", "content": "Write auth.py and client.py for our service."},
-        {"role": "assistant", "content": "<generated code for both files>"},
-        {"role": "user", "content": "Now review your own code. Are there any bugs or contract mismatches?"}
-    ]
-)
+---
+
+## 📖 Concepts Explained
+
+### 1. The simple idea
+Do not mark your own homework. A reviewer who has not seen the author's reasoning is more likely to challenge it.
+
+### 2. Why it matters
+- **Self-review**: the author's reasoning ("I chose a 60-minute cache because it is fast") stays in context and tends to be repeated, not tested.
+- **One big prompt for 20 files**: attention spreads thin. Style nits get caught; a signature mismatch between two files does not.
+- **Extended thinking is not a fix**: more thinking in the same session still starts from the same reasoning. A separate instance is the stronger remedy.
+
+### 3. How it works
+
+**a. Independent instance.** A new conversation whose only input is the code and a checklist.
+- `build_self_review_messages()`: three messages, including the author's reasoning.
+- `build_independent_review_messages()`: one message, code and checklist only.
+- `shares_generator_context()` shows the difference.
+
+**b. Pass 1: per file.** One fresh review per file for local bugs: null checks, swallowed exceptions, off-by-one. Files can run in parallel and never see each other.
+
+**c. Pass 2: integration.** One review for cross-file issues. Input: function signatures plus the lines where other files call them (`extract_interfaces()`, `extract_call_sites()`). This finds a client sending `auth_token` to a server expecting `bearer_token`, which Pass 1 cannot see.
+
+**d. Verification pass.** Ask the model to report a `confidence` per finding. Use it to **route**:
+- high confidence → report to the developer;
+- low or missing confidence → human review.
+
+Do **not** use it to silently drop findings. This matches TS 4.1: model confidence is not a good reason to delete findings; here it only decides who looks at them.
+
+**e. Structured findings.** Each reviewer reports through a tool (`report_review_finding`) so Python can merge and de-duplicate. If you also turn on extended thinking for the integration pass, `tool_choice` must be `auto` (forced `any` or a named tool is rejected with thinking), so you cannot force the findings tool in that call.
+
+---
+
+## 🧪 Worked Example
+
+**Setup.** `auth_api.py` defines `verify_session(bearer_token)`. `auth_client.py` calls `verify_session(auth_token='jwt')`. `auth_api.py` also has `except Exception: pass`.
+
+**Self-review (same session)**
+```text
+Context seen: task + author's reasoning + code
+Typical reply: "The code follows the design I described. Looks fine."
 ```
-The model will almost invariably respond: *"The code looks solid, adhering to clean architecture standards with proper separation of concerns."* Because the generation tokens and reasoning traces already exist in its conversation context, the self-attention weights prioritize consistency with its prior self-generated solution.
 
-If the team instead passes both files to a new prompt but asks for everything at once (local bugs, security, typing, and architecture):
-```python
-# NAIVE ANTI-PATTERN: Monolithic Single-Pass Review
-response = client.messages.create(
-    model="claude-sonnet-4-5",
-    messages=[
-        {"role": "user", "content": f"Review all 20 files in this PR for syntax, security, and architecture:\n{all_files_code}"}
-    ]
-)
+**Independent reviewer**
+```text
+Context seen: code + checklist only
+Pass 1 (auth_api.py):    HIGH  silent exception swallowing
+Pass 1 (auth_client.py): nothing local
+Pass 2 (interfaces + call sites):
+                         CRITICAL  client sends auth_token, server expects bearer_token
 ```
-The model suffers from **attention dilution**. It spots superficial style issues (e.g., "Add docstrings to client.py") but completely misses the subtle 15-minute vs 60-minute TTL mismatch between `auth.py` and `client.py`, as well as the off-by-one indexing bug.
 
-### The Architectural Solution: Isolated Multi-Instance Two-Pass Review
-To achieve 99%+ defect detection in production pipelines, we decouple generation from review and separate micro-concerns from macro-contracts:
+**Verification routing**
+```text
+HIGH     auth_api.py:3      confidence 0.90 -> report
+CRITICAL auth_client.py:2   confidence 0.50 -> human review (still shown, not dropped)
+```
+
+In [main.py](main.py) the mock client scripts the model replies, so the tests prove which context each reviewer **receives** (and that stop reasons are handled), not how good a real model's review is.
+
+---
+
+## 🔑 Key Terms
+
+- **Self-review bias**: the author defends its own work because its reasoning is in context.
+- **Independent instance**: a new conversation with no generator history.
+- **Pass 1 / Pass 2**: per-file local review / cross-file integration review.
+- **Attention dilution**: quality drops when too many files share one prompt.
+- **Verification pass**: model reports confidence per finding to route review.
+- **Interface contract drift**: caller and callee disagree on names, types or timing.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    Generator["Agent 1: Code Generator Instance<br>(Generates auth.py and client.py)"] --> Artifacts["Generated Code Artifacts<br>(Disk / Memory Buffer)"]
-    
-    subgraph Pass1["Pass 1: Parallel Local Review (Isolated Instances)"]
-        direction LR
-        ReviewerA["Claude Instance A<br>(Reviews auth.py only)"]
-        ReviewerB["Claude Instance B<br>(Reviews client.py only)"]
-    end
-    
-    Artifacts --> ReviewerA
-    Artifacts --> ReviewerB
-    
-    ReviewerA --> FindingsA["Local Findings A:<br>- Off-by-one indexing error (Line 42)<br>- Missing null check on user roles"]
-    ReviewerB --> FindingsB["Local Findings B:<br>- Exception masking in try-except<br>- Hardcoded retry count"]
-    
-    subgraph Pass2["Pass 2: System Architecture & Contract Review"]
-        ReviewerC["Claude Instance C (Architect)<br>(Inspects Interfaces, Types & Shared Contracts)"]
-    end
-    
-    Artifacts --> ReviewerC
-    ReviewerC --> ContractFindings["Cross-File Findings C:<br>- TTL Mismatch: auth.py issues 15m token,<br>  client.py caches for 60m<br>- Parameter mismatch on verify_token()"]
-    
-    subgraph Aggregation["Programmatic Synthesis Aggregator"]
-        Aggregator["Deterministic Aggregator & Deduplicator<br>(Groups by file & line, filters duplicates)"]
-    end
-    
-    FindingsA --> Aggregator
-    FindingsB --> Aggregator
-    ContractFindings --> Aggregator
-    
-    Aggregator --> AuditReport["Final Actionable Audit Report<br>(JSON / Markdown with Severity & Remediation)"]
+    Gen["Generator session<br>code + its reasoning"] --> Code["Code artifacts only"]
+    Code --> A["Pass 1: auth_api.py<br>fresh instance"]
+    Code --> B["Pass 1: auth_client.py<br>fresh instance"]
+    Code --> Sig["Signatures + call sites"]
+    Sig --> C["Pass 2: integration<br>fresh instance"]
+    A --> Merge["Merge and de-duplicate"]
+    B --> Merge
+    C --> Merge
+    Merge --> Conf{"Confidence per finding"}
+    Conf -->|"high"| Report["Report to developer"]
+    Conf -->|"low or missing"| Human["Human review"]
+    Report --> Gate["Merge gate"]
+    Human --> Gate
 ```
 
-1. **Context Isolation**: Each reviewer instance is spawned with a clean message history. Instance A has no idea why or how the generator wrote `auth.py`; it evaluates the code strictly against a rigorous linting/correctness checklist.
-2. **Pass 1 (Local Micro-Correctness)**: Focuses exclusively on local semantics within each file boundary:
-   - Boundary conditions, index offsets, typing consistency.
-   - Resource cleanup (closing file handles, database connections).
-   - Local exception handling and logging.
-3. **Pass 2 (Cross-Module Contract Coherence)**: Focuses exclusively on module boundaries and systemic integration:
-   - Function signatures, parameter types, and return types across caller and callee.
-   - Shared constants, environment variable naming, and configuration lifecycles (e.g., token TTLs).
-   - Deadlocks, race conditions, or asynchronous ordering assumptions.
-4. **Programmatic Aggregation**: Outputs from all instances are emitted via structured tool calling (`report_review_finding`), allowing a deterministic Python layer to deduplicate findings and prioritize blocking defects over minor stylistic recommendations.
-
 ---
 
-## 🔑 Key Technical Terminology Explained
+## ⚠️ Exam Traps and Correct Patterns
 
-- **Author Confirmation Bias**: The systemic tendency of an LLM to evaluate its own outputs favorably when queried within the same conversational context, rationalizing bugs instead of flagging them.
-- **Reviewer Isolation**: Instantiating a brand-new Claude API session with zero prior generation context, ensuring strictly objective and adversarial evaluation.
-- **Two-Pass Review Pattern**: An architectural decomposition pattern where Pass 1 audits micro-correctness within isolated file boundaries, and Pass 2 audits cross-file interface contracts and system coherence.
-- **Attention Dilution**: Degradation of model attention and instruction adherence that occurs when an LLM is asked to simultaneously analyze multiple complex files and evaluate contradictory criteria in a single prompt.
-- **Interface Contract Drift**: Discrepancies between what a producer module emits and what a consumer module expects (e.g., parameter names, payload shapes, cache invalidation timeouts).
-- **Synthesis Aggregator**: A programmatic post-processing layer that collects structured findings from all review instances, removes redundant entries, groups by severity (`BLOCKER`, `WARNING`, `INFO`), and formats the final gate verdict.
-
----
-
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
-
-| Review Architecture Technique | Correct Implementation (Exam Standard) | Exam Trap / Distractor to Reject |
-|---|---|---|
-| **Eliminating Author Bias** | **Fresh Claude Instances**: Spin up separate Claude calls with clean histories for review tasks. Pass generated code as external input. | **TRAP: Prompting the Author**: Asking the generator agent in Turn 2: *"Please reflect on your code and fix any bugs you made."* The model will defend its mistakes. |
-| **Review Scope Decomposition** | **Two-Pass Pipeline**: Run per-file reviewers in parallel for local bugs (Pass 1), followed by a system reviewer for integration contracts (Pass 2). | **TRAP: Single Monolithic Prompt**: Stuffing 25 PR files into one prompt and asking for local syntax, security, performance, and architecture all at once. |
-| **Finding Collection & Schema** | **Structured Tool Calling**: Force each review instance to emit findings via `report_review_finding(file, line, severity, description, remediation)`. | **TRAP: Free-Form Markdown Parsing**: Letting instances write markdown text and using regex to parse out bugs. Regex breaks on unstructured text. |
-| **Cross-Module Verification** | Feed Pass 2 only interface definitions, public API signatures, and shared configurations to maximize focus on boundaries. | **TRAP: Re-reading full implementations**: Flooding Pass 2 with millions of tokens of internal implementation details that distract from interface boundaries. |
-
----
-
-## 💡 Architectural Decision Matrix: Rules of Thumb
-
-| Scenario / Codebase Size | Review Strategy | Instance Count | SLA / Latency Expectation |
+| Goal | Correct pattern | Trap | Why the trap fails |
 |---|---|---|---|
-| **Single Script (< 100 lines)** | Single Independent Review Instance | 1 fresh reviewer | $\le 5$ seconds |
-| **Small Feature (2–5 files, related)** | Two-Pass Review (Pass 1 parallel per file + Pass 2 cross-file) | $N + 1$ instances (e.g., 3 to 6 instances) | $\approx 10$ seconds (Pass 1 in parallel) |
-| **Large PR (> 15 files, complex refactor)** | Chunked Two-Pass Review with Programmatic Gate | Batching Pass 1 across files + 1 System Pass | $\approx 20\text{--}30$ seconds (or Message Batches API) |
-| **Nightly CI/CD Security Audit** | Message Batches API with Two-Pass Review Pipeline | Hundreds of parallel batch requests (50% cost savings) | Async turnaround within 24 hours |
+| Find author's blind spots | Independent instance | "Review your own code" | Reasoning stays in context |
+| Same, with more effort | Independent instance | Self-review with extended thinking | Same starting reasoning |
+| Large PR | Per-file passes + integration pass | One prompt with all files | Attention dilution |
+| Cross-file bugs | Pass 2 with signatures and call sites | Only per-file review | Local passes cannot see the mismatch |
+| Use confidence | Route to human review | Drop low-confidence findings | Calibration is poor; real bugs vanish |
+| Parse findings | Findings through a tool schema | Regex over free text | Fragile |
+
+### Common Mistakes
+- Letting the generator review its own output.
+- Sending all files to one reviewer.
+- Giving Pass 2 only one file.
+- Filtering by confidence instead of routing.
+- Forcing the findings tool while thinking is enabled.
 
 ---
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## 💡 Quick Decision Rules
 
-When configuring Claude 4.5 for high-recall code review:
-- **Model Standard**: Use `claude-sonnet-4-5` for deep code analysis and contract auditing; use `claude-haiku-4-5` for high-speed Pass 1 syntax and style checks.
-- **Thinking Configuration**: Enable Extended Thinking with a minimum budget of 4,000 to 8,000 tokens for Pass 2 contract analysis:
-  ```python
-  thinking = {"type": "enabled", "budget_tokens": 6000}
-  ```
-- **Temperature Omission**: **Do NOT provide `temperature`**, `top_p`, or `top_k`. The Anthropic API will return an HTTP `400 Bad Request` error if custom sampling parameters accompany `thinking`.
-- **Structured Findings via Tool Use**: Bind a structured tool `submit_code_review` with required fields `file_path`, `line_start`, `line_end`, `category` (`SYNTAX`, `SECURITY`, `CONTRACT`, `LOGIC`), `severity` (`CRITICAL`, `WARNING`, `SUGGESTION`), and `suggested_patch`.
+| Situation | Choose |
+|---|---|
+| Single small script | One independent reviewer |
+| 2-5 related files | Per-file passes + one integration pass |
+| Large PR | Chunked per-file passes + integration pass |
+| Nightly audit | Batch the passes (TS 4.5) |
+| Low-confidence findings | Human review, not deletion |
 
 ---
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+## 🧠 Claude 4.5 Notes
 
-In the accompanying notebook [`ts_4_6_multi_pass_review.ipynb`](ts_4_6_multi_pass_review.ipynb), you will explore the full offline-executable multi-pass review implementation:
+- `claude-haiku-4-5` for the per-file passes; `claude-sonnet-4-5` for the integration pass.
+- Thinking: omit `temperature`; leave `top_k`/`top_p` unset; `budget_tokens` at least 1024 and below `max_tokens`.
+- With thinking, only `tool_choice` `auto`/`none`. Without thinking you can force the findings tool with `any`.
+- In tool loops echo assistant content, including thinking blocks and signatures, unchanged.
+- The loop in `main.py` handles `tool_use`, `end_turn`, `max_tokens`, `pause_turn`, and `refusal` explicitly.
 
-- **Step 1: Code Generator Simulation**: Generate a realistic multi-file codebase (`auth_service.py` and `api_client.py`) containing both a local indexing defect and an interface contract mismatch.
-- **Step 2: Naive Self-Review Failure**: Demonstrate how the generating agent suffers from confirmation bias and fails to detect its own bugs.
-- **Step 3: Pass 1 — Parallel Local File Reviews**: Execute isolated reviewer instances on each file to extract local syntax and boundary findings.
-- **Step 4: Pass 2 — Cross-Module Integration Review**: Run the architecture reviewer to pinpoint contract mismatches, token expiration discrepancies, and parameter drifts.
-- **Step 5: Synthesis Aggregation & Triage**: Consolidate findings into a unified, deduplicated audit report and execute programmatic pass/fail gates.
+---
 
-Verify your implementation anytime with offline unit tests in WSL Ubuntu-26.04:
-```powershell
-wsl -d Ubuntu-26.04 bash -c "~/.local/bin/uv run pytest tests/test_domain4_full.py"
-```
+## 📝 Exam-Style Practice Questions
+
+**Q1 (Scenario 5).** Claude generates a feature. In the same session you ask it to "review your code for bugs", and it finds nothing. A human then finds two defects. What is the best architectural change?
+- A) Ask the same session to review again, more carefully.
+- B) Run the review in a new instance that receives only the code and a checklist.
+- C) Enable extended thinking in the same session.
+- D) Increase `max_tokens`.
+
+**Q2 (Scenario 5).** A 20-file PR reviewed in one prompt gets style comments but misses a signature mismatch between two modules. What is the best design?
+- A) Per-file passes for local bugs plus one integration pass using signatures and call sites.
+- B) One prompt with a longer checklist.
+- C) Only per-file passes.
+- D) Review only the largest file.
+
+**Q3 (Scenario 5).** Your reviewer reports a `confidence` per finding. How should you use it?
+- A) Delete every finding below 0.8.
+- B) Route low-confidence findings to human review and report the rest; do not drop any silently.
+- C) Ignore the field.
+- D) Use it to set `temperature`.
+
+### Answers
+**Q1: B.**
+- A fails: same context, same defence of its own reasoning.
+- C fails: thinking in the same session starts from the same reasoning.
+- D fails: output length is not the problem.
+
+**Q2: A.**
+- B fails: a longer checklist still dilutes attention.
+- C fails: local passes cannot see cross-file contracts.
+- D fails: the bug may be in any file; skipping files loses coverage.
+
+**Q3: B.**
+- A fails: confidence is poorly calibrated, so real bugs are lost.
+- C fails: it wastes a useful routing signal.
+- D fails: temperature is unrelated, and it is rejected with thinking.
+
+---
+
+## ✅ Self-Check Checklist
+- [ ] I can explain why self-review is weak.
+- [ ] I know why extended thinking is not a substitute for an independent instance.
+- [ ] I can describe what Pass 1 and Pass 2 each see.
+- [ ] I know what to do with per-finding confidence.
+- [ ] I know the thinking vs forced-tool restriction.
+
+**Memory hook**: *New eyes, small scope, then the big picture.*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+In [`ts_4_6_multi_pass_review.ipynb`](ts_4_6_multi_pass_review.ipynb):
+1. **Step 1: Setup**: finds the repo root and adds it to the import path.
+2. **Step 2: Pipeline**: imports the rule-based pipeline, the self-review/independent message builders, and the mock-client pipeline from `main.py`.
+3. **Step 3: Simulation**: compares what each setup sees, runs both passes, and routes by confidence using the offline mock client.
+4. **Step 4: Verification**: asserts the context difference, one finding per pass, and that low confidence is routed, not dropped.
+
+Everything runs offline; the mock client scripts replies, so this demonstrates architecture, not model quality.

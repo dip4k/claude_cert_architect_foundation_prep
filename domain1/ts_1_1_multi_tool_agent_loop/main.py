@@ -32,6 +32,13 @@ if str(REPO_ROOT) not in sys.path:
 import anthropic
 from dotenv import load_dotenv
 
+from domain1.loop_common import (
+    COORDINATOR_MODEL,
+    LoopStopped,
+    read_stop_reason,
+    response_text,
+    stop_status,
+)
 from lib.sdk_parser_py import create_parser, format_stop_reason
 from lib.response_logger import ResponseTrail, get_agent_trail_path, replay_trail
 
@@ -40,6 +47,8 @@ load_dotenv()
 # Safety cap only: a fallback bound, never the primary stopping mechanism.
 # Normal queries must terminate via stop_reason well before this is reached.
 MAX_ITERATIONS = 20
+
+AGENT_MODEL = COORDINATOR_MODEL
 
 
 # ==============================================================================
@@ -162,15 +171,17 @@ parser = create_parser()
 # 3. The agentic loop
 # ==============================================================================
 
-def run_agent(prompt: str, client: anthropic.Anthropic, trail: ResponseTrail,
-              model: str = "claude-haiku-4-5") -> str:
+def run_agent(prompt: str, client: Any, trail: ResponseTrail,
+              model: str = AGENT_MODEL) -> str:
     """
     Agentic loop lifecycle:
       1. Send the conversation to Claude.
       2. Inspect response.stop_reason - the ONLY signal used for control flow.
          - "tool_use": execute the requested tool(s), append results, loop again.
+         - "pause_turn": append the assistant turn unchanged and loop again.
          - "end_turn": Claude is done; extract and return the final text.
-      3. MAX_ITERATIONS is a safety net, checked but never expected to trigger.
+         - max_tokens / stop_sequence / refusal / unknown: raise LoopStopped.
+      3. MAX_ITERATIONS is a safety cap (fallback only), never the normal exit.
     """
     session_id = str(uuid.uuid4())
     trail.session_start(session_id, prompt, model)
@@ -188,7 +199,7 @@ def run_agent(prompt: str, client: anthropic.Anthropic, trail: ResponseTrail,
 
         if iterations > MAX_ITERATIONS:
             print(f"WARNING: safety cap of {MAX_ITERATIONS} iterations reached without end_turn.")
-            trail.session_end(session_id, "", "max_iterations_exhausted")
+            trail.session_end(session_id, "", "safety_cap_reached")
             return ""
 
         print(f"\n--- Iteration {iterations} ---")
@@ -204,29 +215,31 @@ def run_agent(prompt: str, client: anthropic.Anthropic, trail: ResponseTrail,
         latency_s = time.perf_counter() - t0
         trail.api_response(session_id, iterations, response, latency_s)
 
-        parsed = parser.parse(response.model_dump())["data"]
-        stop_reason = parsed.stop_reason
-        print(f"stop_reason: {stop_reason} ({format_stop_reason(stop_reason)})  [{latency_s:.2f}s]")
+        stop_reason = read_stop_reason(parser, response)
+        print(f"stop_reason: {stop_reason} ({format_stop_reason(str(stop_reason))})  [{latency_s:.2f}s]")
 
-        if parsed.text:
-            print(f"Claude: {parsed.text}")
+        text = response_text(response)
+        if text:
+            print(f"Claude: {text}")
 
         if stop_reason == "tool_use":
-            # Append the assistant turn (including tool_use blocks) before the results.
+            # Echo the assistant content unchanged (tool_use plus any thinking blocks and signatures).
             messages.append({"role": "assistant", "content": response.content})
 
             tool_results = []
-            for tu in parsed.tool_uses:
-                print(f"Tool call: {tu.name}({json.dumps(tu.input)})")
-                trail.tool_call(session_id, iterations, tu.name, tu.id, tu.input)
+            for block in response.content:
+                if getattr(block, "type", "") != "tool_use":
+                    continue
+                print(f"Tool call: {block.name}({json.dumps(block.input)})")
+                trail.tool_call(session_id, iterations, block.name, block.id, block.input)
 
-                result = execute_tool(tu.name, tu.input)
-                print(f"Tool result [{tu.name}]: {json.dumps(result)}")
-                trail.tool_result(session_id, iterations, tu.name, tu.id, result)
+                result = execute_tool(block.name, block.input)
+                print(f"Tool result [{block.name}]: {json.dumps(result)}")
+                trail.tool_result(session_id, iterations, block.name, block.id, result)
 
                 tool_results.append({
                     "type": "tool_result",
-                    "tool_use_id": tu.id,
+                    "tool_use_id": block.id,
                     "content": json.dumps(result),
                 })
 
@@ -234,15 +247,18 @@ def run_agent(prompt: str, client: anthropic.Anthropic, trail: ResponseTrail,
             messages.append({"role": "user", "content": tool_results})
             continue
 
-        if stop_reason == "end_turn":
-            final_text = parsed.text or ""
-            trail.session_end(session_id, final_text, "end_turn")
-            return final_text
+        if stop_reason == "pause_turn":
+            # Send the paused assistant turn back unchanged so Claude can continue.
+            messages.append({"role": "assistant", "content": response.content})
+            continue
 
-        # Any other stop_reason (max_tokens, stop_sequence, ...) ends the loop explicitly.
-        print(f"Loop ending on unhandled stop_reason={stop_reason}")
-        trail.session_end(session_id, parsed.text or "", f"stopped:{stop_reason}")
-        return parsed.text or ""
+        if stop_reason == "end_turn":
+            trail.session_end(session_id, text, "end_turn")
+            return text
+
+        # max_tokens, stop_sequence, refusal or an unknown value: never treat as success.
+        trail.session_end(session_id, text, stop_status(stop_reason))
+        raise LoopStopped(stop_reason, text)
 
 
 # ==============================================================================

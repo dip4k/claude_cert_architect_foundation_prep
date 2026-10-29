@@ -35,6 +35,13 @@ import anthropic
 
 from lib.sdk_parser_py import create_parser
 from lib.response_logger import ResponseTrail, get_agent_trail_path
+from domain1.loop_common import (
+    COORDINATOR_MODEL,
+    LoopStopped,
+    read_stop_reason,
+    response_text,
+    stop_status,
+)
 
 load_dotenv()
 
@@ -80,6 +87,24 @@ class SessionManager:
     def get_session(self, name: str) -> Optional[SessionState]:
         return self.sessions.get(name)
 
+    def resume(self, name: str, changed_files: Optional[List[str]] = None) -> SessionState:
+        """
+        Named resumption (--resume <session-name>): continue the same history. If files changed
+        since the last turn, tell the resumed session which ones so it re-reads them instead of
+        trusting stale tool results.
+        """
+        sess = self.sessions[name]
+        if changed_files:
+            listed = "\n".join(f"- {path}" for path in changed_files)
+            sess.messages.append({
+                "role": "user",
+                "content": (
+                    "These files changed since your last tool results. Re-read them before "
+                    f"relying on earlier output:\n{listed}"
+                ),
+            })
+        return sess
+
     def resume_with_injected_summary(
         self,
         name: str,
@@ -121,11 +146,16 @@ def execute_turn(
 ) -> str:
     trail.api_request(session.session_id, len(session.messages), session.messages)
     response = client.messages.create(
-        model="claude-haiku-4-5",
+        model=COORDINATOR_MODEL,
         max_tokens=600,
         messages=session.messages,
     )
-    reply_text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+    parser = create_parser()
+    stop_reason = read_stop_reason(parser, response)
+    reply_text = response_text(response)
+    if stop_reason != "end_turn":
+        trail.session_end(session.session_id, reply_text, stop_status(stop_reason))
+        raise LoopStopped(stop_reason, reply_text)
     session.messages.append({"role": "assistant", "content": reply_text})
     trail.session_end(session.session_id, reply_text, "turn_complete")
     return reply_text

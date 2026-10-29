@@ -1,25 +1,33 @@
 """
 Domain 2: Tool Design & MCP Integration
-Task Statement 2.5: Select and Apply Built-in Tools (Read, Write, Edit, Bash, Grep, Glob) Effectively
+Task Statement 2.5: Select and apply built-in tools (Grep, Glob, Read, Write, Edit) effectively
 Exam Scenario 4: Developer Productivity with Claude
 
 Key Concepts:
-- Grep: Searching file contents for symbol definitions/references.
-- Glob: Matching file paths by pattern.
-- Edit: Surgical string replacement requiring unique anchor matches.
-- Edit Fallback: Expanding anchor lines or falling back to Read + Write when Edit fails.
+- Grep searches file CONTENT; Glob matches file PATHS; Read/Write handle whole files.
+- Edit replaces text that is UNIQUE in the file. If the text is not unique, the fallback is
+  Read + Write (or expand the anchor with surrounding lines).
+- Build understanding incrementally: Grep for entry points, Read the imports, then trace usage
+  through wrapper modules by listing the exported names and grepping each one
+  (`list_exported_names`, `trace_usage`).
+
+This module makes no API calls.
 """
 
+import ast
 import fnmatch
 import os
 import re
 import sys
+import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
+IGNORE_DIRS = {".git", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache"}
 
 
 class BuiltinToolbox:
@@ -29,11 +37,12 @@ class BuiltinToolbox:
         self.root = workspace_root
 
     def glob_files(self, pattern: str) -> List[str]:
-        """Locates files matching a glob pattern."""
+        """Glob: locate files whose PATH matches a pattern (never reads contents)."""
         matches = []
-        ignore_dirs = {".git", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
         for dirpath, dirnames, filenames in os.walk(str(self.root)):
-            dirnames[:] = [d for d in dirnames if d not in ignore_dirs and not d.startswith(".venv")]
+            dirnames[:] = [
+                d for d in dirnames if d not in IGNORE_DIRS and not d.startswith(".venv")
+            ]
             rel_dir = os.path.relpath(dirpath, str(self.root)).replace("\\", "/")
             for fname in filenames:
                 rel = f"{rel_dir}/{fname}" if rel_dir != "." else fname
@@ -42,50 +51,42 @@ class BuiltinToolbox:
         return sorted(matches)
 
     def grep_search(self, regex_pattern: str, file_pattern: str = "*") -> List[Dict[str, Any]]:
-        """Searches file contents using regex across matching files."""
+        """Grep: search file CONTENT with a regex across files matching file_pattern."""
         results = []
         compiled = re.compile(regex_pattern)
         for rel_path in self.glob_files(file_pattern):
-            full_path = self.root / rel_path
             try:
-                lines = full_path.read_text(encoding="utf-8").splitlines()
-                for line_no, line in enumerate(lines, start=1):
-                    if compiled.search(line):
-                        results.append({
-                            "file": rel_path,
-                            "line": line_no,
-                            "content": line.strip()
-                        })
-            except Exception:
+                lines = (self.root / rel_path).read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
                 continue
+            for line_no, line in enumerate(lines, start=1):
+                if compiled.search(line):
+                    results.append({"file": rel_path, "line": line_no, "content": line.strip()})
         return results
 
-    def read_file(self, rel_path: str, offset: int = 1, limit: Optional[int] = None) -> Dict[str, Any]:
-        """Reads file content with optional line slicing."""
+    def read_file(
+        self, rel_path: str, offset: int = 1, limit: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """Read: whole file, or a window of `limit` lines starting at line `offset`."""
         full_path = self.root / rel_path
         if not full_path.exists():
             return {"success": False, "error": f"File not found: {rel_path}"}
-        
+
         lines = full_path.read_text(encoding="utf-8").splitlines()
         total_lines = len(lines)
         start_idx = max(0, offset - 1)
         end_idx = total_lines if limit is None else min(total_lines, start_idx + limit)
-        selected_lines = lines[start_idx:end_idx]
-
         return {
             "success": True,
             "file": rel_path,
             "total_lines": total_lines,
             "start_line": offset,
             "end_line": end_idx,
-            "content": "\n".join(selected_lines)
+            "content": "\n".join(lines[start_idx:end_idx]),
         }
 
     def edit_file(self, rel_path: str, old_str: str, new_str: str) -> Dict[str, Any]:
-        """
-        Surgically replaces old_str with new_str.
-        Fails if old_str is not found or matches multiple times (ambiguous anchor).
-        """
+        """Edit: replace old_str once. Fails when it is missing or matches several places."""
         full_path = self.root / rel_path
         if not full_path.exists():
             return {"success": False, "error": f"File not found: {rel_path}"}
@@ -98,96 +99,101 @@ class BuiltinToolbox:
                 "success": False,
                 "error": "Target string not found",
                 "occurrences": 0,
-                "recovery_suggestion": "Read file to verify exact whitespace and surrounding context"
+                "recovery_suggestion": "Read the file to verify exact whitespace and context",
             }
-        elif occurrences > 1:
+        if occurrences > 1:
             return {
                 "success": False,
                 "error": f"Ambiguous edit: target string matches {occurrences} locations",
                 "occurrences": occurrences,
-                "recovery_suggestion": "Expand old_str with unique surrounding lines, or fallback to Read+Write"
+                "recovery_suggestion": "Expand old_str with unique lines, or Read + Write",
             }
 
-        new_content = content.replace(old_str, new_str, 1)
-        full_path.write_text(new_content, encoding="utf-8")
-        return {
-            "success": True,
-            "file": rel_path,
-            "occurrences": 1,
-            "message": "Replacement applied successfully"
-        }
+        full_path.write_text(content.replace(old_str, new_str, 1), encoding="utf-8")
+        return {"success": True, "file": rel_path, "occurrences": 1}
 
     def write_file(self, rel_path: str, content: str) -> Dict[str, Any]:
-        """Creates or completely overwrites a file."""
+        """Write: create a file or overwrite it completely."""
         full_path = self.root / rel_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding="utf-8")
         return {"success": True, "file": rel_path, "bytes_written": len(content)}
 
-    def execute_edit_with_fallback(self, rel_path: str, old_str: str, new_str: str, unique_context: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Applies the standard Claude Code fallback protocol:
-        1. Attempt surgical edit.
-        2. If ambiguous, try with expanded unique context.
-        3. If still ambiguous, read full content and apply write replacement.
-        """
-        initial_result = self.edit_file(rel_path, old_str, new_str)
-        if initial_result["success"]:
-            return {"status": "EDIT_SUCCESS", "result": initial_result}
+    def execute_edit_with_fallback(
+        self,
+        rel_path: str,
+        old_str: str,
+        new_str: str,
+        unique_context: Optional[str] = None,
+        occurrence: int = 0,
+    ) -> Dict[str, Any]:
+        """Edit, then expanded-anchor Edit, then Read + Write of the chosen occurrence.
 
-        # Step 2: Try with unique context if provided
+        `occurrence` (0-based) picks which match the Read + Write fallback replaces.
+        """
+        initial = self.edit_file(rel_path, old_str, new_str)
+        if initial["success"]:
+            return {"status": "EDIT_SUCCESS", "result": initial}
+
         if unique_context:
-            context_result = self.edit_file(rel_path, unique_context, unique_context.replace(old_str, new_str))
-            if context_result["success"]:
-                return {"status": "EDIT_RETRY_SUCCESS", "result": context_result}
+            expanded = unique_context.replace(old_str, new_str)
+            retry = self.edit_file(rel_path, unique_context, expanded)
+            if retry["success"]:
+                return {"status": "EDIT_RETRY_SUCCESS", "result": retry}
 
-        # Step 3: Fall back to Read + Write
-        read_result = self.read_file(rel_path)
-        if not read_result["success"]:
-            return {"status": "FAILED", "error": read_result["error"]}
+        full_path = self.root / rel_path
+        if not full_path.exists():
+            return {"status": "FAILED", "error": f"File not found: {rel_path}"}
+        content = full_path.read_text(encoding="utf-8")
+        positions = [m.start() for m in re.finditer(re.escape(old_str), content)]
+        if occurrence >= len(positions):
+            return {"status": "FAILED", "error": "Target string missing after read inspection"}
+        start = positions[occurrence]
+        rewritten = content[:start] + new_str + content[start + len(old_str):]
+        write_result = self.write_file(rel_path, rewritten)
+        return {"status": "FALLBACK_WRITE_SUCCESS", "result": write_result}
 
-        full_content = read_result["content"]
-        # In full rewrite mode, replace the first occurrence or targeted section
-        if old_str in full_content:
-            rewritten = full_content.replace(old_str, new_str, 1)
-            write_result = self.write_file(rel_path, rewritten)
-            return {
-                "status": "FALLBACK_WRITE_SUCCESS",
-                "message": "Fell back to Read + Write due to anchor ambiguity",
-                "result": write_result
-            }
+    # ---- incremental exploration -------------------------------------------------
 
-        return {"status": "FAILED", "error": "Target string missing even after read inspection"}
+    def list_exported_names(self, rel_path: str) -> List[str]:
+        """Names a wrapper module exports: __all__ if present, else top-level public defs."""
+        tree = ast.parse((self.root / rel_path).read_text(encoding="utf-8"))
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(t, ast.Name) and t.id == "__all__" for t in node.targets
+            ):
+                return [
+                    str(c.value)
+                    for c in getattr(node.value, "elts", [])
+                    if isinstance(c, ast.Constant)
+                ]
+        defs = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        return [n.name for n in tree.body if isinstance(n, defs) and not n.name.startswith("_")]
+
+    def trace_usage(self, wrapper_path: str, file_pattern: str = "*.py") -> Dict[str, List[str]]:
+        """Trace usage across a wrapper: list its exported names, then Grep each one."""
+        usage: Dict[str, List[str]] = {}
+        for name in self.list_exported_names(wrapper_path):
+            hits = self.grep_search(rf"\b{re.escape(name)}\b", file_pattern)
+            usage[name] = sorted({h["file"] for h in hits if h["file"] != wrapper_path})
+        return usage
 
 
 def main() -> None:
-    print("=" * 70)
-    print("TS 2.5: Built-in Tools Selection & Fallback Protocol Demo")
-    print("=" * 70)
-    
-    workspace = Path("/tmp/claude_ts25_demo") if os.name != "nt" else Path("./scratch/ts25_demo")
-    workspace.mkdir(parents=True, exist_ok=True)
-    
-    toolbox = BuiltinToolbox(workspace)
-    sample_file = "service.py"
-    toolbox.write_file(sample_file, "def compute():\n    return 42\n\ndef helper():\n    return 42\n")
-    
-    print("\n1. Testing ambiguous edit on 'return 42':")
-    res1 = toolbox.edit_file(sample_file, "return 42", "return 100")
-    print(f"Result: {res1['error']} (Occurrences: {res1.get('occurrences')})")
-    
-    print("\n2. Applying fallback protocol with unique context:")
-    res2 = toolbox.execute_edit_with_fallback(
-        sample_file, 
-        old_str="return 42", 
-        new_str="return 100", 
-        unique_context="def compute():\n    return 42"
-    )
-    print(f"Fallback status: {res2['status']}")
-    
-    # Read verified
-    verified = toolbox.read_file(sample_file)
-    print("\n3. Verified final file content:\n" + verified["content"])
+    """Offline demo: ambiguous Edit, expanded-anchor recovery, Read + Write and usage tracing."""
+    with tempfile.TemporaryDirectory() as tmp:
+        toolbox = BuiltinToolbox(Path(tmp))
+        sample = "def compute():\n    return 42\n\ndef helper():\n    return 42\n"
+        toolbox.write_file("service.py", sample)
+
+        first = toolbox.edit_file("service.py", "return 42", "return 100")
+        print(f"1. Ambiguous edit: {first['error']} (occurrences={first.get('occurrences')})")
+
+        second = toolbox.execute_edit_with_fallback(
+            "service.py", "return 42", "return 100", unique_context="def compute():\n    return 42"
+        )
+        print(f"2. Fallback status: {second['status']}")
+        print("3. Final file:\n" + toolbox.read_file("service.py")["content"])
 
 
 if __name__ == "__main__":

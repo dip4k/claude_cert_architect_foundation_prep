@@ -29,10 +29,15 @@ When reviewing architectural alternatives on the CCAR-F exam or in technical int
 
 ### 6. The Temperature with Extended Thinking Trap
 - **The Trap**: Passing `temperature: 0.0` or custom sampling parameters alongside Extended Thinking (`thinking={"type": "enabled", "budget_tokens": ...}`) in Claude 4.5.
-- **Why It Fails**: The Anthropic API strictly prohibits sampling parameters (`temperature`, `top_p`, `top_k`) when thinking is enabled; passing them throws an immediate HTTP `400 Bad Request` error.
+- **Why It Fails**: The API rejects a custom `temperature` when thinking is enabled with an HTTP `400 Bad Request` error. Leave `top_p` and `top_k` unset too; newer models reject any non-default sampling value.
 - **The Architect Solution**: Omit `temperature` entirely when thinking is enabled. Adjust reasoning depth exclusively via `budget_tokens`.
 
 ### 7. The Thinking Block Stripping Trap
 - **The Trap**: Stripping assistant `thinking` blocks from conversation history before sending `tool_result` to "conserve context tokens".
 - **Why It Fails**: The Anthropic API requires assistant thinking blocks (and their cryptographic signatures) to be echoed back verbatim in subsequent turns. Omitting or modifying them invalidates the conversation trail and raises an HTTP `400 Bad Request` error.
 - **The Architect Solution**: Always append the full assistant response content (`model_dump()`) containing both `thinking` and `tool_use` blocks into history.
+
+### 8. The Forced Tool Choice with Thinking Trap
+- **The Trap**: Enabling Extended Thinking and also setting `tool_choice` to `any` or a named tool to guarantee structured output.
+- **Why It Fails**: With thinking enabled, only `tool_choice` `auto` or `none` is accepted; the API returns HTTP `400` for the other values. This is the rule for manual extended thinking (the mode on Claude 4.5 models); adaptive thinking on newer models can accept forced tool use, except on some models.
+- **The Architect Solution**: Run the forced-tool request without `thinking`. Use thinking only on `auto` turns, and return its `thinking` blocks unchanged in tool loops.

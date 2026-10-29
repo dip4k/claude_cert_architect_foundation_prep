@@ -1,150 +1,162 @@
-# Task Statement 5.2: Escalation Protocols & Ambiguity Resolution Patterns
+# Task Statement 5.2: Escalation and Ambiguity Resolution
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+> **Domain 5 (15% of exam)** | Scenario focus: **1 - Customer Support Resolution Agent** | Folder: `ts_5_2_escalation_and_provenance` | Previous: [TS 5.1](../ts_5_1_context_preservation/README.md) | Next: [TS 5.3](../ts_5_3_error_propagation_coverage/README.md)
 
-### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
-- **Scenario Alignment**: Scenario 1 (Customer Support Resolution Agent with Strict SLAs)
-- **Core Goal**: Architect deterministic escalation logic and disambiguation protocols that protect customers and enterprise operations: immediately honoring explicit human agent requests, handling multi-match ambiguity without guessing, and escalating on policy gaps rather than hallucinating entitlements.
+> **Folder name note:** The folder name mentions "provenance", but this guide is **official TS 5.2 (escalation and ambiguity)**. Provenance belongs to [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md). `main.py` keeps a small provenance helper only for old imports.
 
-### Why This Matters in Production
-In customer support and financial operations, autonomous agents face critical failure modes when dealing with ambiguous or edge-case interactions:
-1. **Trapping Users in Infinite Loops**: When a frustrated customer says *"Let me speak to a human"*, a naive agent repeatedly replies *"I can help you with that! Please describe your issue again."* This infuriates users, destroys CSAT ratings, and violates consumer protection standards.
-2. **Arbitrary Disambiguation Guessing**: When a customer says *"Check my order"* and a database query returns three active orders, a naive agent randomly picks the first order or guesses based on date. In production, this leaks another user's PII or cancels the wrong shipment.
-3. **Hallucinating Policy Answers on Uncovered Scenarios**: When company policy is silent on an edge case (e.g., custom return policies during natural disasters), a naive agent invents a generous refund policy.
+## In One Minute
 
-To prevent these failures, production architectures enforce **deterministic programmatic gates**:
-- **Immediate Human Escalation**: Hardcoded regex/intent triggers that instantly route to a human supervisor upon explicit keywords (`representative`, `human agent`, `supervisor`).
-- **Multi-Match Disambiguation**: When an identity or entity search yields $>1$ result, the agent is programmatically blocked from acting and must present a structured clarification prompt asking for a unique key.
-- **Policy Gap Escalation**: When explicit policy rules do not cover the customer's condition, the agent halts autonomous actions and generates a structured handoff ticket for human review.
+- **What:** Decide when the agent should hand over to a human and when it should ask, not guess.
+- **Why it matters:** Wrong escalation hurts both ways: too much escalation wastes people, too little traps customers.
+- **Escalate when:** the customer asks for a human, policy has a gap or exception, or the agent cannot progress.
+- **Do not escalate on:** frustration alone, or an easy standard case.
+- **Exam answer in one line:** *Explicit escalation criteria with few-shot examples. Not sentiment, not confidence scores.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## Overview
 
-### The Naive Production Failure: The "Helpful" Over-Reach Anti-Pattern
-Consider an e-commerce support agent handling customer inquiries.
-- A user named *"Alex Smith"* messages: *"Cancel my order right now."*
-- The database lookup `find_orders(name="Alex Smith")` returns three orders: `ORD-101` ($25.00), `ORD-102` ($1,400.00), and `ORD-103` ($65.00).
-- The customer also adds: *"And let me talk to a real person, this is ridiculous."*
+- **Domain:** 5 (15% of the exam).
+- **Task statement:** 5.2 - design effective escalation and ambiguity resolution patterns.
+- **Scenario fit:** Scenario 1 (support agent). The exam often shows a low first-contact resolution rate.
 
-If the engineering team relies on prompt-based instructions without programmatic escalation gates:
-```python
-# NAIVE ANTI-PATTERN: Relying on Prompt Instructions for Escalation
-system_prompt = """
-You are a helpful customer support agent. Always try your best to satisfy the customer.
-If the customer asks for a human, try to resolve their issue first.
-If there are multiple orders, pick the most recent one.
-"""
-```
-The model will:
-1. Ignore the demand for a human supervisor, attempting to be "helpful".
-2. Pick `ORD-102` ($1,400.00 custom order) because it was placed today.
-3. Call `cancel_order(order_id="ORD-102")` without verifying the customer's email or identity.
-4. Reply: *"I have cancelled your $1,400 order for you! Is there anything else I can help you with today?"*
+## Concepts Explained
 
-The customer actually wanted to cancel `ORD-103` ($65.00 phone case), and `ORD-102` was a non-refundable custom build belonging to a different Alex Smith in another state. The company now suffers a financial dispute, inventory loss, and severe privacy violations.
+### 1. Escalation triggers
+| Trigger | What the agent does |
+|---|---|
+| Customer explicitly asks for a human | Escalate **immediately**. No investigation first. |
+| Policy gap or exception (e.g. competitor price match when policy covers our own site only) | Escalate. Never invent policy. |
+| Agent cannot make progress | Escalate with a clear handoff summary. |
 
-### The Architectural Solution: Programmatic Escalation & Disambiguation Router
-Production architectures place a deterministic Python evaluation layer around the model:
+### 2. Frustration is not a trigger
+If the issue is within the agent's capability, **acknowledge the frustration and offer a resolution**. If the customer then repeats that they want a human, escalate.
+
+### 3. Ambiguous customer matches
+A lookup returns several customers. Ask for **more identifiers** (email, order ID, account number). Never choose by recency, location or "first result".
+
+### 4. Unreliable proxies
+- **Sentiment** does not match complexity. A calm customer can have a serious problem.
+- **Self-reported confidence** is often high when the model is wrong.
+- Neither is a good escalation rule.
+
+### 5. Fix with explicit criteria and few-shot examples
+Write the criteria in the prompt. Add examples that show the boundary, such as "standard damage replacement: resolve" and "competitor price match: escalate".
+
+## Worked Example
+
+**Situation (sample-question style):** First-contact resolution is **55%**. The agent escalates easy damaged-item replacements but tries policy exceptions on its own.
+
+| Step | Finding | Action |
+|---|---|---|
+| Diagnose | Wrong cases are escalated; wrong cases are attempted. | The agent has no clear boundary. |
+| Reject | Confidence scores, a sentiment classifier. | Both are unreliable proxies. |
+| Fix | Add criteria to the prompt: resolve standard damage and replacement; escalate exceptions and policy gaps. | Add 4-5 few-shot examples (see `ESCALATION_FEW_SHOT_EXAMPLES`). |
+| Result | Easy cases resolve, edge cases reach humans. | Rate rises without extra infrastructure. |
+
+## Key Terms
+
+- **Explicit escalation criteria:** Written rules, in the prompt, for when to hand off.
+- **Policy gap:** The request is not covered by policy (not the same as "policy says no").
+- **Disambiguation:** Asking for identifiers to select one record.
+- **First-contact resolution (FCR):** Share of issues solved without a handoff or follow-up.
+- **Handoff summary:** Short structured note (customer, issue, steps taken) for the human.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    UserTurn["Incoming Customer Message"] --> Evaluator["Deterministic Escalation Evaluator"]
-    
-    subgraph Gate1["Gate 1: Explicit Human Request Check"]
-        HumanTrigger{"Contains human keyword?<br>('human', 'representative',<br>'agent', 'supervisor')"}
-    end
-    
-    Evaluator --> HumanTrigger
-    HumanTrigger -- "YES" --> EscalateHuman["IMMEDIATE HUMAN ESCALATION<br>- Route to Human Queue<br>- Attach Case Facts Payload<br>- Zero Autonomous Retries"]
-    
-    HumanTrigger -- "NO" --> Gate2["Gate 2: Ambiguity & Identity Disambiguation"]
-    
-    subgraph Gate2Sub["Identity Lookup Evaluation"]
-        MatchCheck{"Matching entities count?"}
-    end
-    
-    Gate2 --> MatchCheck
-    MatchCheck -- "> 1 Matches" --> Disambiguate["DISAMBIGUATION PROMPT<br>'Multiple accounts/orders found.<br>Please provide Email or Order ID.'<br>- Handoff Blocked until Verified"]
-    MatchCheck -- "0 Matches" --> NotFound["REQUEST ADDITIONAL INFO<br>'We could not locate that order.<br>Please verify your order number.'"]
-    
-    MatchCheck -- "Exactly 1 Match" --> Gate3["Gate 3: Policy Coverage Verification"]
-    
-    subgraph Gate3Sub["Policy Entitlement Check"]
-        PolicyCheck{"Explicit Policy Rule Exists?"}
-    end
-    
-    Gate3 --> PolicyCheck
-    PolicyCheck -- "NO (Policy Gap)" --> EscalateGap["POLICY GAP ESCALATION<br>- Flag Uncovered Situation<br>- Handoff to Tier-2 Supervisor<br>- Never Hallucinate Entitlements"]
-    PolicyCheck -- "YES" --> Autonomous["AUTONOMOUS RESOLUTION<br>- Proceed with Claude 4.5 Agent Loop<br>- Execute Policy Tools Safely"]
+    Msg["Customer message"] --> Human{"Asks for a human?"}
+    Human -->|"Yes"| Esc1["Escalate now<br>(no investigation first)"]
+    Human -->|"No"| Multi{"Several customer matches?"}
+    Multi -->|"Yes"| Ask["Ask for more identifiers<br>(never guess)"]
+    Multi -->|"No"| Gap{"Policy gap or exception?"}
+    Gap -->|"Yes"| Esc2["Escalate<br>(never invent policy)"]
+    Gap -->|"No"| Prog{"Can the agent progress?"}
+    Prog -->|"No"| Esc3["Escalate with handoff summary"]
+    Prog -->|"Yes"| Fix["Resolve<br>(acknowledge frustration if present)"]
 ```
 
-1. **Gate 1: Hard Explicit Human Escalation**: If the message matches explicit escalation keywords, the workflow halts immediately. No further autonomous reasoning is permitted. A structured handoff ticket is created with full `CaseFacts` and chat trail.
-2. **Gate 2: Multi-Match Disambiguation**: If an entity lookup returns more than one record, the agent is strictly prohibited from guessing. It generates a targeted clarification question prompting the user for unique identifiers (order ID, billing ZIP code, email).
-3. **Gate 3: Policy Gap Escalation**: If the customer's request falls outside codified policy rules (e.g., requesting a refund after 90 days due to emergency hospitalization), the agent does not invent exceptions; it escalates to a human manager with explicit rationale.
+## Exam Traps and Correct Patterns
 
----
-
-## 🔑 Key Technical Terminology Explained
-
-- **Programmatic Escalation Gate**: Code-level conditional logic that bypasses LLM decision-making and forces routing to a human queue or clarification prompt based on deterministic criteria.
-- **Explicit Escalation**: User-initiated demand to speak with a human representative, which must be honored immediately without automated deflection or friction.
-- **Implicit Escalation**: System-detected conditions requiring human intervention, such as repeated tool failures, high-risk financial values, or negative sentiment escalation.
-- **Multi-Match Ambiguity**: A condition where a query resolves to multiple candidate database entities, requiring targeted user clarification rather than probabilistic guessing.
-- **Policy Gap**: An operational scenario where codified organizational rules are silent or ambiguous; requires escalation to human leadership rather than autonomous generation of new rules.
-- **Structured Handoff Manifest**: A complete JSON payload containing `CaseFacts`, conversation summaries, attempted actions, and escalation reasons passed to a human representative's CRM interface.
-
----
-
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
-
-| Escalation / Ambiguity Pattern | Correct Implementation (Exam Standard) | Exam Trap / Distractor to Reject |
+| Topic | Correct pattern | Trap to reject |
 |---|---|---|
-| **Explicit Human Request** | **Immediate Escalation**: Transfer immediately to human supervisor with context payload upon first request. | **TRAP: Deflection / Persuasion**: Prompting Claude to say: *"I understand your frustration, but I can resolve this faster. Please give me one more chance."* |
-| **Ambiguous Entity Lookup** | **Mandatory Clarification**: Ask the user for unique identifying information (order ID, email, account number). | **TRAP: Heuristic Guessing**: Automatically selecting the most recent order, highest-value order, or the first record in the database array. |
-| **Policy Coverage Gaps** | **Escalate to Tier-2 Support**: Inform customer that the scenario requires supervisor review and create an escalation ticket. | **TRAP: Autonomous Leniency**: Letting Claude hallucinate custom exceptions or approve refunds outside policy to maintain high sentiment scores. |
-| **Escalation Implementation** | **Programmatic Code Gates**: Implement checks in Python / SDK hooks before and after tool calls. | **TRAP: Prompt-Only Guidelines**: Putting escalation rules solely in system prompt text, leaving them vulnerable to prompt drift and jailbreaks. |
+| Customer asks for a human | Escalate at once | "Let me just check your order first" |
+| Frustrated but solvable | Acknowledge, offer fix, escalate if they repeat the request | Escalate on emotion alone |
+| Several matches | Ask for more identifiers | Pick the most recent or closest match |
+| Policy silent | Escalate | Guess a reasonable policy |
+| Poor FCR from wrong escalations | Explicit criteria + few-shot examples | Confidence score, sentiment model, separate classifier |
 
----
+## Common Mistakes
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+- Treating a polite request for "a manager" as something to investigate first.
+- Using negative sentiment as a hard escalation rule.
+- Choosing a customer record "to save the customer time".
+- Reading "policy does not mention it" as "policy says no".
+- Adding a confidence threshold when the real issue is missing criteria.
 
-| Condition Detected | Action Required | Autonomous Action Permitted? | Destination Queue |
-|---|---|---|---|
-| **User says "agent" / "human"** | Immediate Escalation | **NO** | Tier-1 Live Support Queue |
-| **Lookup returns 2+ records** | Ask Clarification Prompt | **NO** (Ask user for unique ID) | Active Chat Session (Pending User Input) |
-| **Lookup returns 0 records** | Request Identifier Re-entry | **NO** (Search again with new data) | Active Chat Session (Pending User Input) |
-| **Refund value > \$500.00** | High-Value Approval Gate | **NO** (Generate pending ticket) | Tier-2 Financial Operations Manager |
-| **Policy is silent on scenario** | Policy Gap Escalation | **NO** (Never invent policy) | Policy / Exception Review Queue |
-| **1 exact match within policy** | Autonomous Execution | **YES** (Execute tool & confirm) | Autonomous Resolution Trail |
+## Quick Decision Rules
 
----
+| Signal | Action |
+|---|---|
+| "I want a human / supervisor" | Escalate immediately |
+| Request outside written policy | Escalate (policy gap) |
+| Angry tone, issue solvable | Acknowledge, resolve |
+| Multiple customer hits | Ask for identifiers |
+| Low FCR with mixed errors | Criteria + few-shot examples |
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## Claude 4.5 Notes
 
-When designing escalation agents with Claude 4.5:
-- **Model Standard**: Use `claude-sonnet-4-5` for high-accuracy policy evaluation and edge-case classification.
-- **Thinking Configuration**: Enable Extended Thinking with a budget of 2,048 tokens for checking complex policy boundaries:
-  ```python
-  thinking = {"type": "enabled", "budget_tokens": 2048}
-  ```
-- **Temperature Omission**: **Do NOT supply `temperature`**, `top_p`, or `top_k` when thinking is enabled. Anthropic returns an HTTP `400 Bad Request` if custom temperature values are passed.
-- **Tool Schema for Handoff**: Provide a dedicated tool `route_to_human_supervisor` with required arguments `case_facts`, `escalation_reason`, `priority` (`URGENT`, `STANDARD`), and `unresolved_questions`.
+- `claude-sonnet-4-5` for the support agent; `claude-haiku-4-5` for cheap workers.
+- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
+- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
 
----
+## Exam-Style Practice Questions
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+**Q1 (Scenario 1).** A customer writes: *"Stop. I want to talk to a human."* The agent has `lookup_order` and `process_refund`. What should it do?
 
-In the accompanying notebook [`ts_5_2_escalation_and_provenance.ipynb`](ts_5_2_escalation_and_provenance.ipynb), you will follow the step-by-step implementation:
+- A. Look up the order first so the human has context.
+- B. Escalate immediately with a short handoff summary.
+- C. Ask what is wrong, then decide whether to escalate.
+- D. Offer a discount to keep the customer in chat.
 
-- **Step 1: Escalation Router Definition**: Implement the deterministic `evaluate_escalation_rules` logic in Python.
-- **Step 2: Explicit Human Request Evaluation**: Test keyword matching to verify zero-delay escalation routing.
-- **Step 3: Multi-Match Ambiguity Disambiguation**: Simulate multi-account collisions and generate structured clarification prompts.
-- **Step 4: Policy Gap Handling**: Trigger policy gap detection when customer scenarios fall outside codified rules.
-- **Step 5: Structured Handoff Manifest Creation**: Build the complete, auditable context packet for human agents.
+**Q2 (Scenario 1).** FCR is 55%. Logs show the agent escalates simple damaged-item replacements but tries to approve competitor price matches (policy covers our own site only). What is the best change?
 
-Verify your implementation anytime with offline unit tests in WSL Ubuntu-26.04:
-```powershell
-wsl -d Ubuntu-26.04 bash -c "~/.local/bin/uv run pytest tests/test_domain5_full.py"
-```
+- A. Ask the model for a 1-10 confidence score and escalate below 7.
+- B. Add a sentiment classifier and escalate on negative tone.
+- C. Add explicit escalation criteria to the prompt with few-shot examples of each case.
+- D. Route every ticket to a human first.
+
+**Q3 (Scenario 1).** `get_customer("Maria Santos")` returns three customers. What should the agent do?
+
+- A. Use the account with the most recent order.
+- B. Use the first result.
+- C. Ask the customer for an email, order ID or account number.
+- D. Read out all three accounts' details and let the customer pick.
+
+### Answers
+
+- **Q1: B.** A fails: investigating first delays an explicit request. C fails: it questions the request. D fails: it ignores the request.
+- **Q2: C.** A fails: self-reported confidence is unreliable. B fails: sentiment does not track complexity. D fails: it discards the cases the agent resolves well.
+- **Q3: C.** A fails: recency is a guess. B fails: arbitrary choice risks the wrong account. D fails: it exposes other customers' data.
+
+## Self-Check Checklist
+
+- [ ] I can name the three escalation triggers.
+- [ ] I know why frustration alone does not escalate.
+- [ ] I can explain why sentiment and confidence scores are poor proxies.
+- [ ] I know how to handle multiple customer matches.
+- [ ] I can describe how criteria plus few-shot examples fix a low FCR.
+
+**Memory hook:** *"Ask for human? Go. Policy gap? Go. Many matches? Ask. Angry but solvable? Fix."*
+
+## Hands-on Workbook Guide
+
+Notebook: [`ts_5_2_escalation_and_provenance.ipynb`](ts_5_2_escalation_and_provenance.ipynb). Code: [`main.py`](main.py). Both run offline.
+
+1. **Rules:** `evaluate_escalation_rules()` applies the triggers in priority order.
+2. **Disambiguation:** `resolve_customer()` never guesses.
+3. **Prompt:** `build_escalation_prompt()` renders criteria plus few-shot examples.
+4. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
+
+**Related:** [TS 5.5](../ts_5_5_human_review_calibration/README.md) (human review of extraction) | [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (provenance).

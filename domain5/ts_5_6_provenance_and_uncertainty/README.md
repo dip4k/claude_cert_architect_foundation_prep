@@ -1,145 +1,169 @@
-# Task Statement 5.6: Information Provenance & Uncertainty Synthesis
+# Task Statement 5.6: Provenance and Uncertainty in Multi-Source Synthesis
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+> **Domain 5 (15% of exam)** | Scenario focus: **3 - Multi-Agent Research System** | Folder: `ts_5_6_provenance_and_uncertainty` | Previous: [TS 5.5](../ts_5_5_human_review_calibration/README.md) | Back to: [Domain 5 overview](../README.md)
 
-### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
-- **Scenario Alignment**: Scenario 3 (Multi-Agent Research & Competitive Synthesis)
-- **Core Goal**: Architect verifiable research and data synthesis pipelines that preserve claim-to-source provenance, maintain exact publication dates and extraction methodologies, and transparently synthesize conflicting statistics without generating hallucinated averages or artificial consensus.
+> **Folder note:** Provenance helpers also appear in the [TS 5.2](../ts_5_2_escalation_and_provenance/README.md) folder for old imports. The canonical guide and code are here.
 
-### Why This Matters in Production
-In enterprise research, legal intelligence, and financial analysis, models frequently ingest information from multiple authoritative sources that report conflicting data:
-- Source A (Earnings Call, Oct 1) reports: *"Q3 Cloud Revenue was $1.2B."*
-- Source B (SEC 10-Q Filing, Oct 15) reports: *"Q3 Cloud Revenue was $1.4B."*
+## In One Minute
 
-Naive LLM implementations suffer from the **Reconciliation Fallacy**:
-1. **The Hallucinated Average**: The model computes an arithmetic mean: *"Q3 Cloud Revenue was approximately $1.3B."* Neither source ever reported $1.3B; the model has generated a completely fictitious number that exists in zero source documents.
-2. **Silent Heuristic Discard**: The model arbitrarily picks one number (e.g., the later date or larger figure) and discards the other without disclosing the contradiction to the user.
-
-In regulated industries (compliance, finance, healthcare), the existence of a discrepancy is itself the primary intelligence insight. Production architectures enforce **Strict Provenance & Conflict Preservation**:
-- Every factual metric is bound to a structured `SourceCitation` (source ID, timestamp, methodology, document version).
-- Conflicting metrics are preserved in a structured dual-citation matrix, disclosing both values and explaining the methodology variance (e.g., preliminary non-GAAP guidance vs audited GAAP filing).
-- Final executive summaries convey explicit **epistemic uncertainty**, empowering human leaders to make informed decisions.
+- **What:** Every claim in a synthesised report must point back to its source.
+- **Why it matters:** Summaries often drop the link between a claim and its evidence. Readers then cannot check it.
+- **When sources disagree:** annotate both values with sources. Never average, never pick one silently.
+- **Dates matter:** different dates (or periods) can explain a "contradiction".
+- **Exam answer in one line:** *Keep claim-source mappings, annotate conflicts, include dates, separate established from contested.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## Overview
 
-### The Naive Production Failure: The Reconciliation Fallacy
-Consider a market research system evaluating cloud computing competitors.
-The agent ingests:
-- **Press Release (Jan 10)**: *"Acme Cloud reached 10,000 enterprise customers."*
-- **Annual SEC 10-K Report (March 1)**: *"Acme Cloud has 8,200 active enterprise subscription accounts."*
+- **Domain:** 5 (15% of the exam).
+- **Task statement:** 5.6 - preserve information provenance and handle uncertainty in multi-source synthesis.
+- **Scenario fit:** Scenario 3 (research coordinator merging subagent findings).
 
-If the engineering team provides a naive summarization prompt:
-```python
-# NAIVE ANTI-PATTERN: Forcing Synthetic Consensus
-prompt = f"""
-Synthesize these two documents into a single conclusive paragraph:
-Document 1: {press_release}
-Document 2: {sec_filing}
-Reconcile any differences so the report is clear and definitive for the CEO.
-"""
-```
-The model will respond:
-> *"Acme Cloud has approximately 9,100 enterprise customers across its platform."*
+## Concepts Explained
 
-Notice the critical failures:
-1. **Fabricated Ground Truth**: 9,100 is an artificial hallucination. Neither marketing nor the audited SEC filing claimed 9,100.
-2. **Methodology Erasure**: The model erased the crucial business context: marketing counted total registered customer trials, while the audited SEC filing counted paying enterprise subscriptions ($> \$100\text{k}$ ARR).
-3. **Legal Risk**: Presenting a synthetic number in an investment memo or regulatory filing creates severe legal and compliance exposure.
+### 1. Claim-source mappings
+Each claim is stored with: **source**, **verbatim excerpt**, **publication or collection date**, and **methodology** when known. Subagents return these. The synthesiser must **carry them through** to the final report. Summarising must not cut the link.
 
-### The Architectural Solution: Claim-Source Mapping & Conflict-Preserving Synthesizer
-Production architectures treat conflicting information as a first-class data structure rather than an error to smooth over:
+### 2. Conflicting statistics
+Two credible sources give different numbers. Do not average them. Do not choose one without saying so. **Show both, each with its source**, and explain any known difference (method, definition).
+
+### 3. Dates prevent false conflicts
+A number from 2025 and a number from 2026 may both be right. Include the **publication or collection date** (and the period the number describes). Then the report shows a change over time, not a contradiction.
+
+### 4. Separate established from contested
+Structure the report with a section for **well-established findings** (sources agree) and one for **contested findings** (sources disagree). Readers see the confidence level at a glance.
+
+### 5. Render each content type appropriately
+| Content | Best format |
+|---|---|
+| Financial data | Table |
+| News and events | Prose |
+| Technical findings | List |
+
+Do not squash everything into one uniform format.
+
+## Worked Example
+
+**Subagents report:**
+
+| Metric | Value | Source | Pub. date | Period | Method |
+|---|---|---|---|---|---|
+| Q3 revenue | $1.2B | Press wire | 2024-10-01 | 2024-Q3 | Preliminary |
+| Q3 revenue | $1.4B | 10-Q filing | 2024-10-15 | 2024-Q3 | Audited |
+| Inventory | 50,000 units | Report A | 2025-06-30 | 2025-06 | Warehouse count |
+| Inventory | 12,000 units | Report B | 2026-09-30 | 2026-09 | Warehouse count |
+| Headcount | 12,500 | 10-Q filing | 2024-10-15 | n/a | Payroll |
+
+**Synthesis result:**
+- **Q3 revenue:** same period, different values -> **contested**. Show both, with source and method. No average.
+- **Inventory:** different periods -> **temporal difference**, not a conflict. Present as a dated timeline.
+- **Headcount:** one source -> **established**.
+
+`ProvenanceSynthesizer` and `render_report()` in `main.py` produce exactly this.
+
+## Key Terms
+
+- **Claim-source mapping:** Link between a claim and its source, excerpt and date.
+- **Contested finding:** Credible sources disagree for the same period.
+- **Temporal difference:** Values differ because they describe different times.
+- **Methodology note:** Short text on how a number was produced (e.g. audited vs preliminary).
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    DocA["Source A: Press Release (Jan 10)<br>'10,000 enterprise customers'<br>Method: Total registered accounts"] --> Extractor["Fact & Citation Extractor"]
-    DocB["Source B: SEC 10-K (March 1)<br>'8,200 active accounts'<br>Method: Audited paying enterprise contracts"] --> Extractor
-    
-    Extractor --> ClaimA["FactClaim A:<br>- Metric: 'Customer Count'<br>- Value: '10,000'<br>- Source: Press Release (Jan 10)<br>- Method: Marketing / Registered"]
-    Extractor --> ClaimB["FactClaim B:<br>- Metric: 'Customer Count'<br>- Value: '8,200'<br>- Source: SEC 10-K (March 1)<br>- Method: Audited GAAP"]
-    
-    subgraph Synthesizer["Provenance Synthesizer Engine"]
-        ConflictDetector{"Do Values Diverge for Same Metric?"}
-        ClaimA --> ConflictDetector
-        ClaimB --> ConflictDetector
-        
-        ConflictDetector -- "YES (Values Differ)" --> ConflictProtocol["Conflict Preservation Protocol<br>- Reject Synthetic Mean / Averaging<br>- Retain Both Values with Citations<br>- Extract Methodology Variance"]
-        ConflictDetector -- "NO (Values Agree)" --> ConsensusProtocol["Consolidated Claim Record"]
-    end
-    
-    ConflictProtocol --> SynthesisReport["Structured Provenance Report:<br>- Metric: 'Customer Count'<br>- Conflict Detected: True<br>- Claims: [Claim A, Claim B]<br>- Executive Guidance: Disclose both figures with dates;<br>  note variance between marketing registrations (10k)<br>  and audited paying enterprise contracts (8.2k)."]
+    SubA["Subagent A<br>claim + source + excerpt + date"] --> Merge["Synthesiser:<br>group by metric"]
+    SubB["Subagent B<br>claim + source + excerpt + date"] --> Merge
+    Merge --> Same{"Same value?"}
+    Same -->|"Yes"| Est["Established findings"]
+    Same -->|"No"| Period{"Different periods?"}
+    Period -->|"Yes"| Time["Dated timeline<br>(not a conflict)"]
+    Period -->|"No"| Cont["Contested findings<br>(both values + sources)"]
+    Est --> Report["Report by content type<br>(table, prose, list)"]
+    Time --> Report
+    Cont --> Report
 ```
 
-1. **Structured Citation Model**: Every claim ingested into the reasoning pipeline carries explicit metadata:
-   - `source_id`: URI, file path, or regulatory accession number.
-   - `publication_date`: ISO timestamp of source release.
-   - `methodology`: Accounting standard, survey methodology, or observation technique.
-2. **Deterministic Conflict Detection**: When multiple claims reference the same underlying metric (e.g., `Customer Count`, `Revenue`, `Churn Rate`), a deterministic Python check detects value divergence.
-3. **Preservation Over Averaging**: If divergence is found, the system forbids the LLM from producing a blended number. The output schema requires a structured list of claims with citations and an explanation of the divergence.
-4. **Epistemic Uncertainty Representation**: The report explicitly states that the ground truth depends on definition and accounting methodology, preserving high decision-making fidelity.
+## Exam Traps and Correct Patterns
 
----
-
-## 🔑 Key Technical Terminology Explained
-
-- **Data Provenance / Lineage**: The complete, traceable history of a data point from its original primary source document through extraction, transformation, and final synthesis.
-- **Claim-to-Source Mapping**: A formal data association binding every factual assertion in an LLM output to a specific source document, version, and locator.
-- **The Reconciliation Fallacy**: The erroneous practice of forcing an LLM to reconcile contradictory data points by inventing an artificial consensus or calculating a synthetic arithmetic mean.
-- **Epistemic Uncertainty**: Uncertainty arising from incomplete knowledge or conflicting external evidence (e.g., two reports disagreeing), which must be disclosed rather than hidden.
-- **Non-Consensus Reporting**: An architectural standard requiring an agent to present conflicting perspectives or measurements side-by-side with source attribution.
-- **Citation Anchor**: A machine-readable tag (e.g., `[Source: SEC-10K-2025, Line 142]`) appended to claims to ensure 100% auditability.
-
----
-
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
-
-| Provenance / Uncertainty Pattern | Correct Implementation (Exam Standard) | Exam Trap / Distractor to Reject |
+| Topic | Correct pattern | Trap to reject |
 |---|---|---|
-| **Synthesizing Conflicting Data** | **Preserve and Disclose Both**: Report both values side-by-side with full source citations, dates, and methodologies. | **TRAP: Calculating the Mean**: Averaging conflicting figures (e.g., \$1.2B and \$1.4B into \$1.3B) to provide a single tidy answer. |
-| **Resolving Source Disagreements** | Explain the methodology variance (e.g., preliminary call vs audited filing) and highlight epistemic uncertainty. | **TRAP: Heuristic Dropping**: Silently picking the latest source and discarding the earlier source without mentioning the discrepancy. |
-| **Claim Citation Architecture** | **Fine-Grained Claim Mapping**: Bind each individual metric to a specific source record with timestamp and locator. | **TRAP: Document-Level Dumping**: Putting a single general bibliography at the end of the report without inline claim-to-source bindings. |
-| **Handling Data Gaps** | Explicitly state which metrics are unknown or unverified due to missing source coverage. | **TRAP: Speculative Interpolation**: Instructing Claude to extrapolate or estimate missing metrics based on historical trends without labeling them as estimates. |
+| Two sources disagree | Show both values with sources | Average them or pick the "better" one silently |
+| Summarising | Keep claim-source mapping through the summary | Summary with unsourced facts |
+| Different dates | Include dates; read as change over time | Flag a contradiction |
+| Report layout | Separate established from contested | One flat list of claims |
+| Format | Table for finance, prose for news, list for technical | One format for everything |
 
----
+## Common Mistakes
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+- Averaging two numbers, which makes a value neither source reported.
+- Dropping source names to save space.
+- Leaving out dates, so older and newer values look contradictory.
+- Reporting a conflict that is really a time difference.
+- Presenting all findings with the same level of certainty.
 
-| Scenario Encountered | Architectural Action | Schema Requirement | Final Report Representation |
-|---|---|---|---|
-| **Sources Agree on Metric** | Merge into single confirmed fact | Single claim with multi-source citation list | High-confidence assertion |
-| **Sources Disagree on Metric** | **Trigger Conflict Preservation** | Structured array of diverging claims with dates | **Side-by-side matrix with methodology explanation** |
-| **Source Date Variance (Old vs New)** | Disclose both dates; note trend or update | Chronological claim trail | Note progression: *"Updated from X in Jan to Y in Mar"* |
-| **Methodology Discrepancy (GAAP vs Non-GAAP)** | Highlight definition mismatch | Methodology attribute populated | Explain scope difference clearly |
-| **Missing Metric Across All Sources** | Disclose data omission | Metric flagged as `UNVERIFIED` | Clear disclaimer: *"Metric not disclosed by sources"* |
+## Quick Decision Rules
 
----
+| Situation | Do this |
+|---|---|
+| Same metric, same period, different values | Contested: annotate both |
+| Same metric, different periods | Timeline with dates |
+| Only one source | Established, but name the source |
+| Mixed content types | Format each type for its content |
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## Claude 4.5 Notes
 
-When configuring Claude 4.5 for provenance extraction and research synthesis:
-- **Model Standard**: Use `claude-sonnet-4-5` for rigorous multi-source cross-referencing and contradiction analysis.
-- **Thinking Configuration**: Allocate a thinking budget of 4,000 to 6,000 tokens for identifying nuanced discrepancies across source texts:
-  ```python
-  thinking = {"type": "enabled", "budget_tokens": 5000}
-  ```
-- **Temperature Omission**: **Do NOT provide `temperature`**, `top_p`, or `top_k`. Anthropic's Claude 4.5 API rejects custom sampling parameters when `thinking` is active.
-- **Structured Citation Output Schema**: Force structured outputs via tool calling with an explicit schema requiring `metric_name`, `has_conflict`, `claims` (with `source_id`, `date`, `methodology`), and `synthesis_notes`.
+- `claude-sonnet-4-5` for synthesis; `claude-haiku-4-5` for extraction subagents that return claim-source records.
+- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
+- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
 
----
+## Exam-Style Practice Questions
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+**Q1 (Scenario 3).** Two subagents report different market-size statistics for the same year, from two credible sources. What should the synthesis agent do?
 
-In the accompanying notebook [`ts_5_6_provenance_and_uncertainty.ipynb`](ts_5_6_provenance_and_uncertainty.ipynb), you will follow the step-by-step implementation:
+- A. Report the average.
+- B. Keep the number from the larger publisher.
+- C. Report both values, each attributed to its source, and note any known method difference.
+- D. Omit the metric.
 
-- **Step 1: SourceCitation & FactClaim Data Structures**: Implement structured provenance containers in Python.
-- **Step 2: Simulating Ingestion of Conflicting Datasets**: Ingest real-world examples of earnings transcripts vs audited SEC filings.
-- **Step 3: ProvenanceSynthesizer & Conflict Detection**: Execute the synthesis engine to automatically flag metric discrepancies.
-- **Step 4: Synthetic Reconciliation Anti-Pattern Comparison**: Compare the honest provenance-preserving output against the dangerous "reconciliation fallacy" mean.
-- **Step 5: Verifiable Report Generation**: Generate the final executive report with inline citation anchors and uncertainty callouts.
+**Q2 (Scenario 3).** A report says revenue was $800M (published 2024) and $950M (published 2026). The synthesiser flags a "conflict". What was missed?
 
-Verify your implementation anytime with offline unit tests in WSL Ubuntu-26.04:
-```powershell
-wsl -d Ubuntu-26.04 bash -c "~/.local/bin/uv run pytest tests/test_domain5_full.py"
-```
+- A. Nothing; this is a real contradiction.
+- B. The dates and periods; the values may describe different years.
+- C. The need to average them.
+- D. The need for a longer summary.
+
+**Q3 (Scenario 3).** The final report mixes quarterly financials, news events and technical findings in one bullet list, and many claims lack sources. What two improvements fit best?
+
+- A. Shorten everything into one paragraph and remove the sources.
+- B. Keep claim-source mappings and render each content type suitably (table, prose, list).
+- C. Merge all claims into one confidence score.
+- D. Sort alphabetically.
+
+### Answers
+
+- **Q1: C.** A fails: it invents a number. B fails: it hides a credible source. D fails: it throws away evidence.
+- **Q2: B.** A fails: it ignores that values describe different times. C fails: averaging is never right. D fails: length does not help.
+- **Q3: B.** A fails: it removes traceability. C fails: a single score hides what is contested. D fails: order does not fix traceability or format.
+
+## Self-Check Checklist
+
+- [ ] I can list what a claim-source mapping contains.
+- [ ] I know why conflicting values are annotated, not averaged.
+- [ ] I can explain how dates turn a "conflict" into a timeline.
+- [ ] I can describe a report that separates established from contested findings.
+- [ ] I know the right format for financial, news and technical content.
+
+**Memory hook:** *"Every claim carries its receipt."*
+
+## Hands-on Workbook Guide
+
+Notebook: [`ts_5_6_provenance_and_uncertainty.ipynb`](ts_5_6_provenance_and_uncertainty.ipynb). Code: [`main.py`](main.py). Both run offline.
+
+1. **Record claims:** `ProvenanceSynthesizer.add_claim()` with excerpt, date, methodology, period.
+2. **Classify:** `synthesize_metrics()` returns `CONSENSUS`, `PRESERVED_CONFLICT` or `TEMPORAL_DIFFERENCE`.
+3. **Render:** `render_claims()` per content type; `render_report()` for the two-section layout.
+4. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
+
+**Related:** [TS 5.1](../ts_5_1_context_preservation/README.md) (structured subagent output) | [TS 5.3](../ts_5_3_error_propagation_coverage/README.md) (coverage annotations).

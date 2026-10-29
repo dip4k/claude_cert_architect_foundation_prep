@@ -43,6 +43,49 @@ class CIPipelineReport:
     exit_code: int   # 0 = Pass/Merge Approved, 1 = Blocked
     status: str      # "APPROVED", "CHANGES_REQUESTED"
     findings: List[CIPipelineFinding] = field(default_factory=list)
+    new_findings: List[CIPipelineFinding] = field(default_factory=list)  # Not seen in prior runs
+
+
+REVIEW_FINDINGS_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "file": {"type": "string"},
+                    "rule_id": {"type": "string"},
+                    "severity": {"type": "string", "enum": ["CRITICAL", "HIGH", "WARNING", "INFO"]},
+                    "description": {"type": "string"},
+                },
+                "required": ["file", "rule_id", "severity", "description"],
+            },
+        }
+    },
+    "required": ["findings"],
+}
+
+
+def build_ci_command(prompt: str, schema: Optional[Dict[str, Any]] = None) -> List[str]:
+    """Build a non-interactive Claude Code CLI call: -p never waits for input."""
+    return [
+        "claude",
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--json-schema",
+        json.dumps(schema or REVIEW_FINDINGS_SCHEMA),
+    ]
+
+
+def filter_new_findings(
+    findings: List[CIPipelineFinding], prior: List[CIPipelineFinding]
+) -> List[CIPipelineFinding]:
+    """Drop findings already reported on an earlier run (same file and rule)."""
+    seen = {(p.file, p.rule_id) for p in prior}
+    return [f for f in findings if (f.file, f.rule_id) not in seen]
 
 
 class ContinuousIntegrationEngine:
@@ -62,7 +105,8 @@ class ContinuousIntegrationEngine:
     def run_two_pass_review(
         self,
         pr_files: Dict[str, str],
-        workload: WorkloadType = WorkloadType.BLOCKING_PR_CHECK
+        workload: WorkloadType = WorkloadType.BLOCKING_PR_CHECK,
+        prior_findings: Optional[List[CIPipelineFinding]] = None,
     ) -> CIPipelineReport:
         if not self.headless:
             raise RuntimeError(
@@ -154,7 +198,8 @@ class ContinuousIntegrationEngine:
             api_chosen=api_chosen,
             exit_code=exit_code,
             status=status,
-            findings=findings
+            findings=findings,
+            new_findings=filter_new_findings(findings, prior_findings or []),
         )
 
 

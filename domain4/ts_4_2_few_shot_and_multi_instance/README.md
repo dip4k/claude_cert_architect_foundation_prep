@@ -1,127 +1,203 @@
-# Task Statement 4.2: Apply Few-Shot Prompting and Multi-Instance Review Architectures
+# Task Statement 4.2: Few-Shot Prompting for Consistent Output
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
-
-### Certification Domain & Weight
-- **Domain**: Domain 4: Prompt Engineering & Structured Output
-- **Domain Weight**: 18% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 5 (Continuous Integration) & Scenario 6 (Structured Data Extraction)
-
-### The Core Goal
-To master **targeted few-shot prompting (2–4 examples with reasoning)** for complex edge cases, and design **multi-instance review architectures** that eliminate author confirmation bias during automated code review and data extraction.
-
-### Why This Matters in Production
-In production systems, two major failure modes degrade output reliability:
-1. **The Few-Shot Bloat Trap**: Engineers often copy-paste 25 standard examples into their prompts. This consumes 4,000+ input tokens per call while demonstrating only simple, happy-path cases that Claude already understands zero-shot.
-2. **Author Confirmation Bias**: If the same Claude instance that generated a function is asked in the next turn: *"Now review your code for bugs"*, it suffers from profound confirmation bias. It evaluates its code using the exact same underlying assumptions that created the bug in the first place, consistently reporting *"No bugs found"*.
-Using 2–4 targeted edge-case examples with reasoning guides the model through ambiguous boundaries, while spawning an **independent reviewer instance** (with fresh context) catches subtle bugs with near-zero confirmation bias.
-
-### Exam Importance
-Task Statement 4.2 questions test prompt efficiency and review topologies. The exam will ask why self-review within the same conversation session fails, how many few-shot examples are optimal, and why independent Claude review instances are required for compliance and security auditing.
+## In One Minute
+- **What**: Put 2-4 short, targeted examples in the prompt.
+- **Why**: Examples show Claude the exact output format and how to handle ambiguous cases. Rules alone often leave room to guess.
+- **How**: Each example shows the input, the output, and *why* that action was chosen.
+- **Include**: acceptable patterns vs genuine issues, different document layouts, and empty/null fields.
+- **Exam answer in one line**: *A few well-chosen examples that explain the reasoning beat more rules or more examples.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## 📌 Overview
 
-### 1. The Anatomy of a High-Yield Few-Shot Example
-A production few-shot example should **never** waste tokens demonstrating trivial happy-path formatting. Instead, it must demonstrate **boundary conditions and discrepancy handling**:
-```markdown
-<example>
-Input:
-Consulting invoice stating total $500, but line items list:
-- 4 hours @ $100 = $400.
+- **Domain**: Domain 4: Prompt Engineering & Structured Output (**20%** of the exam; D1 27%, D2 18%, D3 20%, D5 15%).
+- **Scenarios**: Scenario 6 (Structured Data Extraction) and Scenario 5 (CI review).
+- **Goal**: Consistent format, fewer false positives, and good behaviour on layouts you did not list.
+- **Exam focus**: Questions ask what kind of examples fix an inconsistent or over-eager prompt.
 
-Reasoning:
-The stated total ($500) conflicts with the mathematical sum of line items ($400).
-Instead of guessing or hallucinating missing items, record the discrepancy flag.
+---
 
-Output:
-{
-  "stated_total": 500.0,
-  "calculated_total": 400.0,
-  "discrepancy_detected": true,
-  "line_items": [{"description": "Consulting", "amount": 400.0}]
-}
-</example>
+## 📖 Concepts Explained
+
+### 1. The simple idea
+Show, do not only tell. One good example of "this is fine, skip it" next to one of "this is a real bug, report it" teaches a boundary faster than a paragraph of rules.
+
+### 2. Why it matters
+- Without examples, output format drifts: sometimes prose, sometimes a table, sometimes missing fields.
+- Without examples of acceptable code, the model flags everything that looks unusual.
+- Without layout variety, extraction works on one document style and returns nulls on the next.
+
+### 3. How it works
+1. **Pick 2-4 examples**, aimed at the cases where the model is unsure.
+2. **State the reason** in each example ("ACCEPTABLE: mock key in a test file").
+3. **Show the exact format**: for reviews, `location | issue | severity | suggested_fix`.
+4. **Pair opposites**: one acceptable pattern, one genuine issue.
+5. **Vary the structure**: inline citations (`Lee, 2021, p. 4`) vs a bibliography at the end; a table vs a narrative paragraph.
+6. **Include an empty case**: a document with no citations returns `[]`, a missing date returns `null`.
+
+Why reasons matter: the model learns the *principle* ("test mocks are not live secrets"), so it generalises to a mock it has never seen.
+
+### 4. Where more examples stop helping
+Five or six near-identical examples add cost and make the model copy their surface form. A small, varied set generalises better.
+
+---
+
+## 🧪 Worked Example
+
+**Review prompt with two examples**
+```text
+Output format: location | issue | severity | suggested_fix
+
+Example 1 (ACCEPTABLE - do not report)
+  tests/test_auth.py:12  mock_key = 'sk-ant-test_dummy_000000000000'
+  Reason: mock key in a test file, not a live credential.
+
+Example 2 (GENUINE - report)
+  src/auth.py:30  user = db.get(uid); return user.orders
+  Output: src/auth.py:30 | possible None dereference | MEDIUM | if user is None: raise UserNotFound(uid)
+  Reason: get() can return None, so .orders raises AttributeError.
 ```
-**Why Reasoning is Mandatory in Few-Shot**: Showing *how* the decision was made teaches Claude the underlying rule, enabling it to generalize to novel variations.
 
-### 2. The Multi-Instance Review Architecture
-To eliminate author bias:
-1. **Generator Instance (Instance 1)**: Receives the user specification and generates the code or extracted data.
-2. **Handoff**: The generated artifact is extracted. All of Instance 1's intermediate reasoning, thinking tokens, and conversation history are **discarded**.
-3. **Reviewer Instance (Instance 2)**: An independent Claude session is launched with:
-   - A fresh, pristine context.
-   - A dedicated Auditor system prompt (e.g. *"You are a senior security reviewer"*).
-   - The user specification and the generated candidate artifact.
-4. **Result**: Instance 2 evaluates the artifact objectively, catching logical flaws, security bugs, and off-by-one errors that Instance 1 was blind to.
+**Extraction prompt with a null example**
+```text
+Input: Purchase order with no tax number and no due date.
+Output: {"stated_total": 120.0, "due_date": null, "tax_id": null, "conflict_detected": false}
+Reason: the document does not state them, so return null. Never invent.
+```
 
----
+**Varied structure**
+```text
+Inline:        "as shown by Lee (2021, p. 4)"       -> {"author": "Lee", "year": 2021, "page": 4}
+Bibliography:  "References: [1] Kim, J. (2019)..."  -> {"author": "Kim", "year": 2019, "page": null}
+None:          memo without citations               -> {"citations": []}
+```
 
-## 🔑 Key Technical Terminology Explained
-
-- **Targeted Few-Shot Prompting**: Providing a compact set (typically 2 to 4) of carefully curated input/output examples demonstrating complex edge cases and formatting expectations.
-- **Author Confirmation Bias**: The tendency of an AI model (or human developer) to validate and defend their own generated work when asked to self-review in the same session.
-- **Multi-Instance Review**: Spawning a completely independent model instance with an isolated context to review artifacts generated by a prior instance.
-- **Reasoning-First Demonstration**: Including step-by-step decision rationale within few-shot examples so the model learns the algorithmic principle, not just the output syntax.
-- **Discrepancy Detection**: The ability of an extraction agent to flag internal mathematical or factual contradictions in source documents rather than silently guessing.
+See `FEW_SHOT_EXTRACTION_EXAMPLES`, `VARIED_STRUCTURE_EXAMPLES`, and `REVIEW_FEW_SHOT_EXAMPLES` in [main.py](main.py). `validate_example_count()` enforces the 2-4 range.
 
 ---
 
-## 🏗️ Architecture: Multi-Instance Independent Review Pipeline
+## 🔑 Key Terms
+
+- **Few-shot prompting**: giving worked examples inside the prompt.
+- **Targeted example**: one that covers an ambiguous case, not an easy one.
+- **Acceptable pattern**: code that looks odd but is fine; showing it cuts false positives.
+- **Genuine issue**: a real defect; showing it keeps recall.
+- **Generalisation**: handling unseen inputs because the example taught the reason.
+- **Varied structure**: examples with different layouts of the same information.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    TaskInput["Raw Task Input / Invoices"] --> GeneratorInstance["Instance 1: Generator<br>(claude-sonnet-4-5)"]
-    
-    GeneratorInstance --> FewShotPrompt["Prompt with 2-4 Targeted Few-Shot Examples<br>(demonstrating discrepancy handling)"]
-    FewShotPrompt --> CandidateArtifact["Initial Generated Candidate Artifact<br>(e.g. Extracted JSON / Draft PR)"]
-    
-    CandidateArtifact --> ReviewerInstance["Instance 2: Independent Reviewer<br>(Fresh Context, Zero Generator History)"]
-    
-    ReviewerInstance --> BlindEvaluation{"Independent Evaluation<br>against Strict Rubric"}
-    
-    BlindEvaluation -->|"Discrepancy / Bug Found"| FeedbackLoop["Provide Structured Bug Report<br>Back to Generator"]
-    FeedbackLoop --> GeneratorInstance
-    
-    BlindEvaluation -->|"Clean / Verified"| ApprovedOutput["Final Verified Output Payload"]
+    Task["Ambiguous task"] --> Pick["Pick 2-4 targeted examples"]
+    Pick --> Pair["Acceptable pattern<br>+ genuine issue"]
+    Pick --> Layout["Varied layouts<br>inline vs bibliography"]
+    Pick --> Empty["Empty or null case"]
+    Pair --> Prompt["Prompt: input, reason, exact output format"]
+    Layout --> Prompt
+    Empty --> Prompt
+    Prompt --> Result["Consistent format<br>fewer false positives<br>better generalisation"]
 ```
 
 ---
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+## ⚠️ Exam Traps and Correct Patterns
 
-| Architecture Technique | Correct Implementation | Exam Trap to Reject | Why the Trap Fails |
+| Goal | Correct pattern | Trap | Why the trap fails |
 |---|---|---|---|
-| **Code Review Topology** | Use an **independent Claude instance** with zero access to generator history. | **TRAP**: Asking the same agent to *"Now check your code for bugs"* in turn 2 of the same thread. | Author confirmation bias: the model operates under the same flawed assumptions that caused the bug. |
-| **Few-Shot Sizing** | Provide **2 to 4 high-yield examples** specifically demonstrating edge cases and discrepancies. | **TRAP**: Ingesting 30 happy-path examples to "train" Claude on the output schema. | Wastes thousands of input tokens on every turn while teaching Claude nothing about difficult edge cases. |
-| **Few-Shot Structure** | Include input, **reasoning justification**, and target output. | **TRAP**: Providing only bare inputs and outputs with no explanation of why the answer was chosen. | Model fails to learn the underlying decision rule and hallucinates when encountering variations. |
+| Handle ambiguous cases | 2-4 examples with reasons | Long list of rules only | Rules do not show the boundary |
+| Stable output format | Show the exact format in the examples | "Return JSON" with no example | Field names and shape drift |
+| Fewer false positives | Include acceptable patterns | Only show bugs | The model learns that everything odd is a bug |
+| Varied documents | Examples with different layouts | Five invoices with one layout | Overfits to that layout |
+| Missing data | An example that returns `null` | No example of absence | The model fills in a guess |
+
+### Common Mistakes
+- Using many near-identical examples.
+- Showing the output without the reason.
+- Showing only positive (buggy) examples.
+- Using only easy cases instead of the ambiguous ones.
+- Forgetting an example with an empty or null field.
 
 ---
 
-## 💡 Architectural Decision Matrix: Review Strategies
+## 💡 Quick Decision Rules
 
-| Review Pattern | Independence | Bias Level | Best Use Case |
-|---|---|---|---|
-| **Same-Thread Self-Review** | Zero (Same context) | Very High | Trivial grammar and typo checking. |
-| **Multi-Turn Critic** | Partial (Same session) | Moderate | Minor formatting and style alignment. |
-| **Independent Multi-Instance** | **Complete (Fresh session)** | **Zero** | Security audits, financial verification, compliance PRs. |
-
----
-
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
-
-- **Independent Reasoning**: The Reviewer Instance uses its full Extended Thinking budget (`budget_tokens: 2048`) to independently trace variable scopes and data paths, unaffected by the Generator's thinking process.
-- **Sampling Rules**: Omit `temperature` across both generator and reviewer instances.
-- **Thinking Blocks**: The Reviewer's thinking blocks detail its audit findings before emitting the structured review verdict.
+| Symptom | Fix |
+|---|---|
+| Output format changes between runs | Add examples that show the exact format |
+| Too many false positives | Add an acceptable-pattern example with the reason |
+| Nulls on a new document layout | Add an example with that layout |
+| Invented values for absent fields | Add an example that returns `null` |
 
 ---
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+## 🧠 Claude 4.5 Notes
 
-When exploring [`ts_4_2_few_shot_and_multi_instance.ipynb`](ts_4_2_few_shot_and_multi_instance.ipynb):
-1. **Step 1: Setup & Few-Shot Datasets**: Prepares targeted few-shot examples demonstrating arithmetic discrepancy handling.
-2. **Step 2: Simulating Generator Instance**: Generates code or data extraction payloads using few-shot guidance.
-3. **Step 3: Self-Review Failure Demonstration**: Shows how self-review in the same session misses subtle logical flaws.
-4. **Step 4: Independent Reviewer Execution**: Spawns a fresh independent instance that immediately catches the defect.
-5. **Step 5: Verification Assertions**: Verifies that independent review achieves 100% bug detection precision.
+- Examples go inside the prompt, inside clear tags such as `<examples>`; this is a prompt change, not a model setting.
+- If you use thinking, omit `temperature`; leave `top_k` and `top_p` unset.
+- For guaranteed JSON shape, combine examples with a tool schema (TS 4.3). Examples guide the content; the schema guards the syntax.
+- `claude-haiku-4-5` for extraction workers, `claude-sonnet-4-5` for review reasoning.
+
+---
+
+## 📝 Exam-Style Practice Questions
+
+**Q1 (Scenario 6).** Your extraction prompt works on tabular invoices but returns empty citations for papers whose references are in a bibliography at the end. What is the best change?
+- A) Add five more tabular invoice examples.
+- B) Add one example with inline citations and one with a bibliography, each showing the expected output.
+- C) Lower the temperature.
+- D) Add "extract all citations carefully" to the prompt.
+
+**Q2 (Scenario 5).** A review prompt flags harmless code that the team uses on purpose. Which change reduces false positives while still catching real bugs?
+- A) Add examples that show only buggy code.
+- B) Add two examples: one acceptable pattern with the reason it is fine, one genuine issue with the reason it is a bug.
+- C) Tell Claude to report only critical findings.
+- D) Add twelve examples of acceptable code.
+
+**Q3 (Scenario 6).** Some purchase orders lack a due date and the model writes made-up dates. What helps most?
+- A) A rule: "never be wrong".
+- B) A few-shot example where the document has no due date and the output is `null`, with the reason.
+- C) Require `due_date` in every example.
+- D) Retry until the date looks plausible.
+
+### Answers
+**Q1: B.**
+- A fails: more of the same layout increases overfitting.
+- C fails: temperature does not teach layouts.
+- D fails: it names no concrete layout or output.
+
+**Q2: B.**
+- A fails: bug-only examples teach the model that anything unusual is a bug.
+- C fails: it hides real high-impact issues without defining them.
+- D fails: too many examples add cost and the model may copy surface form; it also lacks a genuine-issue example.
+
+**Q3: B.**
+- A fails: a vague instruction gives no pattern to copy.
+- C fails: forcing a date in every example teaches fabrication.
+- D fails: retrying cannot find a date that is not in the source.
+
+---
+
+## ✅ Self-Check Checklist
+- [ ] I can explain why 2-4 targeted examples beat many similar ones.
+- [ ] I can give the reason line for an acceptable-pattern example.
+- [ ] I can write the exact review output format (location, issue, severity, suggested fix).
+- [ ] I know which layouts to vary (inline vs bibliography, table vs narrative).
+- [ ] I know to include an empty/null example.
+
+**Memory hook**: *Few, varied, explained.*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+In [`ts_4_2_few_shot_and_multi_instance.ipynb`](ts_4_2_few_shot_and_multi_instance.ipynb):
+1. **Step 1: Setup**: finds the repo root and adds it to the import path.
+2. **Step 2: Examples**: imports the extraction, varied-structure, and review examples from `main.py`.
+3. **Step 3: Render**: builds the few-shot block and the independent-reviewer payload (used again in TS 4.6).
+4. **Step 4: Verification**: asserts the 2-4 example rule, the null and empty cases, and the review format.
+
+Everything runs offline; no API calls.

@@ -1,164 +1,168 @@
-# Task Statement 5.3: Error Propagation & Coverage Tracking Across Multi-Agent Systems
+# Task Statement 5.3: Error Propagation Across Multi-Agent Systems
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+> **Domain 5 (15% of exam)** | Scenario focus: **3 - Multi-Agent Research System** | Folder: `ts_5_3_error_propagation_coverage` | Previous: [TS 5.2](../ts_5_2_escalation_and_provenance/README.md) | Next: [TS 5.4](../ts_5_4_scratchpads_and_human_review/README.md)
 
-### Domain & Exam Weight
-- **Domain**: Domain 5 — Context Management & Reliability (15% of exam weighting)
-- **Scenario Alignment**: Scenario 3 (Multi-Agent Research & Competitive Synthesis)
-- **Core Goal**: Architect resilient error propagation and synthesis protocols across subagent hierarchies: strictly distinguishing between semantic zero results (`VALID_EMPTY`) and infrastructure outages (`UPSTREAM_FAILURE`), tracking partial system coverage, and transparently annotating degraded findings in executive reports.
+## In One Minute
 
-### Why This Matters in Production
-In distributed multi-agent systems, a coordinator dispatches research or data-gathering tasks to 3–5 specialized subagents (e.g., SEC EDGAR filings, Market Analyst, Social Sentiment, Regulatory DB).
-Two critical failure modes plague naive architectures:
-1. **Silent Error Masking (The "Zero Results" Lie)**: When a subagent encounters a 503 HTTP timeout querying a financial database, a naive error handler catches the exception and returns an empty list `[]`. The coordinator interprets `[]` as *"No regulatory violations exist for this company"*—transforming an infrastructure outage into a dangerously false affirmative business finding.
-2. **Brittle Cascading Failures**: When one subagent fails out of five, a naive system raises an unhandled exception that aborts the entire multi-agent job, discarding 80% of successfully gathered research.
-
-Production multi-agent systems solve this through **Structured Status Propagation & Coverage Accounting**:
-- **Semantic Zero (`VALID_EMPTY`) vs System Outage (`UPSTREAM_FAILURE`)**: Distinguishing when a healthy database found zero items vs when a service failed to respond.
-- **Partial Coverage Accounting**: The synthesizer labels reports as `COMPLETE` or `PARTIAL`, explicitly naming omitted sources and calculating a calibrated confidence penalty.
-- **Graceful Degradation**: Producing high-value partial reports while flagging data gaps for targeted follow-up.
+- **What:** When a subagent fails, the coordinator needs *useful* error context, not a vague message.
+- **Why it matters:** The coordinator can only retry, reroute or warn if it knows what went wrong.
+- **Key split:** An **access failure** (timeout, 503) is not the same as a **valid empty result** (searched fine, found nothing).
+- **Two anti-patterns:** hiding errors as "empty success", and killing the whole workflow on one failure.
+- **Exam answer in one line:** *Return structured error context to the coordinator; recover transient errors locally; annotate coverage in the final report.*
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## Overview
 
-### The Naive Production Failure: Conflating Downtime with Clean Audits
-Consider a corporate due diligence agent analyzing a target acquisition candidate (*"Acme Logistics"*).
-The coordinator spawns three subagents:
-- `Subagent 1 (Financials)`: Queries 10-K filings.
-- `Subagent 2 (Litigation)`: Queries federal court records.
-- `Subagent 3 (Sanctions)`: Queries OFAC and global sanctions lists.
+- **Domain:** 5 (15% of the exam).
+- **Task statement:** 5.3 - implement error propagation strategies across multi-agent systems.
+- **Scenario fit:** Scenario 3 (coordinator plus search, analysis and synthesis subagents).
+- **Folder note:** The folder name matches official TS 5.3.
 
-During the run, the federal court database experiences a gateway timeout (`HTTP 504 Gateway Timeout`).
-In a naive implementation:
-```python
-# NAIVE ANTI-PATTERN: Swallowing Errors into Empty Lists
-def query_litigation_database(company_name: str) -> List[Dict[str, Any]]:
-    try:
-        response = court_api.search(company_name, timeout=5)
-        return response.json()["records"]
-    except Exception as e:
-        # Catastrophic: treating an infrastructure failure as "no records found"
-        logger.warning(f"Error querying court API: {e}")
-        return []
-```
-The coordinator collects:
-- Financials: 3 records found.
-- Litigation: `[]` (Empty list).
-- Sanctions: `[]` (Empty list).
+## Concepts Explained
 
-The coordinator passes these results to Claude:
-> *"Synthesize the findings. If no records are found in litigation or sanctions, confirm that the company is legally clean."*
+### 1. Structured error context
+A failure should carry four things:
+- **Failure type** (transient, permanent, timeout, access denied).
+- **Attempted query** (what was being searched).
+- **Partial results** (anything gathered before failing).
+- **Alternatives** (what the coordinator could try next).
 
-Claude reports:
-> *"Executive Summary: Acme Logistics has healthy cash flow and zero active litigation or legal sanctions. The target is cleared for acquisition."*
+### 2. Access failure vs valid empty result
+| Result | Meaning | Coordinator action |
+|---|---|---|
+| `UPSTREAM_FAILURE` | The source could not be checked. | Retry, reroute, or note the gap. |
+| `VALID_EMPTY` | The source was checked. Nothing matched. | Treat as real evidence ("none found"). |
 
-Two weeks later, the company acquires Acme Logistics, only to discover a pending $50M class-action lawsuit. The due diligence system didn't verify clean litigation; it simply reported an internal server timeout as clean evidence!
+### 3. Two anti-patterns
+- **Generic status** ("search unavailable"): the coordinator cannot decide what to do.
+- **Empty-as-success:** hides the failure, so the report claims "nothing found" when nothing was checked.
+- **Killing the workflow:** one failed source aborts everything and discards good results.
 
-### The Architectural Solution: Structured Subagent Status & Coverage Synthesis
-Production multi-agent pipelines demand an explicit status enum and coverage contract:
+### 4. Recover locally, propagate the rest
+A subagent should retry **transient** errors itself (for example a timeout). It reports upward only the errors it **could not resolve**, with context and any partial results.
+
+### 5. Coverage annotations in synthesis
+The final report says which sources answered and which did not. Readers can then see what is well supported and what is a gap.
+
+## Worked Example
+
+**Scenario (sample-question style):** A web search subagent **times out** while the document analysis subagent succeeds.
+
+| Step | What happens |
+|---|---|
+| 1 | Subagent retries the search twice (transient error handling). Still fails. |
+| 2 | It returns: `failure_type=TRANSIENT`, `attempted_query="solid-state battery patents"`, `partial_results=[1 cached item]`, `alternatives=["retry later", "use cached index"]`. |
+| 3 | Coordinator keeps the document results and decides to retry once, then proceed. |
+| 4 | Final report states: *"Coverage: 2 of 3 sources answered. NOT CHECKED: web search (TRANSIENT)."* |
+
+`run_subagent_query()` and `render_report()` in `main.py` implement exactly this.
+
+## Key Terms
+
+- **Structured error context:** failure type, attempted query, partial results, alternatives.
+- **Valid empty result:** a successful query that matched nothing.
+- **Local recovery:** a subagent handling a transient error without involving the coordinator.
+- **Coverage annotation:** report text stating which sources were or were not checked.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-    Coordinator["Coordinator Agent<br>(Research Supervisor)"] --> Dispatcher["Subagent Dispatcher"]
-    
-    subgraph Subagents["Specialized Parallel Subagents"]
-        direction TB
-        SubSEC["Subagent SEC<br>(10-K Filings)"]
-        SubCourt["Subagent Court<br>(Federal Litigation DB)"]
-        SubOFAC["Subagent OFAC<br>(Sanctions Registry)"]
-    end
-    
-    Dispatcher --> SubSEC
-    Dispatcher --> SubCourt
-    Dispatcher --> SubOFAC
-    
-    SubSEC --> ResSEC["SubagentResult:<br>- Status: SUCCESS<br>- Data: [3 revenue records]<br>- Error: None"]
-    SubCourt --> ResCourt["SubagentResult:<br>- Status: UPSTREAM_FAILURE<br>- Data: []<br>- Error: 'HTTP 504 Gateway Timeout'"]
-    SubOFAC --> ResOFAC["SubagentResult:<br>- Status: VALID_EMPTY<br>- Data: []<br>- Confirmed 0 matches in healthy DB"]
-    
-    subgraph Synthesizer["Multi-Agent Coverage Synthesizer"]
-        CoverageCalc["Coverage State Calculator<br>- Evaluates Successes vs Failures<br>- Distinguishes VALID_EMPTY from FAILURES"]
-        ConfidenceScore["Calibrated Confidence Engine<br>(Penalizes score by 33% for failed source)"]
-    end
-    
-    ResSEC --> CoverageCalc
-    ResCourt --> CoverageCalc
-    ResOFAC --> CoverageCalc
-    
-    CoverageCalc --> ConfidenceScore
-    
-    ConfidenceScore --> SynthesisOutput["SynthesisReport:<br>- Coverage: 'PARTIAL'<br>- Confidence: 0.67<br>- Insights: [Revenue details, 0 Sanctions confirmed]<br>- Degraded Sources: ['Court DB (UPSTREAM_FAILURE)']<br>- Warning: 'Litigation risk unverified due to API outage'"]
+    Coord["Coordinator"] --> SubA["Subagent A"]
+    Coord --> SubB["Subagent B"]
+    SubA --> Retry{"Transient error?"}
+    Retry -->|"Yes"| Local["Retry locally"]
+    Local --> Resolved{"Resolved?"}
+    Resolved -->|"No"| Err["Return structured error<br>(type, query, partial, alternatives)"]
+    Resolved -->|"Yes"| Ok["Return results"]
+    Retry -->|"No"| Ok
+    Err --> Coord
+    Ok --> Coord
+    SubB --> Coord
+    Coord --> Synth["Synthesis with<br>coverage annotations"]
 ```
 
-1. **Subagent Status Enum**: Every subagent emits an explicit status:
-   - `SUCCESS`: Successfully executed and returned $\ge 1$ records.
-   - `VALID_EMPTY`: Service is healthy and confirmed zero records match the query.
-   - `UPSTREAM_FAILURE`: Network timeout, 500 error, or connection reset.
-   - `RATE_LIMITED`: API quota exceeded; eligible for exponential backoff.
-2. **Synthesizer Coverage Tracking**: The synthesis engine computes the ratio of healthy vs degraded sources. If any source experiences `UPSTREAM_FAILURE`, the report state is downgraded to `PARTIAL`.
-3. **Transparent Uncertainty Reporting**: The final executive output does not pretend everything is complete. It highlights validated insights from healthy sources while explicitly naming degraded sources and warning decision-makers about missing coverage.
+## Exam Traps and Correct Patterns
 
----
-
-## 🔑 Key Technical Terminology Explained
-
-- **Semantic Zero (`VALID_EMPTY`)**: The affirmative finding that a healthy, accessible data source contains zero matching records for a query.
-- **System Failure (`UPSTREAM_FAILURE`)**: An infrastructure or network error (timeout, HTTP 500, DNS failure) preventing data retrieval; must never be conflated with zero results.
-- **Silent Error Swallowing**: The anti-pattern of catching exceptions in data-fetching tools and returning `[]` or `None`, which falsely implies non-existence of records to downstream LLMs.
-- **Coverage State**: Metadata indicating whether all intended data sources contributed to a synthesized output (`COMPLETE` vs `PARTIAL`).
-- **Confidence Calibration Penalty**: A mathematical discount applied to the overall assessment score reflecting missing information from degraded sources.
-- **Degraded Source Disclosure**: Clear callout in the executive summary informing human reviewers which specific APIs failed and need manual verification.
-
----
-
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
-
-| Error Propagation Technique | Correct Implementation (Exam Standard) | Exam Trap / Distractor to Reject |
+| Topic | Correct pattern | Trap to reject |
 |---|---|---|
-| **Empty Search vs Outage** | **Typed Status Return**: Return `VALID_EMPTY` for 0 results on healthy APIs; return `UPSTREAM_FAILURE` on timeouts or errors. | **TRAP: Empty List Coercion**: Converting exceptions to `return []` so the coordinator can process everything uniformly. (Creates false clean bills of health). |
-| **Handling Subagent Outages** | **Partial Coverage Degradation**: Synthesize available results, mark coverage as `PARTIAL`, and clearly cite degraded sources. | **TRAP: All-or-Nothing Hard Crash**: Raising an exception in the coordinator that crashes the entire run when 1 of 5 sources times out. |
-| **Synthesizer Transparency** | Explicitly state data gaps: *"Court DB was unreachable; litigation risk could not be verified."* | **TRAP: Silent Synthesis**: Hiding the outage from the user and reporting only the successful results as if they represent the whole picture. |
-| **Retry Strategy on Errors** | Retry only transient errors (`503`, `429`, timeout) with exponential backoff; never retry permanent errors (`401`, `404`). | **TRAP: Infinite Retry Loop**: Retrying every error up to 10 times, exhausting latency budgets and compounding upstream outages. |
+| Subagent times out | Structured error with context to the coordinator | Generic "search unavailable" |
+| Search found nothing | Return as a valid empty result | Raise an error |
+| Search could not run | Return as a failure | Return empty list as success |
+| One of five sources fails | Continue; annotate coverage | Abort the whole workflow |
+| Transient error | Retry inside the subagent | Escalate every blip upward |
 
----
+## Common Mistakes
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+- Returning `[]` for both "no results" and "could not search".
+- Catching every exception and returning a friendly string.
+- Letting one failure kill the run and lose good partial work.
+- Retrying permanent errors (auth failure) again and again.
+- Omitting any note about missing coverage in the final report.
 
-| Subagent Response | Coordinator Handling | Coverage Impact | Final Report Action |
-|---|---|---|---|
-| **`SUCCESS` ($\ge 1$ items)** | Ingest items into synthesis pool | Full coverage maintained | Include findings with source attribution |
-| **`VALID_EMPTY` (0 items)** | Ingest "0 records found" confirmation | Full coverage maintained | State affirmative negative: *"Confirmed zero sanctions"* |
-| **`UPSTREAM_FAILURE` (Timeout)** | Log error, omit from synthesis | Degrades to `PARTIAL` | Add prominent disclaimer: *"Source unreachable"* |
-| **`RATE_LIMITED` (HTTP 429)** | Execute backoff or fallback cache | Degrades if cache misses | Note data freshness: *"Using cached data from 24h ago"* |
-| **All Sources Fail** | Circuit breaker trigger | `ZERO_COVERAGE` | Abort synthesis; escalate infrastructure alert |
+## Quick Decision Rules
 
----
+| Situation | Do this |
+|---|---|
+| Timeout / 503 | Retry locally, then propagate with context |
+| 0 matches from a working source | Report as a valid empty result |
+| Some sources missing | Continue and add coverage annotations |
+| Permanent error (e.g. access denied) | Do not retry; propagate with alternatives |
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## Claude 4.5 Notes
 
-When synthesizing multi-agent findings with Claude 4.5:
-- **Model Standard**: Use `claude-sonnet-4-5` for nuanced multi-source synthesis, conflict resolution, and gap analysis.
-- **Thinking Configuration**: Enable Extended Thinking with a budget of 4,000 tokens to reason through source reliability and partial coverage impacts:
-  ```python
-  thinking = {"type": "enabled", "budget_tokens": 4000}
-  ```
-- **Temperature Omission**: **Do NOT provide `temperature`**, `top_p`, or `top_k`. Anthropic's Claude 4.5 API rejects custom sampling parameters when `thinking` is active.
-- **Explicit Coverage Prompting**: Instruct Claude: *"If any source has status UPSTREAM_FAILURE, you must state in your executive summary that conclusions are tentative due to incomplete coverage."*
+- `claude-sonnet-4-5` coordinates and synthesises; `claude-haiku-4-5` runs the search and extraction subagents.
+- With extended thinking on: omit `temperature`; leave `top_k` and `top_p` unset; `tool_choice` may only be `auto` or `none`; `budget_tokens` at least 1024 and below `max_tokens`.
+- Echo assistant `thinking` blocks (with signatures) back unchanged in tool-use turns.
 
----
+## Exam-Style Practice Questions
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+**Q1 (Scenario 3).** A search subagent times out. The coordinator receives `"Error: search unavailable"`. What is the best improvement?
 
-In the accompanying notebook [`ts_5_3_error_propagation_coverage.ipynb`](ts_5_3_error_propagation_coverage.ipynb), you will explore the full offline-executable error propagation system:
+- A. Return the error with failure type, attempted query, partial results and alternatives.
+- B. Return an empty result so the pipeline continues.
+- C. Raise an exception that stops the whole research run.
+- D. Retry forever in the coordinator.
 
-- **Step 1: Subagent Status Enums & Data Classes**: Define `SubagentStatus`, `SubagentResult`, and `SynthesisReport`.
-- **Step 2: Simulating Subagent Execution**: Dispatch mock subagents returning a mix of `SUCCESS`, `VALID_EMPTY`, and `UPSTREAM_FAILURE`.
-- **Step 3: Multi-Agent Coverage Synthesizer**: Execute the synthesis engine to calculate coverage percentages and confidence penalties.
-- **Step 4: Silent Error Anti-Pattern Comparison**: Compare the honest partial coverage report against a naive model that swallowed errors.
-- **Step 5: Automated Verification**: Run assertions ensuring that failed sources are never reported as "zero records".
+**Q2 (Scenario 3).** A patents search runs successfully and finds no matching patents. How should the subagent report it?
 
-Verify your implementation anytime with offline unit tests in WSL Ubuntu-26.04:
-```powershell
-wsl -d Ubuntu-26.04 bash -c "~/.local/bin/uv run pytest tests/test_domain5_full.py"
-```
+- A. As an upstream failure, so the coordinator retries.
+- B. As a valid empty result, stating what was searched.
+- C. As a transient error with alternatives.
+- D. Omit it from the output.
+
+**Q3 (Scenario 6).** An extraction pipeline fetches data from 4 sources. Source 3 is down after local retries. What should the final report do?
+
+- A. Drop source 3 silently; the other three are enough.
+- B. Fail the whole job and return nothing.
+- C. Fill source 3's section with likely values from similar companies.
+- D. Include the results from the three sources and add a coverage annotation naming source 3 and the failure.
+
+### Answers
+
+- **Q1: A.** B fails: it turns a failure into false "nothing found". C fails: one failure should not discard good work. D fails: infinite retries ignore permanent failures and block progress.
+- **Q2: B.** A fails: a successful search is not a failure. C fails: nothing went wrong. D fails: "none found" is useful evidence.
+- **Q3: D.** A fails: the gap becomes invisible. B fails: it discards good partial work. C fails: it invents data.
+
+## Self-Check Checklist
+
+- [ ] I can list the four parts of structured error context.
+- [ ] I can tell an access failure from a valid empty result.
+- [ ] I can name the two anti-patterns (empty-as-success, killing the workflow).
+- [ ] I know subagents retry transient errors and propagate only unresolved ones.
+- [ ] I know what a coverage annotation says.
+
+**Memory hook:** *"Fail with facts; empty is an answer; report what you missed."*
+
+## Hands-on Workbook Guide
+
+Notebook: [`ts_5_3_error_propagation_coverage.ipynb`](ts_5_3_error_propagation_coverage.ipynb). Code: [`main.py`](main.py). Both run offline.
+
+1. **Local recovery:** `run_subagent_query()` retries `TransientSourceError`, stops on `PermanentSourceError`.
+2. **Statuses:** `SUCCESS`, `VALID_EMPTY`, `UPSTREAM_FAILURE`, `RATE_LIMITED`.
+3. **Synthesis:** `MultiAgentSynthesizer.synthesize()` builds coverage annotations.
+4. **Report:** `render_report()` prints findings plus a coverage section.
+5. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
+
+**Related:** [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (what to attach to each claim in the synthesis).

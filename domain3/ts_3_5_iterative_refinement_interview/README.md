@@ -1,129 +1,178 @@
-# Task Statement 3.5: Apply Iterative Refinement and the Interview Pattern
+# Task Statement 3.5: Apply Iterative Refinement Techniques for Progressive Improvement
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+## In One Minute
 
-### Certification Domain & Weight
-- **Domain**: Domain 3: Claude Code Configuration & Workflows
-- **Domain Weight**: 18% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 2 (Code Generation) & Scenario 4 (Developer Productivity)
+- **Concrete examples**: when prose instructions get interpreted inconsistently, give 2-3 input/output examples.
+- **Test-driven iteration**: write tests first, run them, and share the failures with Claude.
+- **Interview pattern**: have Claude ask questions first, to surface considerations you did not mention (for example cache invalidation).
+- **Feedback batching**: put *interacting* problems in one message; fix *independent* problems one after another.
+- **Exam answer in one line**: inconsistent results from a prose spec means add concrete input/output examples.
 
-### The Core Goal
-To master **iterative prompt refinement techniques**, deploy the **Interview Pattern** to clarify ambiguous requirements before writing code, leverage **concrete Input/Output examples** to eliminate edge-case misunderstandings, and structure feedback appropriately for **interacting versus independent issues**.
+## Overview
 
-### Why This Matters in Production
-In real-world software engineering, human requirements are inherently ambiguous: *"Build an authentication service"*, *"Improve query performance"*, or *"Add rate limiting"*. 
-If an agent acts on ambiguous prompts by making silent architectural assumptions:
-- It might choose JWT tokens when the organization requires server-side Redis sessions.
-- It might use SQLite when the production infrastructure runs on PostgreSQL.
-- The developer is forced to discard the entire generated codebase and start over.
-By applying the **Interview Pattern**, the agent acts as an architectural partner—surfacing 2–3 concrete implementation alternatives with clear trade-offs *before* committing code to disk.
+- **Domain**: Domain 3, Claude Code Configuration & Workflows (**20%** of the exam).
+- **Scenarios**: Scenario 2 (Code Generation).
+- **Goal**: improve results step by step with precise, checkable feedback.
+- **Exam focus**: which refinement technique fits which symptom.
 
-### Exam Importance
-Task Statement 3.5 tests your understanding of human-agent collaboration. The exam will ask how Claude should respond to underspecified technical prompts, how to communicate bug reports to Claude, and why providing 2–3 input/output examples is superior to repetitive generic re-prompts.
+## Concepts Explained
 
----
+### Simple idea
+Show, do not just tell. An example or a failing test is clearer than another adjective.
 
-## 📖 Deep Narrative: Why We Do What We Do
+### Why it matters
+Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
 
-### 1. The Interview Pattern: Proactive Clarification
-When presented with an underspecified request:
-- **Anti-Pattern (Silent Guessing)**: Claude guesses an architecture, writes 400 lines of code, and forces the user to review code built on the wrong stack.
-- **Production Standard (The Interview Pattern)**: Claude detects the ambiguity and prompts the user:
-  ```markdown
-  Before implementing the authentication service, I noticed 3 key architectural decisions:
-  1. **Token Strategy**: Stateless JWT vs Server-side Redis session cookies?
-  2. **User Storage**: Add to existing PostgreSQL `users` table or create an independent auth schema?
-  3. **Password Hashing**: Argon2id (recommended) or bcrypt?
-  Please select your preferred configuration, or I can proceed with the recommended defaults.
-  ```
-- **Result**: The developer aligns the design in 10 seconds, and the generated code is 100% production-ready on the first pass.
+### How it works
 
-### 2. Concrete Input/Output Examples (TDD Grounding)
-Natural language descriptions of business logic are notorious for hiding edge cases (e.g., *"Calculate tiered volume discounts"*).
-- Vague: *"Make sure discounts apply properly to large enterprise orders."*
-- Concrete (The Golden Standard):
-  ```markdown
-  Please implement `calculate_discount(units: int, price: float) -> float` matching these exact cases:
-  - Input: 5 units @ $10.00 -> Output: $50.00 (0% discount for < 10 units)
-  - Input: 15 units @ $10.00 -> Output: $135.00 (10% discount for 10-49 units)
-  - Input: 100 units @ $10.00 -> Output: $750.00 (25% discount for 50+ units)
-  ```
-  Concrete examples anchor Claude's reasoning mathematically and allow test generation *before* implementation.
+| Symptom | Technique |
+|---|---|
+| Output format or edge cases are interpreted differently each run | 2-3 concrete input/output examples |
+| You can define "correct" as checks | Write tests first, run, share failures |
+| Domain is unfamiliar or requirements are open | Interview pattern: Claude asks questions first |
+| Several problems at once | Group those that interact; sequence those that do not |
 
-### 3. Interacting vs. Independent Issues Strategy
-When reporting issues back to Claude during refinement:
-- **Interacting Issues**: When two bugs are causally linked (e.g., a database connection leak causes an API timeout), **report them together in a single prompt** so Claude understands the causal relationship.
-- **Independent Issues**: When two bugs are completely unrelated (e.g., a CSS button alignment issue and an SQL query syntax error), **report them in separate, sequential turns** to avoid attention dilution.
+- **Examples**: show the input, the expected output, and one edge case (for example a missing value).
+- **Tests first**: tests define done. After a run, paste the failing output and ask Claude to fix the code, not the tests.
+- **Interview**: ask Claude to question you before it designs. It may raise issues like cache invalidation, failure handling, or backward compatibility.
+- **Batching**: two issues interact if fixing one changes the other (they touch the same component). Send them together so Claude can solve them jointly.
 
----
+## Key Terms
 
-## 🔑 Key Technical Terminology Explained
+- **Concrete input/output example**: a real input paired with its exact expected output.
+- **Test-driven iteration**: tests written first, failures shared to guide fixes.
+- **Interview pattern**: Claude asks clarifying questions before implementing.
+- **Interacting problems**: problems whose fixes affect each other.
+- **Independent problems**: problems that can be fixed separately.
 
-- **The Interview Pattern**: Prompting Claude to surface architectural trade-offs, options, and missing specifications before writing code.
-- **Ambiguity Gatekeeper**: An internal evaluation step where the agent assesses whether a prompt has sufficient technical specificity to implement reliably.
-- **Concrete Input/Output Examples**: Pairing prose requirements with 2–3 explicit numerical or string test cases to anchor model comprehension.
-- **Interacting Issues**: Bugs or requirements that share shared state, dependencies, or causal links; must be communicated together.
-- **Independent Issues**: Orthogonal bugs with zero shared state; should be resolved in sequential, isolated turns.
-
----
-
-## 🏗️ Architecture: The Interview Gatekeeper Pattern
+## Architecture
 
 ```mermaid
 flowchart TD
-    UserReq["User Prompt:<br>'Build an authentication service'"] --> Analyzer["Ambiguity & Scope Analyzer"]
-    
-    Analyzer --> AmbiguityCheck{"Scope Underspecified?"}
-    
-    AmbiguityCheck -->|"Yes: High Ambiguity"| Interview["Interview Mode Activated"]
-    Interview --> Ask["Clarifying Questions (2-3 Options)<br>Auth Type, DB & Session Model"]
-    Ask --> UserFeedback["User Selects Exact Architecture"]
-    
-    UserFeedback --> ConcreteIO["Provide 2-3 Concrete<br>Input/Output Examples"]
-    AmbiguityCheck -->|"No: Specified"| ConcreteIO
-    
-    ConcreteIO --> TestCases["Generate Test Suite<br>First (TDD)"]
-    TestCases --> CodeGen["Implement Targeted Solution"]
-    CodeGen --> Verification["Run Offline Test Assertions"]
-    Verification --> Success["Refinement Complete"]
+    Start["Vague or inconsistent result"] --> Pick{"What is the cause?"}
+    Pick -->|"Prose is read differently"| Ex["Add 2-3 input/output examples"]
+    Pick -->|"Correctness can be checked"| Test["Write tests first<br>share the failures"]
+    Pick -->|"Requirements are open"| Int["Interview pattern<br>Claude asks first"]
+    Pick -->|"Several problems"| Batch["Interacting: one message<br>Independent: one at a time"]
 ```
 
----
+## Worked Example
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+Spec in prose: "Normalize dates." Results vary. Add examples:
 
-| Refinement Scenario | Correct Architectural Implementation | Exam Trap to Reject | Why the Trap Fails |
+```text
+Input:  "2026/10/05"      Output: "2026-10-05"
+Input:  "5 Oct 2026"      Output: "2026-10-05"
+Input:  ""                Output: null
+```
+
+Test-driven loop: write `test_normalize_dates`, run it, then send:
+
+```text
+These tests fail. Fix the code so they pass without editing the tests:
+- test_empty_string: expected None got ""
+```
+
+Feedback batching with `group_feedback` in `main.py`:
+
+| Issue | Touches |
+|---|---|
+| token payload is wrong | auth, router |
+| router order is wrong | router |
+| CSS padding is off | dashboard |
+
+Result: send *token payload* and *router order* together (they share `router`); send *CSS padding* separately.
+
+## Exam Traps and Correct Patterns
+
+| Concept | Correct | Trap | Why the trap fails |
 |---|---|---|---|
-| **Underspecified Technical Request** | **The Interview Pattern**: Proactively ask 2–3 targeted questions with options and trade-offs. | **TRAP**: Silently picking the most common framework and immediately generating code. | High probability of choosing the wrong architecture, wasting developer time and requiring full rewrites. |
-| **Clarifying Edge Cases** | Provide **2 to 3 concrete Input/Output examples** showing boundary values. | **TRAP**: Repeating the same vague natural language instructions with more aggressive adjectives (*"Be very careful!"*). | Adjectives do not resolve algorithmic ambiguity; concrete data pairs eliminate guesswork. |
-| **Reporting Multiple Bugs** | Group **interacting issues** together in 1 prompt; report **independent issues** sequentially. | **TRAP**: Reporting 5 unrelated bugs in a single giant prompt, or splitting causally linked bugs across separate chats. | Conflating unrelated bugs causes attention dilution; splitting causally linked bugs prevents root-cause diagnosis. |
+| Inconsistent interpretation | 2-3 concrete examples | "Be more careful and precise" | No new information for Claude |
+| Verifying correctness | Tests first, share failures | Describe the failure in vague words | Not precise or repeatable |
+| Open requirements | Interview first | Guess and rewrite later | Hidden concerns surface late and cost rework |
+| Interacting issues | One message | Separate messages | Fixes may conflict |
+| Independent issues | Sequential | One huge message | Harder to review and verify |
 
----
+## Common Mistakes
 
-## 💡 Architectural Decision Matrix: Refinement Tactics
+- Adding adjectives instead of examples.
+- Giving one example only, so edge cases stay unclear.
+- Asking Claude to "fix the tests" instead of the code.
+- Splitting issues that touch the same component across messages.
+- Starting a complex feature without asking Claude to interview you.
 
-| Situation | Action to Take | Format |
-|---|---|---|
-| Prompt mentions "Add database support" | Activate Interview Pattern | Surface 2–3 DB options (Postgres, Redis, SQLite). |
-| Edge case in calculation algorithm | Provide Concrete I/O Pairs | Table of Inputs $\rightarrow$ Expected Outputs. |
-| Bug A causes Bug B | Report Together | Single prompt explaining the causal link. |
-| Bug A in CSS, Bug B in SQL | Report Sequentially | Fix CSS in Turn 1; fix SQL in Turn 2. |
+## Quick Decision Rules
 
----
+| Situation | Do this |
+|---|---|
+| Inconsistent output format | Add 2-3 input/output examples |
+| Behavior can be checked | Write tests first |
+| Open design space | Interview pattern |
+| Linked problems | One message |
+| Unrelated problems | Separate sequential messages |
 
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
+## Claude 4.5 Notes
 
-- **Interview Generation**: Extended Thinking allows Claude to analyze the user's project structure and formulate high-value architectural questions tailored to the existing stack.
-- **Sampling Rules**: Omit `temperature` whenever thinking is enabled.
-- **Thinking Continuity**: When the user answers the clarifying questions, preserve previous thinking turns so Claude retains context on the rejected alternatives.
+- Models in this repo: `claude-sonnet-4-5`, `claude-haiku-4-5`.
+- With extended thinking in API code: leave `temperature` and `top_k`/`top_p` unset; only `tool_choice` `auto` or `none`; echo thinking blocks with signatures unchanged.
 
----
+## Exam-Style Practice Questions
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+**Q1 (Scenario 2: Code Generation).** You describe a log-formatting transformation in prose. Claude interprets it differently on each run, especially for missing values. What is the best next step?
 
-When exploring [`ts_3_5_iterative_refinement_interview.ipynb`](ts_3_5_iterative_refinement_interview.ipynb):
-1. **Step 1: Setup & Ambiguity Scorer**: Analyzes incoming prompts to calculate an ambiguity score.
-2. **Step 2: Activating the Interview Pattern**: Simulates generating structured options for an ambiguous auth task.
-3. **Step 3: Concrete I/O Test Generation**: Demonstrates converting I/O examples into automated test assertions.
-4. **Step 4: Interacting vs Independent Issue Routing**: Demonstrates grouping causally linked issues.
-5. **Step 5: Verification Assertions**: Verifies that ambiguous prompts trigger interviews and concrete examples guarantee test pass rates.
+- A) Rewrite the prompt with stronger words such as "exactly" and "always".
+- B) Provide 2-3 concrete input/output examples, including a missing-value case.
+- C) Ask Claude to try harder.
+- D) Move the instructions to `~/.claude/CLAUDE.md`.
+
+**Q2 (Scenario 2).** You are asking for a new caching layer in a system you barely know. You worry you are missing considerations. What technique helps most?
+
+- A) Ask for the full implementation and review it after.
+- B) Provide a one-line spec and set a low token limit.
+- C) Create a path-scoped rule for cache files.
+- D) Use the interview pattern: Claude asks questions first, such as about cache invalidation.
+
+**Q3 (Scenario 5: CI flavour).** A PR review shows three problems: the auth token payload and the router middleware are both wrong (they depend on each other), and a CSS padding bug is unrelated. How should you give feedback?
+
+- A) One message for all three.
+- B) Three separate messages in any order.
+- C) One message for the payload and middleware, a separate message for the CSS bug.
+- D) Ignore the CSS bug.
+
+### Answers
+
+**Q1: B.**
+- A fails: stronger words give no new information.
+- C fails: this is not an actionable instruction.
+- D fails: personal config does not remove the ambiguity.
+
+**Q2: D.**
+- A fails: costly rework if hidden constraints appear late.
+- B fails: a thin spec makes the gaps worse.
+- C fails: rules load conventions by file path; they do not discover missing requirements.
+
+**Q3: C.**
+- A fails: bundling an unrelated issue makes review harder.
+- B fails: separating interacting issues risks conflicting fixes.
+- D fails: unrelated issues still need fixing, just separately.
+
+## Self-Check Checklist
+
+- [ ] I know to use 2-3 concrete input/output examples when prose is inconsistent.
+- [ ] I can run a test-first loop and share failures.
+- [ ] I can state what the interview pattern is for.
+- [ ] I can tell interacting from independent problems.
+- [ ] I know that adjectives and "try harder" do not help.
+
+**Memory hook**: *Show examples, share failing tests, ask before building.*
+
+## Hands-on Workbook Guide
+
+Open [`ts_3_5_iterative_refinement_interview.ipynb`](ts_3_5_iterative_refinement_interview.ipynb) (offline). It uses [main.py](main.py):
+
+1. Setup and imports.
+2. Run the clarity check and build a grounded spec with examples.
+3. Group issues with `group_feedback` and format test failures.
+4. Assertions on questions, examples and grouping.
+
+Previous: [TS 3.4](../ts_3_4_plan_mode_and_refinement/README.md). Next: [TS 3.6](../ts_3_6_cicd_pipeline_automation/README.md).

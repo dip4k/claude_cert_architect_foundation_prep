@@ -1,19 +1,21 @@
 """
 Domain 2: Tool Design & MCP Integration
 Task Statement 2.2: Implement structured error responses for MCP tools
-Exam Scenario 1 & 4
+Exam Scenarios 1 (Customer Support) and 3 (Research)
 
 Key Exam Concepts Demonstrated:
-1. Returning structured error metadata using the MCP isError flag pattern.
-2. Distinct error categories:
-   - "transient": Timeouts, connection failures -> isRetryable: true
-   - "validation": Malformed parameters -> isRetryable: false
-   - "business": Policy violations, account limits -> isRetryable: false, customer-friendly message
-   - "permission": Insufficient privileges -> isRetryable: false
-3. Why uniform generic errors ("Operation failed") prevent agents from making appropriate recovery decisions.
-4. Distinguishing access failures from valid empty results (successful queries with 0 matches).
+1. Every failure sets isError=True and carries errorCategory, isRetryable and message.
+   - "transient":  timeouts, outages            -> isRetryable True
+   - "validation": malformed input              -> isRetryable False (fix the input)
+   - "business":   policy limit, e.g. refund    -> isRetryable False (explain or escalate)
+   - "permission": caller not allowed           -> isRetryable False (do not retry)
+2. A uniform "Operation failed" hides all of this and is an anti-pattern.
+   `validate_error_payload` rejects it.
+3. A valid empty result (query worked, 0 matches) is NOT an error: isError=False.
+4. A subagent recovers from transient errors locally (`recover_locally`) and propagates only
+   unresolved errors, with partial results and what was attempted.
 
-Manual Execution (WSL Ubuntu):
+Manual Execution (WSL Ubuntu, makes API calls - run by hand only):
     uv run domain2/ts_2_2_mcp_structured_errors/main.py
 """
 
@@ -22,24 +24,27 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from dotenv import load_dotenv
-import anthropic
+from lib.response_logger import ResponseTrail, get_agent_trail_path  # noqa: E402
+from lib.sdk_parser_py import create_parser  # noqa: E402
 
-from lib.sdk_parser_py import create_parser
-from lib.response_logger import ResponseTrail, get_agent_trail_path
+COORDINATOR_MODEL = "claude-sonnet-4-5"  # interprets errors and decides recovery
+WORKER_MODEL = "claude-haiku-4-5"  # subagent work
+MAX_ITERATIONS = 5  # safety cap only; stop_reason drives the loop
 
-load_dotenv()
-
+ERROR_CATEGORIES = ("transient", "validation", "business", "permission")
+GENERIC_MESSAGES = ("operation failed", "error", "failed", "something went wrong")
+REFUND_AUTO_LIMIT = 500.0
 
 # ==============================================================================
-# 1. MCP Structured Tool Error Model
+# 1. MCP structured error model
 # ==============================================================================
+
 
 def create_mcp_error(
     category: str,
@@ -47,35 +52,72 @@ def create_mcp_error(
     is_retryable: bool,
     details: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Formats an MCP structured error response conforming to exam standards."""
+    """Build a structured tool error: isError, errorCategory, isRetryable, message, details."""
+    if category not in ERROR_CATEGORIES:
+        raise ValueError(f"errorCategory must be one of {ERROR_CATEGORIES}, got '{category}'")
     return {
         "isError": True,
-        "errorCategory": category,  # "transient" | "validation" | "business" | "permission"
+        "errorCategory": category,
         "isRetryable": is_retryable,
         "message": message,
         "details": details or {},
     }
 
 
+def validate_error_payload(payload: Dict[str, Any]) -> List[str]:
+    """Return schema problems of a tool error payload (empty list means valid)."""
+    problems: List[str] = []
+    if payload.get("isError") is not True:
+        problems.append("isError must be True")
+    if payload.get("errorCategory") not in ERROR_CATEGORIES:
+        problems.append(f"errorCategory must be one of {ERROR_CATEGORIES}")
+    if not isinstance(payload.get("isRetryable"), bool):
+        problems.append("isRetryable must be a bool")
+    message = str(payload.get("message", "")).strip()
+    if not message or message.lower().rstrip(".") in GENERIC_MESSAGES:
+        problems.append("message must be specific and human-readable, not 'Operation failed'")
+    if payload.get("errorCategory") in ("validation", "business", "permission"):
+        if payload.get("isRetryable") is True:
+            problems.append("only transient errors may be retryable")
+    return problems
+
+
+def to_call_tool_result(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrap a payload in the MCP CallToolResult shape (isError + JSON text content)."""
+    return {
+        "isError": bool(payload.get("isError", False)),
+        "content": [{"type": "text", "text": json.dumps(payload)}],
+    }
+
+
+def recovery_action(error: Dict[str, Any]) -> str:
+    """Map an error to the next step: retry, fix_input, explain_or_escalate or stop."""
+    category = error.get("errorCategory")
+    if category == "transient" and error.get("isRetryable"):
+        return "retry"
+    if category == "validation":
+        return "fix_input"
+    if category == "business":
+        return "explain_or_escalate"
+    return "stop"
+
+
 # ==============================================================================
-# 2. Tools with Structured Error Responses
+# 2. Tools with structured errors
 # ==============================================================================
 
+
 def query_inventory(sku: str, simulate_mode: str = "normal") -> Dict[str, Any]:
-    """
-    Inventory query tool demonstrating transient error vs empty match vs success.
-    """
+    """Return stock for a SKU: transient error, validation error, empty result or success."""
     if simulate_mode == "timeout":
-        # Transient failure (e.g. database connection timeout)
         return create_mcp_error(
             category="transient",
-            message="Database query timed out while reaching warehouse cluster.",
+            message="Warehouse database timed out. Retry the same request shortly.",
             is_retryable=True,
             details={"service": "warehouse_db", "timeout_ms": 5000},
         )
 
     if not sku.startswith("SKU-"):
-        # Validation error
         return create_mcp_error(
             category="validation",
             message=f"Invalid SKU format: '{sku}'. SKUs must match format SKU-XXXXX.",
@@ -83,7 +125,7 @@ def query_inventory(sku: str, simulate_mode: str = "normal") -> Dict[str, Any]:
         )
 
     if sku == "SKU-99999":
-        # Valid empty result (NOT an error!)
+        # Valid empty result: the query worked and the item has zero stock. NOT an error.
         return {
             "isError": False,
             "found": True,
@@ -103,19 +145,16 @@ def query_inventory(sku: str, simulate_mode: str = "normal") -> Dict[str, Any]:
 
 
 def issue_refund(customer_id: str, amount: float) -> Dict[str, Any]:
-    """
-    Refund tool demonstrating business policy error.
-    """
-    if amount > 500.0:
-        # Business policy violation: requires human supervisor escalation
+    """Refund up to REFUND_AUTO_LIMIT; larger amounts are a non-retryable business error."""
+    if amount > REFUND_AUTO_LIMIT:
         return create_mcp_error(
             category="business",
             message=(
-                f"Refund amount ${amount:.2f} exceeds automated policy threshold of $500.00. "
-                "Must be routed to human supervisor for authorization."
+                f"Refund amount ${amount:.2f} exceeds automated policy threshold of "
+                f"${REFUND_AUTO_LIMIT:.2f}. Must be routed to a human supervisor for approval."
             ),
             is_retryable=False,
-            details={"max_allowed_automated": 500.00, "requested_amount": amount},
+            details={"max_allowed_automated": REFUND_AUTO_LIMIT, "requested_amount": amount},
         )
 
     return {
@@ -127,10 +166,26 @@ def issue_refund(customer_id: str, amount: float) -> Dict[str, Any]:
     }
 
 
-TOOLS = [
+def read_payment_method(customer_id: str, caller_scope: str) -> Dict[str, Any]:
+    """Return a masked card; callers without the 'payments:read' scope get a permission error."""
+    if caller_scope != "payments:read":
+        return create_mcp_error(
+            category="permission",
+            message="This agent is not allowed to read payment methods. Escalate to a human.",
+            is_retryable=False,
+            details={"required_scope": "payments:read", "caller_scope": caller_scope},
+        )
+    return {"isError": False, "customer_id": customer_id, "card_last4": "4242"}
+
+
+TOOLS: List[Dict[str, Any]] = [
     {
         "name": "query_inventory",
-        "description": "Checks warehouse inventory levels by SKU. Returns stock count or structured error metadata.",
+        "description": (
+            "Checks warehouse stock for one SKU. Returns stock_count (0 is a valid result, not "
+            "an error) or a structured error with errorCategory and isRetryable. "
+            "Do NOT use for order status; use lookup_order. Example: 'Is SKU-10421 in stock?'."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
@@ -138,7 +193,7 @@ TOOLS = [
                 "simulate_mode": {
                     "type": "string",
                     "enum": ["normal", "timeout"],
-                    "description": "Simulation mode for testing error handling.",
+                    "description": "Test switch: 'timeout' forces a transient error.",
                 },
             },
             "required": ["sku"],
@@ -146,12 +201,16 @@ TOOLS = [
     },
     {
         "name": "issue_refund",
-        "description": "Processes refund for customer up to $500.00 automated limit.",
+        "description": (
+            f"Issues a refund of up to ${REFUND_AUTO_LIMIT:.0f} for a verified customer. Larger "
+            "amounts return a business error (isRetryable false): escalate, do not retry. "
+            "Example: 'Refund $40 to CUST-101'."
+        ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "customer_id": {"type": "string", "description": "Customer ID."},
-                "amount": {"type": "number", "description": "Refund dollar amount."},
+                "customer_id": {"type": "string", "description": "Customer ID, e.g. CUST-101."},
+                "amount": {"type": "number", "description": "Refund amount in USD."},
             },
             "required": ["customer_id", "amount"],
         },
@@ -160,32 +219,78 @@ TOOLS = [
 
 
 def dispatch_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    """Route a tool_use block to its implementation; unknown tools return a validation error."""
     if name == "query_inventory":
         return query_inventory(args.get("sku", ""), args.get("simulate_mode", "normal"))
-    elif name == "issue_refund":
+    if name == "issue_refund":
         return issue_refund(args.get("customer_id", ""), float(args.get("amount", 0.0)))
     return create_mcp_error("validation", f"Unknown tool: '{name}'", False)
 
 
 # ==============================================================================
-# 3. Agentic Loop with Error Interpretation
+# 3. Subagent local recovery: retry transient, propagate the rest with context
 # ==============================================================================
+
+
+def recover_locally(
+    call: Callable[[], Dict[str, Any]],
+    max_retries: int = 2,
+    partial_results: Optional[List[Any]] = None,
+) -> Dict[str, Any]:
+    """Retry transient errors; return ok, or unresolved with partial results and attempts."""
+    attempts: List[Dict[str, Any]] = []
+    result: Dict[str, Any] = {}
+    for attempt in range(1, max_retries + 2):
+        result = call()
+        if not result.get("isError"):
+            return {"status": "ok", "result": result, "attempts": attempts}
+        attempts.append(
+            {
+                "attempt": attempt,
+                "errorCategory": result.get("errorCategory"),
+                "message": result.get("message"),
+            }
+        )
+        if recovery_action(result) != "retry":
+            break
+    return {
+        "status": "unresolved",
+        "error": result,
+        "attempted": attempts,
+        "partial_results": list(partial_results or []),
+    }
+
+
+# ==============================================================================
+# 4. Agentic loop with error interpretation (stop_reason only)
+# ==============================================================================
+
+
+def _text_of(response: Any) -> str:
+    """Join the text blocks of a response."""
+    return "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+
 
 def run_structured_error_agent(
     prompt: str,
     client: Any,
     trail: ResponseTrail,
-    max_turns: int = 4,
+    max_iterations: int = MAX_ITERATIONS,
+    model: str = COORDINATOR_MODEL,
 ) -> str:
+    """Run a tool loop that returns each tool_result as JSON so Claude can read errorCategory.
+
+    Control flow uses stop_reason only; max_iterations is a safety cap.
+    """
     session_id = str(uuid.uuid4())
-    trail.session_start(session_id, prompt, "claude-haiku-4-5")
-    messages = [{"role": "user", "content": prompt}]
+    trail.session_start(session_id, prompt, model)
+    messages: List[Dict[str, Any]] = [{"role": "user", "content": prompt}]
     parser = create_parser()
 
-    for turn in range(1, max_turns + 1):
-        trail.api_request(session_id, turn, messages)
+    for iteration in range(1, max_iterations + 1):
+        trail.api_request(session_id, iteration, messages)
         response = client.messages.create(
-            model="claude-haiku-4-5",
+            model=model,
             max_tokens=1024,
             tools=TOOLS,
             messages=messages,
@@ -193,54 +298,62 @@ def run_structured_error_agent(
 
         parse_result = parser.parse(response.model_dump())
         parsed = parse_result.get("data") if parse_result.get("success") else None
-        stop_reason = parsed.stop_reason if parsed else getattr(response, "stop_reason", "end_turn")
+        stop_reason: Optional[str] = parsed.stop_reason if parsed else response.stop_reason
 
         if stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
-            tool_results = []
-
+            tool_results: List[Dict[str, Any]] = []
             for block in response.content:
-                if getattr(block, "type", "") == "tool_use":
-                    tool_name = block.name
-                    tool_id = block.id
-                    tool_input = block.input
-
-                    trail.tool_call(session_id, turn, tool_name, tool_id, tool_input)
-                    result = dispatch_tool(tool_name, tool_input)
-                    trail.tool_result(session_id, turn, tool_name, tool_id, result)
-
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": tool_id,
-                        "content": json.dumps(result),
-                    })
-
+                if getattr(block, "type", "") != "tool_use":
+                    continue
+                trail.tool_call(session_id, iteration, block.name, block.id, block.input)
+                result = dispatch_tool(block.name, block.input)
+                trail.tool_result(session_id, iteration, block.name, block.id, result)
+                tool_result: Dict[str, Any] = {
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(result),
+                }
+                if result.get("isError"):
+                    tool_result["is_error"] = True
+                tool_results.append(tool_result)
             messages.append({"role": "user", "content": tool_results})
-
         elif stop_reason == "end_turn":
-            final_text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+            final_text = _text_of(response)
             trail.session_end(session_id, final_text, "end_turn")
             return final_text
+        elif stop_reason == "pause_turn":
+            messages.append({"role": "assistant", "content": response.content})
+        elif stop_reason == "max_tokens":
+            partial = _text_of(response)
+            trail.session_end(session_id, partial, "max_tokens")
+            return partial
+        elif stop_reason == "refusal":
+            trail.session_end(session_id, "", "refusal")
+            return ""
+        else:
+            trail.session_end(session_id, "", f"unexpected_stop_reason:{stop_reason}")
+            return ""
 
-    trail.session_end(session_id, "", "max_turns_exceeded")
+    trail.session_end(session_id, "", "safety_cap_reached")
     return ""
 
 
 def main() -> None:
+    """Manual entry point (makes live API calls)."""
+    import anthropic
+    from dotenv import load_dotenv
+
+    load_dotenv()
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        print("ANTHROPIC_API_KEY not found in environment or .env. Please set it to run manually.")
+        print("ANTHROPIC_API_KEY not found in environment or .env. Set it to run manually.")
         return
 
     client = anthropic.Anthropic(api_key=api_key)
-    trail_path = get_agent_trail_path(__file__)
-    trail = ResponseTrail(path=trail_path)
-
-    print("Running MCP Structured Error Handler Exercise...")
-    # Example: Policy exceeding refund
+    trail = ResponseTrail(path=get_agent_trail_path(__file__))
     prompt = "Issue a refund of $750.00 to customer CUST-882 for damaged monitor."
-    res = run_structured_error_agent(prompt, client, trail)
-    print(f"\nFinal Agent Response:\n{res}")
+    print(run_structured_error_agent(prompt, client, trail))
 
 
 if __name__ == "__main__":

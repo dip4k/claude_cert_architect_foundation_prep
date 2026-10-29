@@ -1,8 +1,30 @@
 # Domain 4: Prompt Engineering & Structured Output (20% of Exam)
 
-Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCAR-F)** exam. It focuses on designing prompts with explicit categorical criteria, few-shot prompting for structural generalization, guaranteed valid structured output via `tool_use`, validation-retry feedback loops, high-throughput asynchronous Message Batches API pipelines, and multi-pass review architectures.
+Domain 4 represents **20%** of the **Claude Certified Architect – Foundations (CCAR-F)** exam (D1 27%, D2 18%, D3 20%, D4 20%, D5 15%). It focuses on explicit categorical criteria, few-shot prompting, reliable structured output via `tool_use`, validation-retry feedback loops, the cost-saving Message Batches API, and multi-pass review architectures.
 
 > 📖 **Deep Dive Master Guide**: For exhaustive technical explanations, architecture diagrams, sequence flows, gotchas, to-remember points, and practical scenario questions & answers, see [KEY_CONCEPTS.md](KEY_CONCEPTS.md).
+
+---
+
+## 🗺️ Study Order and Quick Map
+
+```mermaid
+flowchart LR
+    T1["4.1 Criteria"] --> T2["4.2 Few-shot"] --> T3["4.3 Schema output"] --> T4["4.4 Validate and retry"] --> T5["4.5 Batches"] --> T6["4.6 Multi-pass review"]
+```
+
+Each study guide starts with "In One Minute", then a worked example, common mistakes, three exam-style questions with answers, and a self-check checklist.
+
+| Task | What it tests | Key trap | Start here |
+|---|---|---|---|
+| **4.1** | Report/skip criteria, severity examples, disabling noisy categories | "Be conservative"; confidence filtering | [4.1 guide](ts_4_1_explicit_criteria_classification/README.md) |
+| **4.2** | 2-4 targeted examples with reasons; varied layouts; null cases | Many identical examples | [4.2 guide](ts_4_2_few_shot_and_multi_instance/README.md) |
+| **4.3** | Tool use + schema; `tool_choice`; nullable fields; `unclear`/`other` | Required fields; forced tool + thinking | [4.3 guide](ts_4_3_structured_output_tool_use/README.md) |
+| **4.4** | Retry with document + failed output + error; absent vs fixable | Retrying absent data | [4.4 guide](ts_4_4_validation_retry_feedback/README.md) |
+| **4.5** | Batch fit, `custom_id`, SLA maths, failed-only resubmission | Batching a blocking check | [4.5 guide](ts_4_5_message_batches_api/README.md) |
+| **4.6** | Independent instance; per-file + integration pass; confidence routing | Self-review; one giant prompt | [4.6 guide](ts_4_6_multi_pass_review/README.md) |
+
+Cross-links: 4.1 ↔ 4.4 (`detected_pattern`, dismissals), 4.3 ↔ 4.4 (schema then validation), 4.5 ↔ 4.6 (batch the nightly review), 4.2 ↔ 4.6 (independent reviewer payload).
 
 ---
 
@@ -22,9 +44,9 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 - **Study Guide & Lab**: [Study Guide (README.md)](ts_4_2_few_shot_and_multi_instance/README.md) · [Interactive Workbook](ts_4_2_few_shot_and_multi_instance/ts_4_2_few_shot_and_multi_instance.ipynb) · [Executable Code](ts_4_2_few_shot_and_multi_instance/main.py)
 
 ### [TS 4.3: Enforce Structured Output Using Tool Use and JSON Schemas](ts_4_3_structured_output_tool_use/main.py)
-- **Guaranteed Valid Syntax**: Enforcing schemas via `tool_use` with forced `tool_choice` guarantees 100% syntactically valid JSON, eliminating markdown parsing errors.
+- **Reliable Valid Syntax**: Enforcing schemas via `tool_use` (`any` or a named tool) removes JSON syntax errors and markdown parsing failures. It does not catch semantic errors such as totals that do not add up. A forced tool cannot be combined with extended thinking (only `auto`/`none`).
 - **Preventing Hallucinations via Nullable Fields**: Mark missing-prone fields as `type: ["string", "null"]` so Claude outputs `null` instead of fabricating data.
-- **Extensible Taxonomy**: Use enum categories with `"OTHER"` plus a companion string field `other_description`.
+- **Extensible Taxonomy**: Use enum categories with `"unclear"` (no signal in the document) and `"other"` plus a companion detail string (for example `other_category_detail`).
 - **Study Guide & Lab**: [Study Guide (README.md)](ts_4_3_structured_output_tool_use/README.md) · [Interactive Workbook](ts_4_3_structured_output_tool_use/ts_4_3_structured_output_tool_use.ipynb) · [Executable Code](ts_4_3_structured_output_tool_use/main.py)
 
 ### [TS 4.4: Implement Validation, Retry, and Feedback Loops for Extraction Quality](ts_4_4_validation_retry_feedback/main.py)
@@ -49,7 +71,7 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 ## 🛠️ Hands-on Exercises in this Domain
 - `ts_4_1_explicit_criteria_classification/`: Precision classification with explicit negative boundaries and severity tiers.
 - `ts_4_2_few_shot_and_multi_instance/`: Diverse few-shot prompting across varied invoice structures.
-- `ts_4_3_structured_output_tool_use/`: Guaranteed schema extraction via `tool_use` with nullable fields.
+- `ts_4_3_structured_output_tool_use/`: Schema extraction via `tool_use` with nullable fields.
 - `ts_4_4_validation_retry_feedback/`: Programmatic validation-retry loops and unrecoverable missing data handling.
 - `ts_4_5_message_batches_api/`: Batch submission, `custom_id` correlation, and partial failure resubmission.
 - `ts_4_6_multi_pass_review/`: Two-pass code review architecture (local per-file pass + cross-file integration pass).
@@ -66,13 +88,13 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 | **High False Positive Management** | Temporarily disable noisy categories entirely while refining criteria to preserve trust. | Relying on confidence score thresholds; instructing Claude to "think harder". |
 | **Feedback Loop Design** | Tracking code constructs that trigger findings (`detected_pattern` field) to enable systematic dismissal analysis. | Deleting dismissals without logging or relying on subjective developer surveys. |
 | **Few-Shot Prompting** | 2–4 targeted examples demonstrating diverse document layouts and explicit reasoning steps. | Providing 15+ homogeneous tabular examples; string-matching regex post-processors. |
-| **Structured Output Format** | Strict JSON schemas enforced via `tool_use` with forced `tool_choice` (`"any"` or named tool). | Asking for markdown ```json``` blocks; parsing free text with regex or `json.loads`. |
+| **Structured Output Format** | Strict JSON schemas enforced via `tool_use` (`"any"` or a named tool; no extended thinking on forced calls). | Asking for markdown ```json``` blocks; parsing free text with regex or `json.loads`. |
 | **Missing Document Data** | Nullable schema types (`type: ["string", "null"]`) so Claude returns `null` instead of fabricating data. | Marking all fields required and hoping Claude doesn't hallucinate missing data. |
 | **Extensible Categorization** | Enum values with `"OTHER"` plus a companion string field (`other_description`). | Open-ended free-text categories without enum validation. |
 | **Validation-Retry Boundaries** | Retries fix format, syntax, and arithmetic mismatches; retries FAIL on fundamentally absent data. | Retrying endlessly on missing source data; treating unrecoverable missing data as a model failure. |
 | **Semantic Cross-Checking** | Extracting `calculated_total` alongside `stated_total` to flag discrepancies; adding `conflict_detected` booleans. | Assuming strict JSON schema validation catches semantic mathematical errors. |
 | **Message Batches API** | 50% cost savings for 24h non-blocking jobs (overnight debt audits, test gen); `custom_id` correlation. | Using Batches API for blocking pre-merge CI checks; expecting multi-turn tool use in batch. |
-| **Batch SLA Scheduling** | Calculating submission frequency (e.g. 4-hour windows to guarantee 30-hour SLA with 24-hour batch turnaround); chunking failed items. | Submitting single monolithic batch at the deadline and failing SLA on partial errors. |
+| **Batch SLA Scheduling** | Submission interval + 24 h window must fit the SLA (30 h SLA: at most every 6 h; every 4 h with a 2 h margin); chunking failed items. | Submitting single monolithic batch at the deadline and failing SLA on partial errors. |
 | **Batch Sample Refinement** | Refining prompts on a small sample set before batch-processing large volumes to maximize first-pass success. | Submitting 500,000 requests on unverified prompts and paying for massive re-submission rounds. |
 | **Review Architecture** | Independent Claude instance (no self-review bias); Two-Pass Review (Pass 1 per-file + Pass 2 integration). | Having the generating session review its own code; single-pass review on 20-file PRs. |
 
@@ -86,10 +108,10 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
    When a review or extraction category produces unacceptable false positives, **temporarily disable that category entirely** while engineering better prompts. Relying on self-reported confidence thresholds fails because models are often highly confident in false-positive findings.
 3. **Structural Diversity in Few-Shot Examples (`TS 4.2`)**:  
    Provide 2–4 few-shot examples featuring **structurally varied layouts** (e.g., one tabular invoice, one dense narrative paragraph, one key-value receipt). Identical layouts cause structural overfitting, causing the model to extract null when format varies.
-4. **Guaranteed Valid Schemas via Tool Use (`TS 4.3`)**:  
-   Always enforce structured output by defining tools with JSON schemas and setting `tool_choice: "any"` or `{"type": "tool", "name": "..."}`. Tool use leverages the model's native constrained decoding, guaranteeing 100% syntactically valid JSON and eliminating markdown parsing crashes.
+4. **Reliable Syntax via Tool Use (`TS 4.3`)**:  
+   Define tools with JSON schemas and set `tool_choice` to `"any"` (several extraction tools, type unknown) or `{"type": "tool", "name": "..."}` (a specific tool first). This removes JSON syntax errors and markdown parsing crashes, but not semantic errors. A forced tool cannot be combined with extended thinking.
 5. **The Nullable Schema Rule for Missing Data (`TS 4.3`)**:  
-   Define non-guaranteed attributes as nullable (`type: ["string", "null"]`). When a field is marked required but absent from the source document, Claude is forced to either hallucinate a plausible value or fail. Nullable fields allow Claude to return `null` truthfully.
+   Define attributes that may be absent as nullable (`type: ["string", "null"]`). When a field is marked required but absent from the source document, Claude is pushed to hallucinate a plausible value. Nullable fields allow Claude to return `null` truthfully.
 6. **The Limits of Validation Retries (`TS 4.4`)**:  
    Validation-retry loops with specific error feedback easily resolve syntax errors, field placement, and arithmetic mismatches. However, **retries fail when data is fundamentally absent from the source document**. Stop retrying and immediately escalate unrecoverable missing data to human triage.
 7. **The Message Batches API Qualification Rule (`TS 4.5`)**:  
@@ -118,7 +140,7 @@ Domain 4 represents 20% of the **Claude Certified Architect – Foundations (CCA
 
 ```mermaid
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Guaranteed valid JSON schema"]
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax (semantics still need validation)"]
     Q1 -->|No| Q2["2. Document attributes missing?"]
     Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br>Prevents hallucinated values"]
     Q2 -->|No| Q3["3. Missing physical source facts?"]
@@ -130,7 +152,7 @@ flowchart TD
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |
 | :--- | :---: | :--- |
-| **Eliminate JSON syntax parsing errors in extraction?** | **YES** | Enforce schema via `tool_use` and forced `tool_choice` *(NEVER parse markdown text)*. |
+| **Eliminate JSON syntax parsing errors in extraction?** | **YES** | Enforce schema via `tool_use` and `tool_choice` *(NEVER parse markdown text; no thinking on forced calls)*. |
 | **Prevent hallucinating absent document attributes?** | **YES** | Mark schema fields as **nullable**: `type: ["string", "null"]` *(NEVER required)*. |
 | **Validation fails due to physically absent source facts?** | **YES** | Fast-fail and abort retries immediately; route to human review *(retries cannot invent data)*. |
 | **Message Batches API for pre-merge PR blocking checks?** | **YES** | Reject: Batches have up to 24h turnaround *(reserve Batches for overnight non-blocking jobs)*. |

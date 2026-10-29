@@ -10,7 +10,9 @@ When working on certification practice exercises inside `domain{N}/`:
 1. **Model Standards & Extended Thinking**:
    - Use the **Claude 4.5 family** (`claude-sonnet-4-5` for orchestrators/reasoning, `claude-haiku-4-5` for workers/subagents).
    - When Extended Thinking is enabled (`thinking={"type": "enabled", "budget_tokens": ...}`):
-     - **Remove / omit `temperature`**, `top_p`, and `top_k` entirely. The Anthropic API throws an HTTP `400 Bad Request` if custom sampling parameters are passed with thinking.
+     - **Remove / omit `temperature`** (rejected with HTTP `400` when thinking is on). Safest: also leave `top_p` and `top_k` unset; newer models reject any non-default `temperature`, `top_p` or `top_k`.
+     - With manual extended thinking (`type: enabled`, the only thinking mode on Claude 4.5 models), use only `tool_choice` `auto` or `none`; `any` or a forced named tool returns HTTP `400`. Force a tool on a request that has no `thinking`. Adaptive thinking on newer models can accept forced tool use (not on every model).
+     - Models newer than 4.5 use `thinking: {type: adaptive}` with `output_config.effort`; Claude 4.7 and later reject `budget_tokens`.
      - Set `budget_tokens` as a positive integer (minimum 1024, strictly less than `max_tokens`).
    - In multi-turn agent loops: assistant `thinking` blocks must be preserved and echoed back **unmodified** (including their cryptographic `signature`) in subsequent turns; stripping them causes an API `400 Bad Request` error.
 

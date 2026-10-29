@@ -1,132 +1,196 @@
 # Task Statement 2.1: Design Effective Tool Interfaces with Clear Descriptions and Boundaries
 
-## 📌 Executive Overview: Goal, Scope & Exam Importance
+## In One Minute
 
-### Certification Domain & Weight
-- **Domain**: Domain 2: Tool Design & MCP Integration
-- **Domain Weight**: 20% of total CCAR-F exam score
-- **Scenario Alignment**: Scenario 1 (Customer Support) & Scenario 4 (Developer Productivity)
-
-### The Core Goal
-To master the art of authoring production-grade tool interfaces using JSON Schema. An architect must understand how Claude uses tool descriptions as a **semantic router**, how to establish explicit **negative boundaries ("When NOT to use")**, specify rigorous parameter constraints, and configure `tool_choice` for deterministic sequencing.
-
-### Why This Matters in Production
-In an enterprise agent with 10+ available tools, tools inevitably share overlapping conceptual territory (e.g. `get_customer_profile`, `lookup_order_history`, `track_shipment`). If descriptions are brief or vague (e.g., `"Gets order details"`), Claude experiences frequent **tool collisions**—calling the wrong API, passing malformed arguments, or getting trapped in trial-and-error loops that burn latency and tokens. 
-In production, tool descriptions are not documentation for humans; they are routing instructions for the model. Precise boundary definitions eliminate misrouting and guarantee schema-valid calls on the first attempt.
-
-### Exam Importance
-Task Statement 2.1 is tested through scenario questions where two tools look similar and Claude is calling the wrong one. You must recognize that the solution is to add **negative guidance and parameter constraints** to the tool schema, or use **`tool_choice`** to enforce sequence, rather than bloating the system prompt.
+- **What**: Claude picks a tool by reading its **name, description and input schema**. Nothing else.
+- **Why it matters**: Two tools with thin or overlapping descriptions get confused. The agent calls the wrong one.
+- **The fix**: Write rich descriptions: purpose, input formats, example queries, edge cases, and boundaries ("do NOT use for X; use Y").
+- **Also**: Rename or split vague tools by purpose. Keyword-heavy system prompts can override good descriptions.
+- **Exam answer in one line**: When the agent misroutes between similar tools, **expand the tool descriptions first**.
 
 ---
 
-## 📖 Deep Narrative: Why We Do What We Do
+## 📌 Overview
 
-### 1. The Problem: Tool Collision and Parameter Ambiguity
-Consider an agent with two tools:
-```json
-// Tool A
-{"name": "lookup_account", "description": "Looks up customer details."}
-// Tool B
-{"name": "get_order", "description": "Fetches order information for a user."}
-```
-When a user asks: *"Where is the package for my recent purchase? My email is alice@example.com"*, which tool does Claude call?
-- Claude might call `get_order`, but pass the email address into an argument named `order_id`.
-- Or Claude calls `lookup_account`, but the account payload does not contain tracking numbers.
-- **Root Cause**: The tools lack operational boundaries and input validation rules.
-
-### 2. The Architectural Solution: Tool Descriptions as Semantic Routers
-Production tool definitions follow three structural rules:
-1. **Explicit Positive Guidance**: Describe exactly what data the tool returns and under what conditions to invoke it.
-2. **Explicit Negative Boundaries ("When NOT to use")**:
-   ```json
-   {
-     "name": "lookup_customer",
-     "description": "Retrieves verified customer profile using registered email address. Do NOT use this tool for package tracking or order status; use 'track_shipment' instead.",
-     "input_schema": {
-       "type": "object",
-       "properties": {
-         "email": {
-           "type": "string",
-           "format": "email",
-           "description": "Customer primary email address, e.g. user@example.com"
-         }
-       },
-       "required": ["email"]
-     }
-   }
-   ```
-3. **Rigorous Parameter Constraints**:
-   - Use `pattern` (regex) for identifiers: `pattern: "^ORD-[0-9]{4}-[A-Z]{2}$"`
-   - Use `enum` for categorical options: `enum: ["STANDARD", "EXPRESS", "OVERNIGHT"]`
-   - Use `minimum` / `maximum` for numerical thresholds.
-4. **Deterministic Sequencing via `tool_choice`**:
-   If policy dictates that authentication *must* occur on turn 1 before any other tool can be invoked, do not hope the model chooses it. Force it:
-   ```python
-   tool_choice = {"type": "tool", "name": "lookup_customer"}
-   ```
+- **Domain**: Domain 2: Tool Design & MCP Integration (**18%** of the exam)
+- **Scenario alignment**: Scenario 1 (Customer Support)
+- **What the exam tests**: A support agent calls `get_customer` when it should call `lookup_order`. You must pick the cheapest correct first step.
+- **Study order**: 2.1 (this file) → [2.2](../ts_2_2_mcp_structured_errors/README.md) → [2.3](../ts_2_3_tool_distribution_and_choice/README.md) → [2.4](../ts_2_4_mcp_server_integration/README.md) → [2.5](../ts_2_5_builtin_tools_usage/README.md). Back to the [Domain 2 map](../README.md).
 
 ---
 
-## 🔑 Key Technical Terminology Explained
+## 📖 Concepts Explained
 
-- **Semantic Router**: The process by which Claude evaluates semantic embeddings and intent from tool JSON descriptions to select the most appropriate tool.
-- **Negative Boundary Guidance**: Explicit instructions in a tool description specifying what the tool should *not* be used for, pointing directly to the alternative tool.
-- **Tool Collision**: A failure mode where two or more tools have overlapping semantic descriptions, causing Claude to alternate unpredictably or select the wrong tool.
-- **Parameter Schema Constraints**: JSON Schema validation primitives (`pattern`, `enum`, `minimum`, `items`, `required`) that restrict input arguments to valid formats.
-- **`tool_choice` Forced Selection**: An API configuration parameter forcing Claude to invoke a specific named tool (`{"type": "tool", "name": "..."}`) or any tool (`"any"`), bypassing autonomous choice (`"auto"`).
+### 1. The simple idea
+A tool is a menu item. Claude reads the menu and orders one. If two items have almost the same text, Claude guesses.
+
+### 2. Why it matters
+Tool descriptions are routing instructions for the model. They are not documentation for people. Short descriptions such as `"Retrieves order details"` and `"Retrieves customer details"` look the same to the model. The result is wrong calls, bad arguments and wasted turns.
+
+### 3. How a good description works
+A strong description has five parts:
+1. **Purpose**: what data it returns, in one or two sentences.
+2. **Input formats**: what the argument looks like (`ORD-` plus digits, an email, a `CUST-XXXX` ID).
+3. **Example queries**: two or three real user requests that should trigger it.
+4. **Edge cases**: what happens on no match, partial match, bad format.
+5. **Boundaries**: what it must NOT be used for, and which tool to use instead.
+
+### 4. Rename and split vague tools
+Two tools called `analyze_content` and `analyze_document` overlap. The model cannot tell them apart. Split by **purpose** and rename:
+
+| Before | After | One job |
+|---|---|---|
+| `analyze_document` | `extract_data_points` | Pull fields out of one document |
+| `analyze_document` | `summarize_content` | Write a short summary |
+| `analyze_document` | `verify_claim_against_source` | Check a claim against the text |
+
+### 5. System prompts can override descriptions
+If the system prompt says "always check the account first", the model may keep calling `get_customer` for every question. Keyword-style wording in a system prompt competes with the tool descriptions. Review the prompt for words that push toward one tool.
+
+### 6. Where `tool_choice` fits
+Use `tool_choice` to force a mandatory step (see [2.3](../ts_2_3_tool_distribution_and_choice/README.md)). It is **not** the first fix for misrouting. Better descriptions come first.
 
 ---
 
-## 🏗️ Architecture: Tool Disambiguation & Routing Flow
+## 🔑 Key Terms
+
+- **Tool description**: The text that tells Claude when and how to use a tool. The primary selection mechanism.
+- **Boundary statement**: A line such as "Do NOT use for tracking; use `lookup_order`".
+- **Overlapping descriptions**: Two tools that read almost the same. A cause of misrouting.
+- **Input format**: The exact shape of an argument, for example `ORD-9821`.
+- **Split / rename**: Replace one vague tool by several single-purpose tools with clear names.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    UserQuery["User Input:<br>'Where is my recent shipment?'"] --> Claude["Claude Tool Router<br>(claude-sonnet-4-5)"]
-    
-    Claude --> EvaluateDescriptions{"Evaluate JSON Schema<br>Descriptions & Boundaries"}
-    
-    EvaluateDescriptions -->|"Explicit Positive Match"| ToolA["track_shipment(tracking_number)<br>Boundary: Active tracking numbers only"]
-    EvaluateDescriptions -->|"Explicit Negative Exclusion"| ToolB["lookup_customer(email)<br>Boundary: DO NOT use for package tracking"]
-    
-    ToolA --> Dispatch["Execute Tool Call via Host"]
-    Dispatch --> ToolResult["Return tool_result Block"]
+    Query["User asks:<br>Where is order ORD-9821?"] --> Router["Claude reads all<br>tool descriptions"]
+    Router --> Check{"Which description<br>matches best?"}
+    Check -->|"Order status, tracking, ORD- IDs"| Order["lookup_order<br>order_id: ORD-digits"]
+    Check -->|"Identity, tier, CUST- IDs"| Cust["get_customer<br>identifier: email or CUST-XXXX"]
+    Order --> Result["tool_result returned<br>to Claude"]
+    Cust --> Result
 ```
 
 ---
 
-## ⚠️ Critical Exam Distinctions & Distractor Teardown
+## 🧪 Worked Example (Customer Support)
 
-| Tool Interface Element | Correct Implementation | Exam Trap to Reject | Why the Trap Fails |
+**Problem**: The agent gets "Where is my package? Order ORD-9821". It calls `get_customer`.
+
+1. **Look at the tools.** Both have one-line descriptions: "Retrieves customer details" and "Retrieves order details".
+2. **Find the cause.** Nothing says which one handles tracking. The model guesses.
+3. **Rewrite `lookup_order`.** Add purpose (status, carrier, return eligibility), input format (`ORD-` plus digits), examples ("Where is order ORD-9821?"), edge case (`found=false` if unknown), and a boundary ("not for profile lookups; use `get_customer`").
+4. **Rewrite `get_customer`.** Add the mirror boundary: "Do NOT use for order tracking; use `lookup_order`".
+5. **Retest.** The same request now routes to `lookup_order`.
+
+The code in [main.py](main.py) has both tools, `audit_tool()` to flag thin descriptions and `description_overlap()` to measure how similar two descriptions are.
+
+---
+
+## ⚠️ Exam Traps and Correct Patterns
+
+| Situation | Correct pattern | Trap | Why the trap fails |
 |---|---|---|---|
-| **Resolving Overlapping Tools** | Add explicit **negative boundaries** in tool descriptions: *"Do NOT call for X; use tool Y instead."* | **TRAP**: Adding a 2-page explanation in the system prompt while leaving tool descriptions ambiguous. | Claude prioritizes the tool's JSON schema description when deciding tool applicability; system prompts easily get overlooked. |
-| **Input Validation** | Define strict JSON Schema constraints (`pattern: "^[A-Z]{3}-\\d{4}$"`, `enum: [...]`). | **TRAP**: Defining all parameters as open-ended `{"type": "string"}` with no formatting constraints. | Claude may pass values with missing prefixes or invalid delimiters, causing downstream runtime errors. |
-| **Mandatory Execution Order** | Use forced tool choice: `tool_choice: {"type": "tool", "name": "auth"}` on turn 1. | **TRAP**: Leaving `tool_choice: "auto"` and asking Claude in the prompt to *"please authenticate first"*. | Model adherence is probabilistic; complex user prompts can distract Claude into executing other tools first. |
+| Agent picks `get_customer` instead of `lookup_order`, descriptions are minimal | **Expand the descriptions** with formats, examples, boundaries | Add few-shot examples to the prompt | Heavier, and does not fix the unclear tool text |
+| Same situation | Expand the descriptions | Build a routing layer (keywords or classifier) | Brittle extra code. Fix the cause, not the symptom |
+| Same situation | Expand the descriptions | Merge the tools into one | Makes the tool bigger and more ambiguous |
+| `analyze_content` vs `analyze_document` overlap | Split and rename by purpose | Keep both and add a prompt rule | The prompt competes with the tool text |
+| Agent over-uses one tool | Check the system prompt for keyword wording | Only tune the descriptions | The prompt can still override them |
 
 ---
 
-## 💡 Architectural Decision Matrix: Rules of Thumb
+## ❌ Common Mistakes
 
-| Tool Requirement | Recommended Implementation | Rationale |
-|---|---|---|
-| **Prevent tool misrouting?** | Add negative boundaries to JSON description | Clarifies exact boundaries at the exact point of tool selection. |
-| **Guarantee exact format (e.g. UUID, email)?** | Use `pattern` or `format` in schema | Model aligns argument generation with regex constraints natively. |
-| **Force authentication on Turn 1?** | `tool_choice: {"type": "tool", "name": "..."}` | 100% deterministic enforcement; Claude cannot output text or other tools. |
-
----
-
-## 🧠 Claude 4.5 Extended Thinking & Parameter Standards
-
-- **Tool Selection Reasoning**: With Extended Thinking enabled, Claude evaluates candidate tool definitions against negative boundaries during its reasoning phase, explaining why it selected Tool A over Tool B before emitting the `tool_use` block.
-- **Sampling Rules**: Omit `temperature` whenever thinking is active.
-- **Tool Choice + Thinking**: When `tool_choice` is forced to a specific tool, Extended Thinking remains active to optimize parameter construction.
+- Writing one-line descriptions like "Gets order details".
+- Describing what the tool does but not what it must **not** do.
+- Leaving argument formats out, so the model sends an email as an order ID.
+- Keeping two tools with the same purpose under different names.
+- Jumping to a routing layer or few-shot examples before fixing the descriptions.
 
 ---
 
-## 🛠️ Hands-on Workbook Guide: Following the Code Step-by-Step
+## 💡 Quick Decision Rules
 
-When exploring [`ts_2_1_tool_interface_design.ipynb`](ts_2_1_tool_interface_design.ipynb):
-1. **Step 1: Setup & Tool Definitions**: Inspects ambiguous vs. production-grade tool schemas with negative boundaries.
-2. **Step 2: Simulating Ambiguous Routing**: Demonstrates how vague descriptions lead to misrouted queries.
-3. **Step 3: Boundary-Guided Disambiguation**: Shows Claude successfully selecting `track_shipment` due to explicit exclusions in `lookup_customer`.
-4. **Step 4: Forced Sequencing via `tool_choice`**: Demonstrates forcing authentication on turn 1.
-5. **Step 5: Verification Assertions**: Verifies that parameter schemas and negative boundaries eliminate routing errors.
+| If you see... | Do this |
+|---|---|
+| Wrong tool picked between similar tools | Expand descriptions (purpose, formats, examples, boundaries) |
+| Two tools that overlap | Rename or split by purpose |
+| One tool over-used despite good descriptions | Look for keyword wording in the system prompt |
+| A mandatory first step | `tool_choice` forced (without thinking), see 2.3 |
+
+---
+
+## 🧠 Claude 4.5 Notes
+
+- Use `claude-sonnet-4-5` for routing and reasoning, `claude-haiku-4-5` for workers.
+- With extended thinking on: `budget_tokens` ≥ 1024 and below `max_tokens`. **Omit `temperature`** (HTTP 400). Leave `top_k` and `top_p` unset.
+- With thinking on, `tool_choice` may only be `auto` or `none`. A forced tool or `any` returns HTTP 400. Force a tool on a request **without** thinking. This is the manual extended-thinking rule (Claude 4.5 models); adaptive thinking on newer models can accept forced tool use, except on some models.
+- In tool loops, return thinking blocks and their signature unchanged.
+- Loops stop on `stop_reason`, not on text. The iteration limit is only a **safety cap**.
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [`ts_2_1_tool_interface_design.ipynb`](ts_2_1_tool_interface_design.ipynb). It runs offline.
+1. **Load** the tools and the vague pair from [main.py](main.py).
+2. **Audit** thin descriptions with `audit_tool()`.
+3. **Measure** overlap with `description_overlap()`.
+4. **Compare** the vague pair with the split tools.
+5. **Dispatch** a request to `lookup_order` and check the result.
+
+Run live API examples by hand only. See [EXECUTION_POLICY.md](../../EXECUTION_POLICY.md).
+
+---
+
+## 📝 Exam-Style Practice Questions
+
+**Q1.** A support agent has `get_customer` ("Retrieves customer details") and `lookup_order` ("Retrieves order details"). It often calls `get_customer` for order questions. What is the best first step?
+- A. Add few-shot examples of correct tool use to the system prompt.
+- B. Expand each tool description with formats, example queries and boundaries.
+- C. Add a keyword-based routing layer before the model.
+- D. Merge both tools into one `get_info` tool.
+
+**Q2.** A research agent has `analyze_content` and `analyze_document`. Both descriptions say "analyzes text". It alternates between them. What is the best fix?
+- A. Rename and split by purpose: `extract_data_points`, `summarize_content`, `verify_claim_against_source`.
+- B. Add a system prompt rule "prefer analyze_document".
+- C. Set `tool_choice` to force `analyze_document` on every turn.
+- D. Lower the temperature.
+
+**Q3.** Tool descriptions are detailed, but the agent still calls `get_customer` first on every request. The system prompt says "Always check the customer account before doing anything". What is the most likely cause?
+- A. The model cannot read long descriptions.
+- B. `lookup_order` needs more parameters.
+- C. The tool schemas are missing `additionalProperties`.
+- D. The keyword-style system prompt instruction is overriding the tool descriptions.
+
+### Answers
+
+**Q1 → B.** Descriptions are the primary selection mechanism.
+- A: Few-shot adds prompt weight and leaves the unclear tool text as is.
+- C: A routing layer is brittle extra code for a cause that a description fix removes.
+- D: Merging makes one larger, more ambiguous tool.
+
+**Q2 → A.** Single-purpose names remove the overlap.
+- B: A prompt rule competes with the tool text and hides the real problem.
+- C: Forcing one tool means the other can never be used.
+- D: Temperature does not change which description matches.
+
+**Q3 → D.** Prompt wording can override descriptions. Remove or soften the keyword instruction.
+- A: Long, detailed descriptions are the recommended practice.
+- B: Parameters do not decide which tool is chosen first.
+- C: `additionalProperties` affects validation, not selection.
+
+---
+
+## ✅ Self-Check Checklist
+
+- [ ] I can name the five parts of a strong tool description.
+- [ ] I can explain why overlapping descriptions cause misrouting.
+- [ ] I know the first fix for misrouting: expand descriptions (not few-shot, routing layer or merging).
+- [ ] I can split `analyze_document` into three single-purpose tools.
+- [ ] I know a keyword-sensitive system prompt can override descriptions.
+
+**Memory hook**: *"The description is the router. Fix the label before you fix the system."*

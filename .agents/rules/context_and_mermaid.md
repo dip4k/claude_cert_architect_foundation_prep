@@ -7,7 +7,7 @@ description: Enforce Extended Thinking parameters, context preservation, and Git
 
 ## 1. Extended Thinking & Sampling Rule (Claude 4.5)
 - **Model Standard**: Use `claude-sonnet-4-5` or `claude-haiku-4-5`.
-- **Temperature Omission**: When `thinking` is enabled (`thinking={"type": "enabled", "budget_tokens": ...}`), **do not provide `temperature`**, `top_p`, or `top_k`. The Anthropic API rejects custom sampling values with an HTTP `400 Bad Request` error.
+- **Temperature Omission**: When `thinking` is enabled (`thinking={"type": "enabled", "budget_tokens": ...}`), **do not provide `temperature`** (rejected with HTTP `400`). Safest: also leave `top_k` and `top_p` unset (newer models reject any non-default sampling value). With manual extended thinking use only `tool_choice` `auto` or `none`.
 - **Thinking Continuity**: In multi-turn loops, assistant reasoning blocks (`type: "thinking"`) must be returned **unmodified** with their cryptographic `signature` in subsequent turns. Stripping thinking blocks causes an API `400 Bad Request` error.
 
 ## 2. Context Window Preservation (Domain 5)

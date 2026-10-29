@@ -35,6 +35,13 @@ import anthropic
 
 from lib.sdk_parser_py import create_parser
 from lib.response_logger import ResponseTrail, get_agent_trail_path
+from domain1.loop_common import (
+    COORDINATOR_MODEL,
+    LoopStopped,
+    read_stop_reason,
+    response_text,
+    stop_status,
+)
 
 load_dotenv()
 
@@ -209,21 +216,26 @@ class MultiAgentCoordinator:
         max_turns: int = 5,
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
-        Executes coordinator loop with iterative synthesis refinement.
+        Coordinator loop with iterative synthesis refinement.
+
+        max_turns is a safety cap (fallback only). The loop ends on stop_reason == "end_turn";
+        any other terminal stop_reason raises LoopStopped.
         """
         session_id = str(uuid.uuid4())
-        self.trail.session_start(session_id, user_query, "claude-haiku-4-5")
+        self.trail.session_start(session_id, user_query, COORDINATOR_MODEL)
         parser = create_parser()
 
-        messages = [
+        messages: List[Dict[str, Any]] = [
             {
                 "role": "user",
                 "content": (
                     f"Coordinator Task: Research the following request comprehensively:\n'{user_query}'\n\n"
                     "Instructions:\n"
-                    "1. Dynamically select which subagents to invoke based on query complexity.\n"
-                    "2. Pass all findings to evaluate_synthesis.\n"
-                    "3. If synthesis reports missing_topics, re-delegate follow-up searches until complete."
+                    "1. Break the topic into subtasks that cover ALL its major areas, and give each "
+                    "subagent a distinct slice so work is not duplicated.\n"
+                    "2. Select subagents by query complexity; answer simple questions directly.\n"
+                    "3. Pass all findings to evaluate_synthesis.\n"
+                    "4. If synthesis reports missing_topics, re-delegate follow-up searches until complete."
                 ),
             }
         ]
@@ -231,17 +243,16 @@ class MultiAgentCoordinator:
         for turn in range(1, max_turns + 1):
             self.trail.api_request(session_id, turn, messages)
             response = self.client.messages.create(
-                model="claude-haiku-4-5",
+                model=COORDINATOR_MODEL,
                 max_tokens=1500,
                 tools=COORDINATOR_TOOLS,
                 messages=messages,
             )
 
-            parse_result = parser.parse(response.model_dump())
-            parsed = parse_result.get("data") if parse_result.get("success") else None
-            stop_reason = parsed.stop_reason if parsed else getattr(response, "stop_reason", "end_turn")
+            stop_reason = read_stop_reason(parser, response)
 
             if stop_reason == "tool_use":
+                # Echo assistant content unchanged (including any thinking blocks and signatures).
                 messages.append({"role": "assistant", "content": response.content})
                 tool_results = []
 
@@ -263,12 +274,20 @@ class MultiAgentCoordinator:
 
                 messages.append({"role": "user", "content": tool_results})
 
+            elif stop_reason == "pause_turn":
+                messages.append({"role": "assistant", "content": response.content})
+
             elif stop_reason == "end_turn":
-                final_text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+                final_text = response_text(response)
                 self.trail.session_end(session_id, final_text, "end_turn")
                 return final_text, self.accumulated_findings
 
-        self.trail.session_end(session_id, "", "max_turns_exceeded")
+            else:
+                text = response_text(response)
+                self.trail.session_end(session_id, text, stop_status(stop_reason))
+                raise LoopStopped(stop_reason, text)
+
+        self.trail.session_end(session_id, "", "safety_cap_reached")
         return "", self.accumulated_findings
 
 

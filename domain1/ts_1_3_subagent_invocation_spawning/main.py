@@ -22,6 +22,7 @@ import json
 import os
 import sys
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -35,8 +36,18 @@ import anthropic
 
 from lib.sdk_parser_py import create_parser
 from lib.response_logger import ResponseTrail, get_agent_trail_path
+from domain1.loop_common import (
+    COORDINATOR_MODEL,
+    LoopStopped,
+    read_stop_reason,
+    response_text,
+    stop_status,
+)
 
 load_dotenv()
+
+# The coordinator can only spawn subagents if "Task" is in its allowedTools.
+COORDINATOR_ALLOWED_TOOLS: List[str] = ["Task"]
 
 
 # ==============================================================================
@@ -161,12 +172,20 @@ def run_parallel_spawning_coordinator(
     client: Any,
     trail: ResponseTrail,
     max_turns: int = 4,
+    allowed_tools: Optional[List[str]] = None,
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """
     Coordinator agent demonstrating parallel subagent spawning via multiple Task calls.
+
+    max_turns is a safety cap (fallback only). The loop ends on stop_reason == "end_turn";
+    any other terminal stop_reason raises LoopStopped. Task is only offered to the model
+    when "Task" is in allowed_tools.
     """
+    allowed = COORDINATOR_ALLOWED_TOOLS if allowed_tools is None else allowed_tools
+    tools = [TASK_TOOL] if "Task" in allowed else []
+
     session_id = str(uuid.uuid4())
-    trail.session_start(session_id, user_goal, "claude-haiku-4-5")
+    trail.session_start(session_id, user_goal, COORDINATOR_MODEL)
     parser = create_parser()
 
     messages: List[Dict[str, Any]] = [
@@ -175,8 +194,10 @@ def run_parallel_spawning_coordinator(
             "content": (
                 f"Goal: {user_goal}\n\n"
                 "You have access to the Task tool to spawn subagents ('web_researcher' and 'code_analyzer').\n"
-                "CRITICAL: If multiple research angles are needed, emit multiple Task tool calls in a SINGLE response "
-                "so they execute concurrently in parallel."
+                "Each subagent starts with an empty context, so put every fact it needs in its prompt. "
+                "State the goal and the quality criteria, not step-by-step instructions. "
+                "If several independent angles are needed, emit multiple Task tool calls in a SINGLE "
+                "response so they run in parallel."
             ),
         }
     ]
@@ -185,50 +206,75 @@ def run_parallel_spawning_coordinator(
 
     for turn in range(1, max_turns + 1):
         trail.api_request(session_id, turn, messages)
-        response = client.messages.create(
-            model="claude-haiku-4-5",
-            max_tokens=1500,
-            tools=[TASK_TOOL],
-            messages=messages,
-        )
+        request: Dict[str, Any] = {
+            "model": COORDINATOR_MODEL,
+            "max_tokens": 1500,
+            "messages": messages,
+        }
+        if tools:
+            request["tools"] = tools
+        response = client.messages.create(**request)
 
-        parse_result = parser.parse(response.model_dump())
-        parsed = parse_result.get("data") if parse_result.get("success") else None
-        stop_reason = parsed.stop_reason if parsed else getattr(response, "stop_reason", "end_turn")
+        stop_reason = read_stop_reason(parser, response)
 
         if stop_reason == "tool_use":
+            # Echo assistant content unchanged (including any thinking blocks and signatures).
             messages.append({"role": "assistant", "content": response.content})
-            tool_results = []
 
-            # Notice: all Task calls emitted in this response are collected and executed concurrently
-            task_blocks = [b for b in response.content if getattr(b, "type", "") == "tool_use" and b.name == "Task"]
+            tool_blocks = [b for b in response.content if getattr(b, "type", "") == "tool_use"]
+            task_blocks = [b for b in tool_blocks if b.name == "Task"]
 
             for block in task_blocks:
-                tool_input = block.input
-                trail.tool_call(session_id, turn, "Task", block.id, tool_input)
+                trail.tool_call(session_id, turn, "Task", block.id, block.input)
 
-                subagent_result = execute_subagent_task(
-                    subagent_type=tool_input["subagent_type"],
-                    prompt=tool_input["prompt"],
-                    task_metadata=tool_input["task_metadata"],
-                )
-                trail.tool_result(session_id, turn, "Task", block.id, subagent_result)
-                all_spawned_results.append(subagent_result)
+            # map() keeps results in task_blocks order while subagents run concurrently.
+            with ThreadPoolExecutor(max_workers=max(1, len(task_blocks))) as pool:
+                task_results = list(pool.map(
+                    lambda b: execute_subagent_task(
+                        subagent_type=b.input["subagent_type"],
+                        prompt=b.input["prompt"],
+                        task_metadata=b.input["task_metadata"],
+                    ),
+                    task_blocks,
+                ))
+            result_by_id = {b.id: r for b, r in zip(task_blocks, task_results)}
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": json.dumps(subagent_result),
-                })
+            # Every tool_use block needs exactly one tool_result, in the same order.
+            tool_results = []
+            for block in tool_blocks:
+                if block.id in result_by_id:
+                    subagent_result = result_by_id[block.id]
+                    trail.tool_result(session_id, turn, "Task", block.id, subagent_result)
+                    all_spawned_results.append(subagent_result)
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps(subagent_result),
+                    })
+                else:
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps({"error": f"Tool not allowed: {block.name}"}),
+                        "is_error": True,
+                    })
 
             messages.append({"role": "user", "content": tool_results})
 
+        elif stop_reason == "pause_turn":
+            messages.append({"role": "assistant", "content": response.content})
+
         elif stop_reason == "end_turn":
-            final_text = "".join(b.text for b in response.content if getattr(b, "type", "") == "text")
+            final_text = response_text(response)
             trail.session_end(session_id, final_text, "end_turn")
             return final_text, all_spawned_results
 
-    trail.session_end(session_id, "", "max_turns_exceeded")
+        else:
+            text = response_text(response)
+            trail.session_end(session_id, text, stop_status(stop_reason))
+            raise LoopStopped(stop_reason, text)
+
+    trail.session_end(session_id, "", "safety_cap_reached")
     return "", all_spawned_results
 
 
