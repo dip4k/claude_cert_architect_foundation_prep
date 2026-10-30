@@ -163,7 +163,11 @@ def test_ts13_task_tool_only_offered_when_in_allowed_tools(tmp_path):
 
     client = MockClaudeClient([_text("spawning")])
     run_ts13("goal", client, trail)
-    assert client.messages.call_history[0]["tools"][0]["name"] == "Task"
+    assert client.messages.call_history[0]["tools"][0]["name"] == "Agent"
+
+    client = MockClaudeClient([_text("legacy")])
+    run_ts13("goal", client, trail, allowed_tools=["Task"])
+    assert client.messages.call_history[0]["tools"][0]["name"] == "Agent"
 
 
 def test_ts14_gate_error_is_flagged_and_handoff_has_refund_amount(tmp_path):

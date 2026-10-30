@@ -183,7 +183,7 @@ def test_ts13_parallel_spawning_offline(tmp_path):
         content=[
             MockContentBlock(
                 block_type="tool_use",
-                name="Task",
+                name="Agent",
                 tool_id="call_task1",
                 input_data={
                     "subagent_type": "web_researcher",

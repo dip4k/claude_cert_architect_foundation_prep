@@ -56,7 +56,7 @@ class WebSearchSubagent:
     MOCK_KB: Dict[str, str] = {
         "claude agent sdk": (
             "Claude Agent SDK provides primitives for building autonomous agentic loops, "
-            "subagent delegation via Task tool, hooks, and session resumption."
+            "subagent delegation via Agent tool (formerly Task), hooks, and session resumption."
         ),
         "mcp tool error patterns": (
             "Model Context Protocol (MCP) tool errors should return isError: true with "

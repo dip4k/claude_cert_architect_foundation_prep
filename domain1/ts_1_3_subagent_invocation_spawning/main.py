@@ -4,8 +4,9 @@ Task Statement 1.3: Configure subagent invocation, context passing, and spawning
 Exam Scenario 3: Multi-Agent Research System
 
 Key Exam Concepts Demonstrated:
-1. The Task tool as the mechanism for spawning subagents, requiring allowedTools to include "Task".
-2. Parallel subagent spawning: Emitting multiple Task tool calls in a SINGLE coordinator turn
+1. The Agent tool (named Task before Claude Code v2.1.63; "Task" still works as an alias) is the
+   mechanism for spawning subagents, requiring allowedTools to include "Agent".
+2. Parallel subagent spawning: Emitting multiple Agent tool calls in a SINGLE coordinator turn
    instead of sequential round-trips.
 3. Explicit context passing: Passing complete research findings and instructions in the prompt;
    subagents do not share memory or inherit parent context automatically.
@@ -46,12 +47,16 @@ from domain1.loop_common import (
 
 load_dotenv()
 
-# The coordinator can only spawn subagents if "Task" is in its allowedTools.
-COORDINATOR_ALLOWED_TOOLS: List[str] = ["Task"]
+AGENT_TOOL_NAME = "Agent"
+# "Task" is the pre-v2.1.63 name; match both so older transcripts and configs still work.
+AGENT_TOOL_NAMES = ("Agent", "Task")
+
+# The coordinator can only spawn subagents if "Agent" is in its allowedTools.
+COORDINATOR_ALLOWED_TOOLS: List[str] = [AGENT_TOOL_NAME]
 
 
 # ==============================================================================
-# 1. AgentDefinition Specification & Task Tool
+# 1. AgentDefinition Specification & Agent Tool
 # ==============================================================================
 
 @dataclass
@@ -78,12 +83,12 @@ SUBAGENT_REGISTRY = {
     ),
 }
 
-# Coordinator tool declaration: Task tool enables spawning subagents
-TASK_TOOL = {
-    "name": "Task",
+# Coordinator tool declaration: Agent tool enables spawning subagents
+AGENT_TOOL = {
+    "name": AGENT_TOOL_NAME,
     "description": (
         "Spawns an isolated subagent to perform an asynchronous subtask. "
-        "Coordinator can invoke multiple Task calls in a single response for parallel execution."
+        "Coordinator can invoke multiple Agent calls in a single response for parallel execution."
     ),
     "input_schema": {
         "type": "object",
@@ -113,6 +118,7 @@ TASK_TOOL = {
         "required": ["subagent_type", "prompt", "task_metadata"],
     },
 }
+TASK_TOOL = AGENT_TOOL  # legacy alias
 
 
 # ==============================================================================
@@ -175,14 +181,14 @@ def run_parallel_spawning_coordinator(
     allowed_tools: Optional[List[str]] = None,
 ) -> Tuple[str, List[Dict[str, Any]]]:
     """
-    Coordinator agent demonstrating parallel subagent spawning via multiple Task calls.
+    Coordinator agent demonstrating parallel subagent spawning via multiple Agent calls.
 
     max_turns is a safety cap (fallback only). The loop ends on stop_reason == "end_turn";
-    any other terminal stop_reason raises LoopStopped. Task is only offered to the model
-    when "Task" is in allowed_tools.
+    any other terminal stop_reason raises LoopStopped. The Agent tool is only offered to the
+    model when "Agent" (or legacy "Task") is in allowed_tools.
     """
     allowed = COORDINATOR_ALLOWED_TOOLS if allowed_tools is None else allowed_tools
-    tools = [TASK_TOOL] if "Task" in allowed else []
+    tools = [AGENT_TOOL] if any(n in allowed for n in AGENT_TOOL_NAMES) else []
 
     session_id = str(uuid.uuid4())
     trail.session_start(session_id, user_goal, COORDINATOR_MODEL)
@@ -193,10 +199,10 @@ def run_parallel_spawning_coordinator(
             "role": "user",
             "content": (
                 f"Goal: {user_goal}\n\n"
-                "You have access to the Task tool to spawn subagents ('web_researcher' and 'code_analyzer').\n"
+                "You have access to the Agent tool to spawn subagents ('web_researcher' and 'code_analyzer').\n"
                 "Each subagent starts with an empty context, so put every fact it needs in its prompt. "
                 "State the goal and the quality criteria, not step-by-step instructions. "
-                "If several independent angles are needed, emit multiple Task tool calls in a SINGLE "
+                "If several independent angles are needed, emit multiple Agent tool calls in a SINGLE "
                 "response so they run in parallel."
             ),
         }
@@ -222,10 +228,10 @@ def run_parallel_spawning_coordinator(
             messages.append({"role": "assistant", "content": response.content})
 
             tool_blocks = [b for b in response.content if getattr(b, "type", "") == "tool_use"]
-            task_blocks = [b for b in tool_blocks if b.name == "Task"]
+            task_blocks = [b for b in tool_blocks if b.name in AGENT_TOOL_NAMES]
 
             for block in task_blocks:
-                trail.tool_call(session_id, turn, "Task", block.id, block.input)
+                trail.tool_call(session_id, turn, block.name, block.id, block.input)
 
             # map() keeps results in task_blocks order while subagents run concurrently.
             with ThreadPoolExecutor(max_workers=max(1, len(task_blocks))) as pool:
@@ -244,7 +250,7 @@ def run_parallel_spawning_coordinator(
             for block in tool_blocks:
                 if block.id in result_by_id:
                     subagent_result = result_by_id[block.id]
-                    trail.tool_result(session_id, turn, "Task", block.id, subagent_result)
+                    trail.tool_result(session_id, turn, block.name, block.id, subagent_result)
                     all_spawned_results.append(subagent_result)
                     tool_results.append({
                         "type": "tool_result",

@@ -4,22 +4,23 @@
 
 ## In One Minute
 
-- **What**: a coordinator spawns subagents with the **`Task` tool**. The coordinator's `allowedTools` must include `"Task"`.
-- **Parallel**: to run subagents at the same time, emit **several `Task` tool_use blocks in ONE coordinator response**.
+- **What**: a coordinator spawns subagents with the **`Agent` tool** (called `Task` before Claude Code v2.1.63; `Task` still works as an alias). The coordinator's `allowedTools` must include `"Agent"`.
+- **Parallel**: to run subagents at the same time, emit **several `Agent` tool_use blocks in ONE coordinator response**.
 - **Context**: a subagent starts empty. Put every fact it needs **in the prompt**.
 - **Prompts**: state the goal and quality criteria. Do not write a step-by-step script.
 - **Results**: return content and metadata (source URL, document name, page) as separate fields.
-- **Exam answer in one line**: `Task` in `allowedTools`, many `Task` calls in one turn, explicit context, structured findings.
+- **Exam answer in one line**: `Agent` (formerly `Task`) in `allowedTools`, many `Agent` calls in one turn, explicit context, structured findings.
+- **Naming**: if an answer option says `Task` and another says `Agent`, both name the same tool. Pick on the behaviour, not the name.
 
 ---
 
 ## 🧒 Explain Like I'm 13
 
-**The picture:** Same classroom, but now the question is *how* the teacher hands out the sheets. The hand-out button is the `Task` tool, and it must be switched on (`allowedTools`) or no sheets go out. The teacher should hand out all sheets at the same time, not wait for student 1 to finish before giving student 2 a sheet.
+**The picture:** Same classroom, but now the question is *how* the teacher hands out the sheets. The hand-out button is the `Agent` tool (formerly `Task`), and it must be switched on (`allowedTools`) or no sheets go out. The teacher should hand out all sheets at the same time, not wait for student 1 to finish before giving student 2 a sheet.
 
 **In plain steps:**
-1. Switch the `Task` tool on.
-2. Put every independent job in the **same** response (three `Task` calls at once).
+1. Switch the `Agent` tool on.
+2. Put every independent job in the **same** response (three `Agent` calls at once).
 3. Tell each student the goal and what good looks like, not a click-by-click script.
 4. Ask for answers as `finding` plus `source` so nothing loses its label.
 
@@ -40,7 +41,9 @@ If the coordinator spawns one subagent per turn, total time is the **sum** of al
 An `AgentDefinition` has a **description** (so the coordinator knows when to use it), a **system prompt** (its role), and **tool restrictions** (only the tools it needs). In [main.py](main.py), `AgentDefinition` is a dataclass with `name`, `description`, `system_prompt`, `allowed_tools`, kept in `SUBAGENT_REGISTRY` (`web_researcher`, `code_analyzer`).
 
 ### 2. Allow the spawn
-The coordinator can only spawn if `"Task"` is in its `allowedTools`. Here it is `COORDINATOR_ALLOWED_TOOLS = ["Task"]`, and `run_parallel_spawning_coordinator` only offers `TASK_TOOL` to the model when `"Task"` is allowed.
+The coordinator can only spawn if `"Agent"` is in its `allowedTools`. Here it is `COORDINATOR_ALLOWED_TOOLS = ["Agent"]`, and `run_parallel_spawning_coordinator` only offers `AGENT_TOOL` to the model when `"Agent"` (or the legacy `"Task"` alias) is allowed.
+
+To restrict which subagent types a `claude --agent` main thread may spawn, use `tools: Agent(worker, researcher), Read` in the agent file. Omitting `Agent` entirely means no spawning. When detecting spawns in a message stream, match both names, because older SDK versions emitted `"Task"` in `tool_use` blocks and the `system:init` tools list may still show `"Task"`.
 
 ### 3. Pass context explicitly
 A subagent inherits nothing. A good `prompt` field contains the goal, the facts found so far, the quality bar, and the output format. If a finding from another subagent matters, the coordinator copies it in.
@@ -48,7 +51,7 @@ A subagent inherits nothing. A good `prompt` field contains the goal, the facts 
 Fork-based sessions (`fork_session`, see [TS 1.7](../ts_1_7_session_management/README.md)) are a different way to branch work from a shared baseline.
 
 ### 4. Spawn in parallel
-Claude can emit more than one `tool_use` block in a single response. For independent subtasks, emit one `Task` block per subtask in the **same** response.
+Claude can emit more than one `tool_use` block in a single response. For independent subtasks, emit one `Agent` block per subtask in the **same** response.
 
 The host in [main.py](main.py) runs those blocks with a `ThreadPoolExecutor`. `pool.map` returns results in the **same order as the tool_use blocks**. The host then answers **every** `tool_use` block in one user message. A block that is not an allowed tool gets an `is_error` `tool_result`, so the history is never left with an unanswered `tool_use`.
 
@@ -69,8 +72,8 @@ Goal: *"Investigate Claude Code slash commands. Use the web researcher for the o
 
 | Step | What happens |
 |---|---|
-| 1 | Host sends the goal and `tools=[Task]`. `"Task"` is in `allowedTools` |
-| 2 | Claude replies once with `stop_reason = "tool_use"` and **two** blocks: `Task(web_researcher, ...)` id `toolu_A`, and `Task(code_analyzer, ...)` id `toolu_B` |
+| 1 | Host sends the goal and `tools=[Agent]`. `"Agent"` is in `allowedTools` |
+| 2 | Claude replies once with `stop_reason = "tool_use"` and **two** blocks: `Agent(web_researcher, ...)` id `toolu_A`, and `Agent(code_analyzer, ...)` id `toolu_B` |
 | 3 | Host runs both subagents at the same time. Total time is about the slower one |
 | 4 | Host appends the assistant turn, then **one** user message with `tool_result toolu_A` and `tool_result toolu_B`, in that order |
 | 5 | Claude replies `stop_reason = "end_turn"` with a report |
@@ -95,11 +98,11 @@ The report can cite the URL because the metadata stayed attached to the claim.
 
 ## 🔑 Key Terms
 
-- **`Task` tool**: the Agent SDK tool that spawns a subagent.
-- The exam calls the subagent-spawning tool `Task`; current Claude Code docs call the same built-in tool `Agent`. Treat them as the same idea.
-- **`allowedTools`**: the tools the coordinator may use. Must include `"Task"` to spawn.
+- **`Agent` tool**: the built-in tool that spawns a subagent. Renamed from `Task` in Claude Code v2.1.63; existing `Task(...)` references in settings and agent definitions still work as aliases.
+- Older course material and exam wording may still say `Task`. It is the same tool.
+- **`allowedTools`**: the tools the coordinator may use. Must include `"Agent"` (or legacy `"Task"`) to spawn.
 - **`AgentDefinition`**: a subagent's description, system prompt, and tool restrictions.
-- **Parallel spawning**: multiple `Task` tool_use blocks in one response.
+- **Parallel spawning**: multiple `Agent` tool_use blocks in one response.
 - **Context passing**: putting needed facts into the subagent prompt.
 - **Content vs metadata**: the claim, and where it came from.
 - **Goal-oriented prompt**: objective plus quality criteria, no step-by-step script.
@@ -114,9 +117,9 @@ config:
   htmlLabels: false
 ---
 flowchart TD
-    Coord["Coordinator turn<br>(claude-sonnet-4-5)<br>allowedTools includes Task"] --> Multi["One response with<br>multiple Task tool_use blocks"]
+    Coord["Coordinator turn<br>(claude-sonnet-4-5)<br>allowedTools includes Agent"] --> Multi["One response with<br>multiple Agent tool_use blocks"]
 
-    Multi --> Pool["Host runs Task calls<br>concurrently"]
+    Multi --> Pool["Host runs Agent calls<br>concurrently"]
     Pool --> A["Subagent A<br>(isolated context)"]
     Pool --> B["Subagent B<br>(isolated context)"]
 
@@ -132,11 +135,11 @@ flowchart TD
 
 ## ⚠️ Exam Traps and Correct Patterns
 
-### Trap 1: `Task` missing from `allowedTools`
+### Trap 1: `Agent` (formerly `Task`) missing from `allowedTools`
 
 **Exam scenario**: The coordinator has `AgentDefinition`s for `searcher` and `analyst`, but never delegates. It tries to do everything itself, badly.
 
-**What really happens**: subagents are spawned by the `Task` tool. If `"Task"` is not in the coordinator's `allowedTools`, that tool does not exist for it, so defining agents changes nothing.
+**What really happens**: subagents are spawned by the `Agent` tool. If `"Agent"` is not in the coordinator's `allowedTools`, that tool does not exist for it, so defining agents changes nothing.
 
 ```python
 # ANTI-PATTERN: agents defined, spawn tool not allowed
@@ -147,27 +150,27 @@ options = ClaudeAgentOptions(
 
 # PATTERN
 options = ClaudeAgentOptions(
-    allowed_tools=["Read", "Grep", "Task"],
+    allowed_tools=["Read", "Grep", "Agent"],
     agents={"searcher": searcher_def, "analyst": analyst_def},
 )
 ```
 
 **Spot it fast**: "subagents are defined but never invoked" points to `allowedTools`.
 
-### Trap 2: One `Task` call per turn for independent work
+### Trap 2: One `Agent` call per turn for independent work
 
 **Exam scenario**: Three independent subagents each take about 20 seconds.
 
 | Style | Turns | Wall time |
 |---|---|---|
 | Sequential: spawn A, wait, spawn B, wait, spawn C | 3 plus synthesis | about 60 s plus overhead |
-| Parallel: three `Task` tool_use blocks in **one** response | 1 plus synthesis | about 20 s plus overhead |
+| Parallel: three `Agent` tool_use blocks in **one** response | 1 plus synthesis | about 20 s plus overhead |
 
 ```text
 PATTERN (one assistant response):
-  tool_use Task {subagent_type: "searcher",  prompt: "..."}   id=toolu_1
-  tool_use Task {subagent_type: "financial", prompt: "..."}   id=toolu_2
-  tool_use Task {subagent_type: "news",      prompt: "..."}   id=toolu_3
+  tool_use Agent {subagent_type: "searcher",  prompt: "..."}   id=toolu_1
+  tool_use Agent {subagent_type: "financial", prompt: "..."}   id=toolu_2
+  tool_use Agent {subagent_type: "news",      prompt: "..."}   id=toolu_3
 Next user turn: three tool_result blocks, one per id.
 ```
 
@@ -209,16 +212,16 @@ Keep content and metadata as separate fields so the synthesis step can cite, com
 
 ## 📝 Exam-Style Practice Questions
 
-**Q1.** A research coordinator needs three independent investigations (financials, legal, patents). It emits one `Task` call per turn, so the run takes seven round trips. What is the best fix?
+**Q1.** A research coordinator needs three independent investigations (financials, legal, patents). It emits one `Agent` call per turn, so the run takes seven round trips. What is the best fix?
 
-- A) Emit all three `Task` tool_use blocks in a single coordinator response.
+- A) Emit all three `Agent` tool_use blocks in a single coordinator response.
 - B) Increase `max_tokens` on the coordinator.
 - C) Have each subagent spawn the next subagent in the chain.
 - D) Describe the three investigations step by step in the system prompt.
 
 **Q2.** A coordinator prompt says to delegate research to subagents, but no subagent is ever spawned. The agent configuration lists `allowedTools=["Read", "Grep"]`. What is the most likely fix?
 
-- A) Add `"Task"` to the coordinator's `allowedTools`.
+- A) Add `"Agent"` (formerly `"Task"`) to the coordinator's `allowedTools`.
 - B) Raise `budget_tokens` for extended thinking.
 - C) Give each subagent the full coordinator history.
 - D) Lower the temperature to make delegation more consistent.
@@ -251,13 +254,13 @@ Keep content and metadata as separate fields so the synthesis step can cite, com
 
 ## ✅ Self-Check Checklist
 
-- [ ] I can say why `"Task"` must be in `allowedTools`.
+- [ ] I can say why `"Agent"` (formerly `"Task"`) must be in `allowedTools`.
 - [ ] I can explain what an `AgentDefinition` contains.
-- [ ] I know parallel spawning means several `Task` blocks in one response.
+- [ ] I know parallel spawning means several `Agent` blocks in one response.
 - [ ] I pass context in the prompt, because subagents inherit nothing.
 - [ ] I write goal prompts and return content and metadata separately.
 
-**Memory hook**: *"Task in the list, many in one turn, everything in the prompt."*
+**Memory hook**: *"Agent in the list, many in one turn, everything in the prompt."*
 
 ---
 

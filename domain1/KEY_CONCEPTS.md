@@ -13,7 +13,7 @@
 |---|---|---|---|
 | 1.1 | [guide](ts_1_1_multi_tool_agent_loop/README.md) | `stop_reason` loop control, `tool_result` history | Text parsing, or an iteration cap as the normal exit |
 | 1.2 | [guide](ts_1_2_coordinator_subagents/README.md) | Hub-and-spoke, isolation, dynamic selection, refinement loop | Blaming subagents for a narrow coordinator decomposition |
-| 1.3 | [guide](ts_1_3_subagent_invocation_spawning/README.md) | `Task` in `allowedTools`, parallel `Task` calls, content vs metadata | Sequential `Task` calls, assumed inherited context |
+| 1.3 | [guide](ts_1_3_subagent_invocation_spawning/README.md) | `Agent` (formerly `Task`) in `allowedTools`, parallel `Agent` calls, content vs metadata | Sequential `Agent` calls, assumed inherited context |
 | 1.4 | [guide](ts_1_4_prerequisite_enforcement/README.md) | Programmatic prerequisites, structured handoff | Prompt, few-shot, or classifier instead of a gate |
 | 1.5 | [guide](ts_1_5_sdk_hooks/README.md) | Pre-tool interception, `PostToolUse` normalisation | Hard rules in the prompt only |
 | 1.6 | [guide](ts_1_6_task_decomposition/README.md) | Chaining vs adaptive, per-file plus integration pass | Bigger model, smaller PRs, or voting |
@@ -230,10 +230,11 @@ Subagents running unconstrained loops can quickly exhaust team rate limits or AP
 
 ### TS 1.3: Configure Subagent Invocation, Context Passing, and Spawning
 
-#### 1. The `Task` Tool Spawning Mechanism
-In the Claude Agent SDK and Claude Code ecosystem, subagents are spawned via a dedicated built-in tool, typically named `Task`.
-- **Whitelisting**: The coordinator's tool configuration (`allowedTools` or `tools`) **must explicitly include `"Task"`**. If `"Task"` is omitted, the coordinator cannot spawn subagents and will attempt to perform tasks it lacks tools for.
-- **Subagent Definition**: In this repo's simulation the `Task` schema has `subagent_type`, `prompt`, and `task_metadata`. An `AgentDefinition` holds a description, a system prompt, and tool restrictions.
+#### 1. The `Agent` Tool Spawning Mechanism
+In the Claude Agent SDK and Claude Code, subagents are spawned via a dedicated built-in tool named `Agent`. It was named `Task` before Claude Code v2.1.63; existing `Task(...)` references in settings and agent definitions still work as aliases, and older course material or exam wording may still say `Task`.
+- **Whitelisting**: The coordinator's tool configuration (`allowedTools` or `tools`) **must explicitly include `"Agent"`** (legacy `"Task"` also works). If omitted, the coordinator cannot spawn subagents and will attempt to perform tasks it lacks tools for. In an agent file, `tools: Agent(worker, researcher)` limits which subagent types may be spawned.
+- **Detection**: when scanning a message stream for spawns, match both `"Agent"` and `"Task"` in `tool_use` blocks (the `system:init` tools list may still show `"Task"`).
+- **Subagent Definition**: In this repo's simulation the `Agent` schema has `subagent_type`, `prompt`, and `task_metadata`. An `AgentDefinition` holds a description, a system prompt, and tool restrictions.
 
 #### 2. Parallel Subagent Spawning in a Single Turn
 A critical latency optimization tested heavily on the exam:
@@ -465,10 +466,10 @@ For investigations where the path is unknown in advance (e.g. root cause analysi
    - Reject any option that parses assistant text strings (e.g. `if "Done" in text:`) or relies on regex to end loops.
 2. **Subagents Inherit Zero State**:
    - Every subagent has an empty context buffer. You must inject required data into the prompt explicitly.
-3. **`allowedTools` Must Whitelist `"Task"`**:
-   - If a coordinator cannot call subagents, verify that `"Task"` is included in `allowedTools`.
+3. **`allowedTools` Must Whitelist `"Agent"` (formerly `"Task"`)**:
+   - If a coordinator cannot call subagents, verify that `"Agent"` is included in `allowedTools`.
 4. **Emit Parallel Subagents in Turn 1**:
-   - Emitting multiple `Task` calls in a single coordinator response is the documented, exam-tested pattern for concurrent subagent execution.
+   - Emitting multiple `Agent` calls in a single coordinator response is the documented, exam-tested pattern for concurrent subagent execution.
 5. **Programmatic Gates for Compliance**:
    - Regulatory, financial (> $500), and identity rules must be enforced via Python code gates or SDK interception hooks, never prompt instructions alone.
 6. **Immediate Human Escalation on Explicit Demand**:
@@ -663,7 +664,7 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 | **History Appending** | Strict dual alternating turns: assistant `tool_use` followed by user `tool_result` blocks with matching `tool_use_id`. | Summarizing or paraphrasing tool outputs before passing back to Claude in the loop. |
 | **Multi-Agent Topologies** | Hierarchical Hub-and-Spoke coordinator pattern; all inter-agent traffic routes through coordinator. | Peer-to-peer agent meshes, decentralized gossip protocols, or shared memory buses. |
 | **Subagent Context** | 100% Context Isolation. Subagents start with empty context; parent findings passed explicitly via prompt. | Assuming subagents inherit parent conversation history or memory automatically. |
-| **Subagent Spawning** | Emitting multiple `Task` tool calls in a single turn for concurrent parallel execution. | Sequential turn-by-turn subagent execution or spawning subagents without `"Task"` in `allowedTools`. |
+| **Subagent Spawning** | Emitting multiple `Agent` tool calls in a single turn for concurrent parallel execution. | Sequential turn-by-turn subagent execution or spawning subagents without `"Agent"` in `allowedTools`. |
 | **Workflow Enforcement** | Deterministic programmatic gates (state machines, pre-tool checks) and SDK hooks. | Relying solely on system prompt instructions for compliance, security, or financial operations. |
 | **Hook Lifecycle** | `PreToolUse` for policy/financial gating and interception; `PostToolUse` for PII redaction and payload normalization. | Modifying model weights, fine-tuning classifier heads, or prompt injection regex on raw text. |
 | **Task Decomposition** | Two-pass prompt chaining (Pass 1: per-file local checks, Pass 2: cross-file contracts); dynamic investigation plans. | Single-pass monolithic review on large diffs (causes attention dilution); hardcoded static pipelines for open-ended tasks. |

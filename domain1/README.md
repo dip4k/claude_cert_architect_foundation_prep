@@ -50,7 +50,7 @@ flowchart LR
 |---|---|---|---|
 | **1.1** Agentic loops | [README](ts_1_1_multi_tool_agent_loop/README.md) | `stop_reason` drives the loop: `tool_use` continue, `end_turn` finish. Tool results are appended | Parsing text for "done", or using an iteration cap as the normal stop |
 | **1.2** Coordinator and subagents | [README](ts_1_2_coordinator_subagents/README.md) | Hub-and-spoke, isolated context, dynamic selection, partitioned scope, gap-check and re-delegate | Blaming subagents when the coordinator decomposed too narrowly |
-| **1.3** Spawning and context | [README](ts_1_3_subagent_invocation_spawning/README.md) | `Task` tool in `allowedTools`, `AgentDefinition`, parallel `Task` calls in one response, content vs metadata | One `Task` per turn, or assuming subagents inherit context |
+| **1.3** Spawning and context | [README](ts_1_3_subagent_invocation_spawning/README.md) | `Agent` tool (formerly `Task`) in `allowedTools`, `AgentDefinition`, parallel `Agent` calls in one response, content vs metadata | One `Agent` call per turn, or assuming subagents inherit context |
 | **1.4** Enforcement and handoff | [README](ts_1_4_prerequisite_enforcement/README.md) | Programmatic prerequisites, structured handoff, decomposing multi-concern requests | Fixing a skipped step with a stronger prompt, few-shot, or a classifier |
 | **1.5** Hooks | [README](ts_1_5_sdk_hooks/README.md) | Pre-tool interception for policy, `PostToolUse` for normalisation | Putting hard rules only in the prompt |
 | **1.6** Task decomposition | [README](ts_1_6_task_decomposition/README.md) | Prompt chaining vs adaptive decomposition, per-file plus integration pass | Bigger model, smaller PRs, or consensus voting for a diluted review |
@@ -84,7 +84,7 @@ Cross-domain links: tool errors and MCP design are in [Domain 2](../domain2/READ
 5. **Everything between subagents goes through the coordinator (TS 1.2)**:  
    Hub-and-spoke gives one place for logging, error handling and routing. Subagents never talk to each other. If coverage is thin, the usual cause is that the coordinator **decomposed too narrowly**, not that a subagent failed. Run a gap check and re-delegate.
 6. **Parallel subagents are several `Task` calls in one response (TS 1.3)**:  
-   The coordinator needs `Task` in `allowedTools` and one `AgentDefinition` per role (description, prompt, restricted tools). Emitting `Task` blocks across separate turns runs them one after another.
+   The coordinator needs `Agent` (formerly `Task`) in `allowedTools` and one `AgentDefinition` per role (description, prompt, restricted tools). Emitting `Agent` blocks across separate turns runs them one after another.
 7. **If a rule must always hold, enforce it in code (TS 1.4, 1.5)**:  
    A prompt, few-shot example or classifier is probabilistic. Use a programmatic prerequisite gate (for example, no `process_refund` until `get_customer` and `lookup_order` succeeded) or a pre-tool hook that blocks or rewrites the call. Use `PostToolUse` hooks to normalise dates, status codes and bloated output before the model sees them.
 8. **Hand off with structure (TS 1.4)**:  

@@ -15,7 +15,7 @@ One-page revision. **Not a copy of [KEY_CONCEPTS.md](KEY_CONCEPTS.md)**: that fi
 | Tool results are messy, mixed formats, 40+ fields | `PostToolUse` hook normalises and trims | Ask Claude to convert or ignore fields | 1.5 |
 | Report misses a whole topic, but each subagent's output is correct | Fix the coordinator's decomposition | Improve search or synthesis subagent | 1.2 |
 | Several independent subagents, results slow | Several `Task` calls in one response | One `Task` per turn | 1.3 |
-| Subagents defined but never used | Add `"Task"` to coordinator `allowedTools` | More agent definitions | 1.3 |
+| Subagents defined but never used | Add `"Agent"` (formerly `"Task"`) to coordinator `allowedTools` | More agent definitions | 1.3 |
 | Subagent lacks facts or invents context | Put facts in its prompt | Assume inherited history | 1.2, 1.3 |
 | Uneven review of a large PR | Per-file passes plus an integration pass | Smaller PRs, bigger model, 3-run consensus | 1.6 |
 | "Add tests to an unfamiliar legacy codebase" | Map, prioritise, adapt (dynamic) | Fixed script written up front | 1.6 |
