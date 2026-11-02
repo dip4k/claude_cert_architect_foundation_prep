@@ -112,10 +112,6 @@ The report can cite the URL because the metadata stayed attached to the claim.
 ## 🏗️ Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Coord["Coordinator turn<br>(claude-sonnet-4-5)<br>allowedTools includes Agent"] --> Multi["One response with<br>multiple Agent tool_use blocks"]
 

@@ -81,10 +81,6 @@ The final report says which sources answered and which did not. Readers can then
 ## Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Coord["Coordinator"] --> SubA["Subagent A"]
     Coord --> SubB["Subagent B"]

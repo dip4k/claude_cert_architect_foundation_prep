@@ -60,10 +60,6 @@ Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
 ## Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Start["Vague or inconsistent result"] --> Pick{"What is the cause?"}
     Pick -->|"Prose is read differently"| Ex["Add 2-3 input/output examples"]

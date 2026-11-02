@@ -40,17 +40,13 @@ The exam targets Solution Architects, Lead Engineers, and AI Systems Architects 
 | **Total** | **All 5 Domains (27 Task Statements)** | **100%** | **60 questions** | [Interactive Progress Checklist](PROGRESS.md) |
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     Exam["CCAR-F Exam Matrix<br>(60 Questions | 100%)"]
-    Exam --> D1["Domain 1: Agentic Architecture (27%)<br>~16 Questions | TS 1.1 - 1.7"]
+    Exam --> D1["Domain 1: Agentic Arch (27%)<br>~16 Questions | TS 1.1 - 1.7"]
     Exam --> D2["Domain 2: Tool Design & MCP (18%)<br>~11 Questions | TS 2.1 - 2.5"]
-    Exam --> D3["Domain 3: Claude Code Workflows (20%)<br>~12 Questions | TS 3.1 - 3.6"]
+    Exam --> D3["Domain 3: Claude Code (20%)<br>~12 Questions | TS 3.1 - 3.6"]
     Exam --> D4["Domain 4: Prompting & Output (20%)<br>~12 Questions | TS 4.1 - 4.6"]
-    Exam --> D5["Domain 5: Context & Reliability (15%)<br>~9 Questions | TS 5.1 - 5.6"]
+    Exam --> D5["Domain 5: Context/Safety (15%)<br>~9 Questions | TS 5.1 - 5.6"]
 ```
 
 
@@ -171,10 +167,6 @@ The exam questions are written by Anthropic Subject Matter Experts to evaluate a
 1. **Synthesis & Design (~35% of exam)**: Designing end-to-end multi-agent topologies, tool distribution schemas, or context compaction strategies to meet explicit business SLAs.
 2. **Troubleshooting & Remediation (~40% of exam)**: Diagnosing misrouting, runner hangs, attention dilution, or data degradation from production logs and selecting the optimal architectural remedy.
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     Q["60 Exam Questions"] --> Syn["Synthesis & Design (35%)<br>Topologies, schema & tool design"]
     Q --> Trb["Troubleshooting (40%)<br>Misrouting, runner hangs, dilution"]

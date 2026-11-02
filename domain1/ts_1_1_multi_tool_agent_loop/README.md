@@ -101,15 +101,11 @@ Claude chose search first, then the calculator. The host never hard-coded that o
 ## 🏗️ Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Start["User prompt"] --> Send["Call Claude Messages API<br>(claude-sonnet-4-5)"]
     Send --> Check{"Read response.stop_reason"}
 
-    Check -->|"tool_use"| AppendA["Append assistant turn<br>(tool_use + thinking blocks unchanged)"]
+    Check -->|"tool_use"| AppendA["Append assistant turn<br>(tool_use + thinking<br>blocks unchanged)"]
     AppendA --> Run["Run every requested tool"]
     Run --> AppendU["Append user turn<br>(one tool_result per tool_use_id)"]
     AppendU --> Cap{"Safety cap reached?"}
@@ -119,7 +115,7 @@ flowchart TD
     Check -->|"pause_turn"| Resume["Append assistant turn unchanged"]
     Resume --> Send
     Check -->|"end_turn"| Done["Return final text"]
-    Check -->|"max_tokens / refusal / stop_sequence / unknown"| Stop["Raise LoopStopped<br>Do not treat as success"]
+    Check -->|"max_tokens / refusal /<br>stop_sequence / unknown"| Stop["Raise LoopStopped<br>Do not treat as success"]
 ```
 
 ---

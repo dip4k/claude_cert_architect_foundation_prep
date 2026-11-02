@@ -11,10 +11,6 @@ Domain 4 represents **20%** of the **Claude Certified Architect – Foundations 
 ## 🗺️ Study Order and Quick Map
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     T1["4.1 Criteria"] --> T2["4.2 Few-shot"] --> T3["4.3 Schema output"] --> T4["4.4 Validate and retry"] --> T5["4.5 Batches"] --> T6["4.6 Multi-pass review"]
 ```
@@ -145,14 +141,10 @@ Cross-links: 4.1 ↔ 4.4 (`detected_pattern`, dismissals), 4.3 ↔ 4.4 (schema t
 ### 🧠 Domain 4 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax (semantics still need validation)"]
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax<br>(semantics need checks)"]
     Q1 -->|No| Q2["2. Document attributes missing?"]
-    Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br>Prevents hallucinated values"]
+    Q2 -->|Yes| A2["Mark Nullable:<br>type ['string', 'null']<br>Prevents hallucinated values"]
     Q2 -->|No| Q3["3. Missing physical source facts?"]
     Q3 -->|Yes| A3["Fast-Fail to Human Review<br>Retries cannot invent absent data"]
     Q3 -->|No| Q4["4. Message Batches for PR checks?"]

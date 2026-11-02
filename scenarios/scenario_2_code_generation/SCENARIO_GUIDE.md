@@ -2,134 +2,232 @@
 
 ## 1. In One Minute
 
-**What it is.** A team uses Claude Code to write and change code. It relies on custom slash commands, `CLAUDE.md` files, path-scoped rules, and a choice between plan mode and direct execution.
+**What it is.** Engineering teams use Claude Code for local interactive development, multi-file refactoring, and automated codebase changes. Architectural mastery requires knowing how to partition instructions across the configuration hierarchy (`Managed` → `~/.claude/` → `.claude/` → `CLI flags`), when to use path-scoped rules vs on-demand skills, and how to choose between Plan Mode and Direct Execution.
 
-**Domains hit:** D3 Claude Code Configuration and Workflows, D5 Context Management.
+**Domains hit:** Domain 3 (Claude Code Configuration & Workflows), Domain 5 (Context Management & Reliability).
 
-**Task statements:** TS 3.1 (CLAUDE.md hierarchy), 3.2 (slash commands and skills), 3.3 (path-specific rules), 3.4 (plan mode vs direct), 3.5 (iterative refinement), 5.1 (context).
+**Key Task Statements:** TS 3.1 (`CLAUDE.md` hierarchy), TS 3.2 (Custom commands & Skills), TS 3.3 (Path-scoped rules), TS 3.4 (Plan Mode vs Direct Execution), TS 3.5 (Iterative refinement & Interview pattern), TS 5.1 (Context window preservation).
 
-**Top 3 traps**
-1. Putting shared team config in user-level files (`~/.claude/`) that teammates never receive.
-2. Using plan mode for a tiny fix, or direct execution for a large architectural change.
-3. Stuffing everything into one huge `CLAUDE.md` instead of using path rules and skills.
+**Top 3 Traps:**
+1. **The User-Scope Leak**: Putting team-wide shared commands or coding rules in user-level files (`~/.claude/`) that teammates never receive via Git.
+2. **The Mode Mismatch Trap**: Using Plan Mode for a trivial 1-line typo fix, or rushing into Direct Execution for a cross-service refactor touching multiple databases.
+3. **The Monolithic `CLAUDE.md` Trap**: Stuffing every deployment manual, coding standard, and historical bug list into one giant 2,000-line root file instead of using path-scoped rules and modular skills.
+
+---
 
 ## 2. Architecture Diagram
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Dev["Developer request"] --> Mode{"Scope of change?"}
-    Mode -->|"Small, clear, one file"| Direct["Direct execution"]
-    Mode -->|"Multi-file, architectural,<br>several valid designs"| Plan["Plan mode<br>(read-only exploration)"]
-    Plan --> Review["Human approves plan"]
-    Review --> Direct
-    Direct --> Ctx["Context loaded"]
-    Ctx --> Root["Root CLAUDE.md<br>(universal facts, short)"]
-    Ctx --> Rules[".claude/rules/*.md<br>(loaded by path glob)"]
-    Ctx --> Cmd[".claude/commands/<br>(shared slash commands)"]
-    Ctx --> Skill[".claude/skills/<br>(procedures, optional context: fork)"]
+    Dev["Developer Prompt"] --> Scope{"Scope & Ambiguity Check<br>How many files touched?"}
+
+    Scope -->|"1 File, Clear Bug"| Direct["Direct Execution Mode<br>(Edit tool with unique anchor)"]
+    Scope -->|">= 3 Files or Schema"| Plan["Plan Mode (Shift+Tab)<br>(Read-only exploration)"]
+    Scope -->|"Ambiguous Design"| Interview["The Interview Pattern<br>(Clarify trade-offs first)"]
+
+    Interview --> Direct
+
+    Plan --> Auto["Auto-Run Read-Only Tools<br>(grep, find, test runners)"]
+    Auto --> Blueprint["Draft Markdown Blueprint<br>(Phases, file diffs, risks)"]
+    Blueprint --> Review{"Human Approves<br>Blueprint?"}
+    Review -->|"Approved"| Direct
+    Review -->|"Changes Requested"| Plan
+
+    Direct --> Ctx["Dynamic Context Assembly"]
+    Ctx --> Root["Root CLAUDE.md<br>(Universal commands, <200 lines)"]
+    Ctx --> Rules[".claude/rules/*.md<br>(Path-scoped glob rules)"]
+    Ctx --> Skills[".claude/skills/<br>(On-demand, context: fork)"]
 ```
+
+---
 
 ## 3. How a Good Answer Thinks
 
-1. **Who needs it?** Whole team in the repo means project scope (`.claude/`, committed). Just me means user scope (`~/.claude/`).
-2. **When should it load?** Always: `CLAUDE.md`. Only for some files: `.claude/rules/` with a path glob. Only on demand: a skill or command.
-3. **How big is the change?** Large, multi-file, or unclear design: plan mode first. Small and clear: direct.
-4. **Is the request vague?** Ask questions (interview) before writing code. Do not guess a design.
-5. **Does a task produce lots of noisy output?** Run it in a forked context (`context: fork`) so the main session stays clean.
-6. **Root cause first.** If Claude ignores a convention, check where the convention lives and when it loads.
+Follow this decision sequence on the CCAR-F exam:
 
-### Model and Sampling Notes
-- Use `claude-sonnet-4-5` for coordinators and reasoning, `claude-haiku-4-5` for workers and extraction.
-- With extended thinking on: omit `temperature`, leave `top_k` and `top_p` unset, and use only `tool_choice` `auto` or `none` (forced or `any` returns HTTP 400). Forced-tool extraction calls must not use thinking.
-- In tool loops, return thinking blocks with their signature unchanged.
-- Loops end on `stop_reason` only (`end_turn`, `tool_use`, `max_tokens`, `stop_sequence`, `pause_turn`, `refusal`). A max-iterations counter is a safety cap, not the stop rule.
+1. **Who needs the configuration?**
+   * The whole team working in the repository → Project scope (`.claude/` committed to Git).
+   * Just me on my local laptop across all projects → User scope (`~/.claude/` uncommitted).
+   * Organization-wide compliance requirement → Enterprise Managed configuration.
+2. **When should instructions load into memory?**
+   * On every single interaction → Root `CLAUDE.md` (keep it lean: build, test, lint commands).
+   * Only when editing specific directories (e.g. `frontend/**` vs `backend/**`) → Path-scoped rule (`.claude/rules/*.md`).
+   * Only for specialized, episodic workflows (e.g. database migration or PR review) → Skill (`.claude/skills/*.md`).
+3. **How big and clear is the change?**
+   * Large, multi-file, or architectural design choices → Plan Mode first.
+   * Small, well-isolated bug fix with existing tests → Direct Execution.
+   * Vague or unconstrained requirements → The Interview Pattern (ask targeted questions before editing code).
+4. **Does the task generate massive exploratory logs?**
+   * Run the skill or subagent with `context: fork` so intermediate file dumps stay in an isolated context and return only an executive summary to the main thread.
+
+```mermaid
+flowchart TD
+    Q{"What is the<br>task scenario?"} -->|"Rule applies only to infra/**"| PathRule["Create path-scoped rule<br>in .claude/rules/"]
+    Q -->|"Shared team command"| ProjCmd["Commit command to<br>.claude/commands/"]
+    Q -->|"Refactoring multiple services"| PlanFirst["Toggle Plan Mode<br>(Shift+Tab)"]
+    Q -->|"Fixing 1-line syntax error"| DirectExec["Direct Execution with<br>unit test verification"]
+    Q -->|"Vague 'add caching' request"| AskQ["Interview developer on<br>constraints first"]
+    Q -->|"Verbose diagnostic script"| ForkCtx["Use Skill with<br>context: fork"]
+```
+
+### Model & Context Rules:
+- **Keep `CLAUDE.md` Concise (<200 lines)**: `CLAUDE.md` is loaded into the prompt prefix on **every single turn**. A bloated file consumes baseline token budgets, increases latency, and causes *Attention Dilution*.
+- **Use `useAutoModeDuringPlan`**: Allows Claude to run safe read-only discovery tools (`grep`, `glob`, `type-check`) autonomously during the planning phase without requiring human approval on every keystroke.
+- **Path Matching Syntax**: Use standard glob patterns in YAML frontmatter (`paths: ["backend/**/*.py", "src/api/**"]`).
+
+---
 
 ## 4. Task Statement Map
 
-| Task statement | How it shows up here | Trap |
-|---|---|---|
-| TS 3.1 CLAUDE.md | Short root file with universal facts; keep it under about 200 lines | One giant file with every procedure |
-| TS 3.2 Commands and skills | `/review` in `.claude/commands/`; verbose workflows in skills with `context: fork` | Putting shared commands in `~/.claude/commands/` |
-| TS 3.3 Path rules | `.claude/rules/*.md` with `paths:` globs such as `backend/**` | Repeating the same rule in many folder-level files |
-| TS 3.4 Plan mode | Plan mode for a multi-service refactor; direct for a typo | Always plan, or never plan |
-| TS 3.5 Iterative refinement | Interview first when auth or database choice is not stated | Picking a design silently |
-| TS 5.1 Context | Load rules by path; fork noisy work | Loading everything into every session |
+| Task Statement | How It Manifests in Scenario 2 | Exam Trap |
+| :--- | :--- | :--- |
+| **TS 3.1 `CLAUDE.md` Hierarchy** | Short root file with universal build/test commands; under 200 lines. | Storing company-wide wikis or API references in root `CLAUDE.md`. |
+| **TS 3.2 Commands & Skills** | Shared `/review` in `.claude/commands/`; verbose workflows in skills with `context: fork`. | Putting shared team shortcuts in personal `~/.claude/commands/`. |
+| **TS 3.3 Path-Scoped Rules** | `.claude/rules/backend.md` loading automatically via `paths: ["backend/**"]`. | Duplicating the same instructions across 10 subdirectories. |
+| **TS 3.4 Plan Mode vs Direct** | Plan Mode for cross-service refactors; Direct Execution for localized bug fixes. | Defaulting to Plan Mode for simple typos, or skipping Plan Mode on core schema refactors. |
+| **TS 3.5 Iterative Refinement** | Interviewing the developer when auth type or database driver is unspecified. | Silently picking a favorite database or guessing user intent without asking. |
+| **TS 5.1 Context Management** | Conditionally loading rules by path and forking noisy exploratory tasks. | Ingesting all repository documentation into every session turn. |
 
-## 5. Worked Example
+---
 
-**Request:** "Add authentication to the backend and update the API clients."
+## 5. Step-by-Step Worked Example
 
-1. Many files and no stated auth method, so this is plan mode plus an interview.
-2. Claude asks: JWT bearer tokens or session cookies? It waits for the answer.
-3. In plan mode it reads the code, lists affected files, and proposes phases. Nothing is edited yet.
-4. The human approves the plan.
-5. Direct execution starts. Editing `backend/**` loads the backend rule file (async handlers, validated models). Frontend rules stay unloaded.
-6. A shared `/review` command from `.claude/commands/` is used before the PR.
+**Developer Request**: *"Add JWT authentication to the backend and update the frontend API client."*
 
-Try it offline: `scenarios/scenario_2_code_generation/simulation.py` (`ClaudeCodeGenerationEngine.evaluate_task`).
+1. **Scope Assessment**: The task touches backend handlers, database schemas, and frontend clients. This is a multi-file architectural change with ambiguity (token expiry, storage mechanism, library choices).
+2. **The Interview Pattern**: Before modifying code, Claude prompts the developer:
+   *"Should we use RS256 with public/private keys or symmetric HS256? Should tokens be stored in httpOnly cookies or Authorization headers?"* The developer responds: *"RS256 in httpOnly cookies."*
+3. **Plan Mode Activation**: Claude toggles Plan Mode (`Shift+Tab`). It explores existing files using `useAutoModeDuringPlan` to check current session middleware without prompting for permission.
+4. **Drafting the Blueprint**: Claude outputs a step-by-step markdown blueprint:
+   * Phase 1: Add cryptography dependencies and generate keypair utilities.
+   * Phase 2: Implement JWT authentication middleware in `backend/middleware/auth.py`.
+   * Phase 3: Update login route to issue httpOnly cookies.
+   * Phase 4: Update frontend client in `frontend/src/api.ts` to include credentials.
+5. **Human Approval**: The developer reviews and approves the plan.
+6. **Direct Execution with Path Rules**: Claude transitions to execution. When opening files in `backend/**`, `.claude/rules/backend.md` loads automatically (enforcing async handlers and Pydantic validation). Frontend rules remain unloaded, preserving context.
 
-## 6. Exam-Style Practice Questions
+---
 
-**Q1.** Terraform conventions should apply only when Claude edits `infra/**`. The root `CLAUDE.md` is already long. What is best?
-- A) Add a "Terraform section" to the root `CLAUDE.md`.
-- B) Add the rules to `~/.claude/CLAUDE.md`.
-- C) Write a skill and ask engineers to invoke it each time.
-- D) Create a rule file in `.claude/rules/` with a `paths:` glob for `infra/**`.
+## 6. Exam-Style Practice Questions with Distractor Teardowns
 
-**Q2.** A stack trace points to an off-by-one error in one function. The fix is clear. What mode fits?
-- A) Plan mode with a full written proposal.
-- B) Direct execution.
-- C) Interview the developer about design choices.
-- D) Fork a separate research session first.
+### Q1. Scoping Infrastructure Guidelines
+A team wants specific Terraform guidelines (e.g. mandatory resource tagging) to apply automatically whenever Claude edits infrastructure code in `infra/**`. The root `CLAUDE.md` is already 180 lines long. What is the best practice?
 
-**Q3.** A developer says "add caching to the service." There are several valid designs and no constraints given. What should Claude do first?
-- A) Ask targeted questions about constraints and design options.
-- B) Choose Redis and implement it.
-- C) Implement three variants and let the reviewer choose.
-- D) Add a generic cache and ask later.
+- **A)** Add a 50-line Terraform section to the bottom of the root `CLAUDE.md`.
+- **B)** Add the Terraform rules to `~/.claude/CLAUDE.md`.
+- **C)** Create a custom skill and require engineers to remember to type `/terraform` before making edits.
+- **D)** Create a rule file in `.claude/rules/terraform.md` with YAML frontmatter specifying `paths: ["infra/**"]`.
 
-**Q4.** A repo-analysis skill prints thousands of lines of exploration and clutters the session. What helps most?
-- A) Move its text into `CLAUDE.md`.
-- B) Make the prompt shorter.
-- C) Turn it into a slash command.
-- D) Add `context: fork` in the skill so it runs in an isolated context and returns a summary.
+**Correct Answer:** D
 
-**Q5.** A review skill must never modify files. How should this be enforced?
-- A) Restrict the skill's allowed tools to read-only tools.
-- B) Write "do not edit files" in the skill text.
-- C) Trust the model to follow the instruction.
-- D) Ask for confirmation after each edit.
+**Distractor Teardown:**
+- **A is incorrect (The Monolithic `CLAUDE.md` Trap):** Adding 50 lines bloats the root file beyond 200 lines and injects Terraform rules into frontend and backend sessions where they are completely irrelevant.
+- **B is incorrect (The User-Scope Leak):** Putting rules in `~/.claude/` keeps them on one developer's machine; teammates will not receive the rules.
+- **C is incorrect:** Requiring manual invocation of a skill introduces human error; developers will inevitably forget to trigger it.
+- **D is correct:** Path-scoped rules in `.claude/rules/` are committed to Git and automatically load only when matching files in `infra/**` are touched.
 
-**Q6.** The root `CLAUDE.md` has grown to 600 lines mixing facts, deployment procedures, and per-folder style notes. Claude follows it unevenly. What is the best restructure?
-- A) Keep universal facts in `CLAUDE.md`, move procedures to skills, move path-specific rules to `.claude/rules/`.
-- B) Make every instruction bold.
-- C) Delete all style guidance.
-- D) Split it into several equal files that all load every session.
+---
 
-### Answers
+### Q2. Selecting the Operational Mode
+A stack trace points directly to an off-by-one indexing error in a single utility function `calculate_discount()`. The function is 15 lines long, has unit tests, and the fix is unambiguous. Which mode should the developer use?
 
-**Q1: D.** A fails: loads for every task and bloats the root file. B fails: user-level, teammates do not get it. C fails: manual invocation is easy to forget.
+- **A)** Plan Mode with a multi-page written proposal.
+- **B)** Direct Execution.
+- **C)** The Interview Pattern asking the user to describe sorting algorithms.
+- **D)** Launch a multi-agent research team with `context: fork`.
 
-**Q2: B.** A fails: over-engineered for a clear one-function fix. C fails: nothing is ambiguous. D fails: needless extra step.
+**Correct Answer:** B
 
-**Q3: A.** B fails: guesses a design. C fails: wasteful and unreviewed. D fails: builds first, asks later.
+**Distractor Teardown:**
+- **A is incorrect:** Plan Mode introduces unnecessary cognitive and operational friction for an isolated, clear, single-file bug fix.
+- **B is correct:** When the bug is localized, clear, and covered by unit tests, Direct Execution fixes the code and verifies with tests immediately.
+- **C is incorrect:** The requirements are already unambiguous; asking unnecessary questions wastes developer time.
+- **D is incorrect:** A multi-agent swarm for an off-by-one error is an absurd over-engineering anti-pattern.
 
-**Q4: D.** A fails: adds noise to every session. B fails: does not reduce output. C fails: a command still runs in the main context.
+---
 
-**Q5: A.** B fails: text is probabilistic. C fails: same issue. D fails: the edit already happened.
+### Q3. Handling Ambiguous Architecture Requests
+A developer submits: *"Add caching to the user profile service."* There are multiple valid caching tiers (Redis, in-memory LRU, CDN edge cache) and no operational constraints were supplied. What should Claude do first?
 
-**Q6: A.** B fails: emphasis does not fix structure. C fails: loses useful guidance. D fails: everything still loads every time.
+- **A)** Ask targeted questions about cache invalidation requirements, latency goals, and existing infrastructure.
+- **B)** Immediately install Redis and write connection code.
+- **C)** Implement three alternative caching strategies simultaneously and ask the reviewer to pick one in the pull request.
+- **D)** Implement an in-memory cache and append a disclaimer at the end of the response.
+
+**Correct Answer:** A
+
+**Distractor Teardown:**
+- **A is correct (The Interview Pattern):** High-level, ambiguous architectural requests require clarifying constraints before committing to implementation.
+- **B is incorrect (The Context Trap):** Guessing an external dependency (Redis) without knowing if Redis is deployed in production causes architectural mismatch.
+- **C is incorrect:** Writing three parallel implementations burns token budget and litters the codebase with dead code.
+- **D is incorrect:** Silently picking an in-memory cache may break if the service is deployed across multiple horizontal instances.
+
+---
+
+### Q4. Preventing Main Session Context Clutter
+A developer builds a repository audit skill that inspects 40 files, generating 800 lines of intermediate AST logs. Running it directly in Claude Code fills the chat context, causing subsequent prompts to experience latency spikes. What configuration solves this?
+
+- **A)** Copy the audit script text into `CLAUDE.md`.
+- **B)** Truncate the developer's prompt.
+- **C)** Convert the skill into a bash alias.
+- **D)** Add `context: fork` to the skill's YAML frontmatter so it executes in an isolated subagent and returns only the final summary to the main session.
+
+**Correct Answer:** D
+
+**Distractor Teardown:**
+- **A is incorrect:** Moving noisy scripts into `CLAUDE.md` guarantees the noise is re-injected on every single turn.
+- **B is incorrect:** Shortening the user prompt does not reduce the 800 lines of tool output generated by the skill.
+- **C is incorrect:** A bash alias still prints its full output directly into the active terminal session.
+- **D is correct:** `context: fork` spins up an ephemeral, isolated subagent context for heavy exploration, returning only a clean summary to the main conversation.
+
+---
+
+### Q5. Enforcing Read-Only Safety on Review Skills
+A technical lead creates a code review skill in `.claude/skills/review/SKILL.md`. The lead wants to guarantee that the skill can never modify source code under any circumstances. How should this be enforced?
+
+- **A)** Configure the skill's frontmatter to explicitly restrict allowed tools to read-only operations: `tools: ["read_file", "list_directory", "git_diff"]`, omitting `write_file`, `edit_file`, and `bash`.
+- **B)** Write in the skill prompt: *"Please do not edit any files during code review."*
+- **C)** Instruct developers to trust the model's alignment.
+- **D)** Configure a post-edit prompt asking the user if they noticed any file changes.
+
+**Correct Answer:** A
+
+**Distractor Teardown:**
+- **A is correct (Least Privilege Tool Sandboxing):** Security and behavioral safety must be enforced structurally at the tool schema layer. Removing write tools makes file modification impossible.
+- **B is incorrect (The Prompt-As-Permission Trap):** Prompt instructions are soft guidelines that can be bypassed by prompt injection or model hallucination.
+- **C is incorrect:** Model alignment is not an access control boundary.
+- **D is incorrect:** Post-edit warnings occur after the file has already been modified.
+
+---
+
+### Q6. Refactoring a Bloated Configuration
+A repository's root `CLAUDE.md` has grown to 700 lines, mixing local build commands, Kubernetes deployment manifests, Python linting rules, React styling guides, and database migration steps. Claude frequently forgets the React rules and fails builds. What is the recommended restructuring?
+
+- **A)** Keep universal build and test commands in `CLAUDE.md` (<200 lines); move directory-specific rules to `.claude/rules/` with path globs; move episodic procedures (K8s deploy, DB migration) to modular `.claude/skills/`.
+- **B)** Make all 700 lines bold and uppercase to improve attention.
+- **C)** Delete all React and Python styling rules completely.
+- **D)** Split the file into 7 separate 100-line files that are all loaded unconditionally at startup.
+
+**Correct Answer:** A
+
+**Distractor Teardown:**
+- **A is correct:** Partitioning configuration into a lean root file (<200 lines), conditional path-scoped rules, and on-demand skills preserves token budgets and eliminates attention dilution.
+- **B is incorrect:** Bold text does not resolve context saturation.
+- **C is incorrect:** Deleting conventions removes valuable team standards.
+- **D is incorrect:** Unconditionally loading 7 files still injects 700 lines into every turn.
+
+---
 
 ## 7. Self-Check Checklist
 
-- [ ] I can state project scope vs user scope for commands and config.
-- [ ] I know when rules load by glob versus always.
-- [ ] I can justify plan mode vs direct execution in one sentence.
-- [ ] I know what `context: fork` does and why it helps.
-- [ ] I ask first when the request is vague.
+- [ ] I can distinguish between Project scope (`.claude/`) and User scope (`~/.claude/`).
+- [ ] I can write the YAML frontmatter for a path-scoped rule with `paths: ["..."]`.
+- [ ] I know the criteria for choosing Plan Mode vs Direct Execution.
+- [ ] I know what `context: fork` does and when to use it to prevent context bloat.
+- [ ] I understand why `CLAUDE.md` must stay under 200 lines.
 
-**Memory hook:** "Share in the repo, load by path, plan big, fork the noise."
+**Memory Hook:** *"Share in the repo, load by path, plan big, fork the noise."*
+
+**Related Practice Bank Questions:**
+* [Set 4 (Configuration Precedence & CLAUDE.md): Q96, Q98, Q99, Q100, Q101, Q103](../../practice_exam_bank_300/set_04_domain2_claude_code_config.md)
+* [Set 5 (Skills, Subagents & Plan Mode): Q126, Q128, Q131, Q132, Q133, Q134](../../practice_exam_bank_300/set_05_domain2_skills_subagents_headless.md)

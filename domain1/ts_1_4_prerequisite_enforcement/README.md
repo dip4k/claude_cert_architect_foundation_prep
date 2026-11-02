@@ -103,10 +103,6 @@ The unsafe call in turn 1 never executed. No prompt wording could have promised 
 ## 🏗️ Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Req["Customer request"] --> Claude["Claude turn<br>(claude-sonnet-4-5)"]
     Claude --> Call["tool_use: process_refund"]
@@ -117,7 +113,7 @@ flowchart TD
     Gate -->|"Yes"| Run["Run the tool"]
     Run --> Claude
 
-    Claude --> Esc{"Human needed?<br>(explicit request or policy)"}
+    Claude --> Esc{"Human needed?<br>Explicit request<br>or policy gap?"}
     Esc -->|"Yes"| Summary["Build structured handoff:<br>customer ID, root cause,<br>refund amount, recommended action"]
     Summary --> Human["Human agent queue"]
     Esc -->|"No"| Reply["Final reply to customer"]

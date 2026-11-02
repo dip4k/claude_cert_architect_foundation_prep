@@ -2,136 +2,236 @@
 
 ## 1. In One Minute
 
-**What it is.** An Agent SDK agent helps developers explore unfamiliar codebases, understand legacy systems, and generate boilerplate. It uses built-in tools (Read, Write, Edit, Bash, Grep, Glob) and MCP servers.
+**What it is.** An enterprise developer productivity assistant that navigates large, unfamiliar, or legacy codebases. The agent uses built-in exploration tools (`Glob`, `Grep`, `Read`, `Edit`, `Write`, `Bash`) and Model Context Protocol (MCP) integrations to understand architecture, debug issues, and safely refactor code without blowing context budgets or corrupting source files.
 
-**Domains hit:** D2 Tool Design and MCP, D3 Claude Code Configuration, D1 Agentic Architecture.
+**Domains hit:** Domain 2 (Tool Design & MCP Integration), Domain 3 (Claude Code Configuration & Workflows), Domain 1 (Agentic Architecture & Orchestration).
 
-**Task statements:** TS 2.3 (tool distribution), 2.4 (MCP server integration), 2.5 (built-in tools), 3.1 (CLAUDE.md), 1.7 (session management), 5.1 (context).
+**Key Task Statements:** TS 2.3 (Tool distribution & scoping), TS 2.4 (MCP server & resource integration), TS 2.5 (Built-in code tools execution order), TS 3.1 (`CLAUDE.md` context loading), TS 1.7 (Session management & branching), TS 5.1 (Context window preservation).
 
-**Top 3 traps**
-1. Reading whole files or directories when Grep or Glob would find the target cheaply.
-2. Putting secrets in `.mcp.json` instead of `${ENV_VAR}` expansion.
-3. Doing verbose exploration in the main session instead of a subagent or scratchpad.
+**Top 3 Traps:**
+1. **The Brute-Force Reading Trap**: Ingesting whole directory trees or entire multi-thousand-line files into context when `Glob` (file names) or `Grep` (text patterns) would locate the exact target in milliseconds for a fraction of the token cost.
+2. **The Hardcoded MCP Secret Trap**: Committing API tokens or database passwords directly into `.mcp.json` instead of using environment variable expansion (`${JIRA_API_TOKEN}`).
+3. **The Anchor Collision Trap**: Repeating a failed `Edit` tool invocation with the exact same non-unique target string rather than following the 3-stage fallback ladder.
+
+---
 
 ## 2. Architecture Diagram
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Dev["Developer question"] --> Agent["Agent"]
-    Agent --> Find{"What is needed?"}
-    Find -->|"File names / patterns"| Glob["Glob"]
-    Find -->|"Content / callers"| Grep["Grep"]
-    Find -->|"Understand one file"| Read["Read"]
-    Find -->|"Change code"| Edit["Edit (unique anchor)"]
-    Edit -->|"Anchor not unique"| Fallback["Expand anchor,<br>else Read + Write"]
-    Find -->|"Run tests / commands"| Bash["Bash"]
-    Find -->|"Docs / catalogs"| MCP["MCP server<br>(resources + tools)"]
-    Agent -->|"Verbose exploration"| Sub["Subagent returns summary"]
-    Agent --> Notes["Scratchpad file<br>(key findings)"]
+    Dev["Developer Query / Task"] --> Agent["Productivity Agent"]
+
+    Agent --> Glob["1. Glob Tool<br>(Search path structure)"]
+    Glob --> Grep["2. Grep Tool<br>(Locate symbols & callers)"]
+    Grep --> Read["3. Targeted Read Tool<br>(Read offset + limit chunk)"]
+
+    Read --> Action{"Code Modification<br>Required?"}
+
+    Action -->|"Yes: Edit Code"| Edit["4. Edit Tool<br>(Target unique anchor text)"]
+    Edit -->|"Multiple matches"| Anchor["Fallback: Expand Anchor<br>(Include function header)"]
+    Anchor -->|"Still ambiguous"| Write["Fallback: Full Read + Write"]
+
+    Action -->|"Static Documentation"| MCPRes["MCP Resource (resources/*)<br>(Direct/templated URI)"]
+    Action -->|"Heavy Investigation"| Subagent["Exploration Subagent<br>(context: fork + scratchpad)"]
 ```
+
+---
 
 ## 3. How a Good Answer Thinks
 
-1. **Match the tool to the question.** Names: Glob. Content: Grep. One known file: Read.
-2. **Start narrow, then widen.** Grep for the symbol, Read the hits, follow callers. Do not read everything.
-3. **Edit needs a unique anchor.** If it fails, expand the anchor. If still ambiguous, Read then Write.
-4. **MCP configuration.** Shared team servers live in the project `.mcp.json`. Credentials use `${ENV_VAR}`. Personal servers stay in user config.
-5. **Resources vs tools.** Static catalogs and docs fit MCP resources: the agent can see what exists without guessing.
-6. **Protect context.** Send noisy exploration to a subagent and save key findings in a scratchpad file.
-7. **Least privilege.** Give the agent only the tools the task needs.
+Follow this decision sequence on the CCAR-F exam:
 
-### Model and Sampling Notes
-- Use `claude-sonnet-4-5` for coordinators and reasoning, `claude-haiku-4-5` for workers and extraction.
-- With extended thinking on: omit `temperature`, leave `top_k` and `top_p` unset, and use only `tool_choice` `auto` or `none` (forced or `any` returns HTTP 400). Forced-tool extraction calls must not use thinking.
-- In tool loops, return thinking blocks with their signature unchanged.
-- Loops end on `stop_reason` only (`end_turn`, `tool_use`, `max_tokens`, `stop_sequence`, `pause_turn`, `refusal`). A max-iterations counter is a safety cap, not the stop rule.
+1. **Match the Tool to the Objective (The Discovery Funnel)**:
+   * Need file names, file existence, or structural layout? → `Glob`.
+   * Need symbol definitions, usages, or string callers across the repo? → `Grep`.
+   * Need to understand logic in a specific file? → `Read` (targeted with offset/limit).
+   * Need to modify existing code? → `Edit` (requires an exact, unique target anchor).
+2. **The 3-Stage Edit Fallback Ladder**:
+   * Stage 1: Invoke `Edit` with target text.
+   * Stage 2 (If target appears multiple times): Expand the anchor text to include unique surrounding lines (e.g. enclosing function header or decorator).
+   * Stage 3 (If still ambiguous): Perform a fresh `Read` of the complete file and use `Write` to replace the full content cleanly.
+3. **MCP Configuration and Credential Governance**:
+   * Shared team integrations live in version-controlled `.mcp.json` at the repo root.
+   * Secrets must NEVER be in `.mcp.json`; always use `${ENV_VAR}` syntax.
+   * Static documentation, database schemas, and architectural wikis belong in **MCP Resources** (`resources/*`), not tools.
+4. **Context Hygiene in Deep Investigations**:
+   * Offload verbose grep or ast logs to a subagent (`context: fork`).
+   * Record key architectural discoveries in an external `scratchpad.md` file rather than bloating active conversational memory.
+5. **Least Privilege**: Read-only investigation agents must NEVER be provisioned with `Write`, `Edit`, or unrestricted `Bash` tools.
+
+```mermaid
+flowchart TD
+    Q{"What is the<br>task goal?"} -->|"Locate all test files"| GlobTool["Use Glob with<br>glob path pattern"]
+    Q -->|"Find where auth is called"| GrepTool["Use Grep with<br>regex symbol search"]
+    Q -->|"Inspect 30 lines of file"| ReadTool["Use Read with<br>line offset & limit"]
+    Q -->|"Edit fails on collisions"| Expand["Expand anchor text<br>with unique context"]
+    Q -->|"Team MCP secret config"| McpSecret["Use .mcp.json<br>with ${ENV_VAR}"]
+    Q -->|"Expose static API specs"| McpRes["Expose as MCP Resource<br>(resources/*)"]
+```
+
+---
 
 ## 4. Task Statement Map
 
-| Task statement | How it shows up here | Trap |
-|---|---|---|
-| TS 2.3 Distribution | Explorer agent gets read-only tools | Granting Write and Bash to a read-only task |
-| TS 2.4 MCP integration | Project `.mcp.json` with `${ENV_VAR}`; resources for docs | Hardcoded tokens; one-off personal config for the team |
-| TS 2.5 Built-in tools | Grep, Glob, Read, Edit, Write, Bash used in the right order | Reading every file; Bash `cat` instead of Read |
-| TS 3.1 CLAUDE.md | Project conventions loaded at session start | Re-explaining conventions each time |
-| TS 1.7 Sessions | Resume or fork a session to explore alternatives | Starting over and losing findings |
-| TS 5.1 Context | Subagent summaries and scratchpad notes | One session full of raw search output |
+| Task Statement | How It Manifests in Scenario 4 | Exam Trap |
+| :--- | :--- | :--- |
+| **TS 2.3 Tool Scoping** | Read-only explorer receives strictly `Glob`, `Grep`, `Read`. | Granting `Write` and unrestricted `Bash` to a read-only investigation. |
+| **TS 2.4 MCP Integration** | Project `.mcp.json` using `${ENV_VAR}` for tokens; resources for specs. | Hardcoding API keys in `.mcp.json` or putting team configs in `~/.claude/`. |
+| **TS 2.5 Built-In Tools** | Proper tool sequencing: `Glob` → `Grep` → `Read` → `Edit`. | Reading every file in the repo; using `Bash(cat ...)` instead of `Read`. |
+| **TS 3.1 `CLAUDE.md`** | Invariant repository build and architectural conventions loaded at launch. | Re-explaining repo structure and test commands on every turn. |
+| **TS 1.7 Session Branching** | Using subagents or session branching to test alternative refactors. | Starting over from scratch and losing previous exploratory findings. |
+| **TS 5.1 Context Hygiene** | Subagent summaries and persistent `scratchpad.md` notes. | Flooding the main conversation session with 5,000 lines of raw grep output. |
 
-## 5. Worked Example
+---
 
-**Task:** "Where is tax calculated in this legacy billing system, and can we change the rate safely?"
+## 5. Step-by-Step Worked Example
 
-1. Glob `src/**/billing*` to see the layout.
-2. Grep `calculate_tax|get_rate` to find definitions and callers.
-3. Read only the hit files around those lines.
-4. Read the billing API spec through the MCP resource, not by searching the wiki.
-5. Edit `0.05` to a named constant. The anchor `return 0.05` matches two places, so the Edit fails. Expand the anchor with the function signature. It now matches once.
-6. Run the tests with Bash. Save the finding "tax logic lives in `calc.py`, callers in `invoice.py`" to a scratchpad.
+**Developer Objective**: *"Where is tax calculated in this legacy billing repository, and can we safely increase the default rate to 6%?"*
 
-Try it offline: `scenarios/scenario_4_developer_productivity/simulation.py` (`execute_edit_with_fallback`, `read_mcp_resource`).
+1. **Structural Discovery**: The agent calls `Glob(pattern="src/**/billing*")`. It identifies `src/services/billing/calc.py` and `src/services/billing/invoice.py`.
+2. **Symbol Mapping**: The agent calls `Grep(pattern="calculate_tax|tax_rate", path="src/")`. It finds:
+   * Definition: `src/services/billing/calc.py` (Line 42)
+   * Caller: `src/services/billing/invoice.py` (Line 115)
+3. **Targeted Reading**: The agent calls `Read(file_path="src/services/billing/calc.py", offset=35, limit=20)`. It reads only the relevant 20 lines rather than the entire 1,500-line file.
+4. **MCP Resource Inspection**: To verify regulatory rules, the agent accesses an MCP resource `docs://specs/billing_tax_compliance` to confirm whether tax rates must be configured as floats or decimal objects.
+5. **Executing the Edit & Handling Collision**:
+   * The agent attempts: `Edit(file_path="calc.py", target="return 0.05", replacement="return 0.06")`.
+   * The tool fails: `"Target string 'return 0.05' matches 2 occurrences in calc.py"`.
+   * **Stage 2 Fallback**: The agent expands the anchor to include the function header:
+     ```python
+     target = """def get_default_tax_rate():
+         return 0.05"""
+     replacement = """def get_default_tax_rate():
+         return 0.06"""
+```
+   * The edit succeeds cleanly with zero ambiguity.
+6. **Verification & Note Capture**: The agent executes tests via `Bash(command="pytest tests/test_billing.py")`. Tests pass. The agent writes a summary note to `scratchpad.md` documenting the dependency chain between `calc.py` and `invoice.py`.
 
-## 6. Exam-Style Practice Questions
+---
 
-**Q1.** You need every caller of `calculate_tax` in a large repo you have never seen. What is the best first step?
-- A) Read every file under `src/`.
-- B) Ask the user to list callers.
-- C) Run `cat` on all Python files.
-- D) Grep for `calculate_tax`, then Read only the matching files.
+## 6. Exam-Style Practice Questions with Distractor Teardowns
 
-**Q2.** You need all test files matching `*.test.tsx`. Which tool?
-- A) Grep for the text "test".
-- B) Glob with the pattern.
-- C) Read the root directory.
-- D) Bash with `find` and parse the output.
+### Q1. Efficient Codebase Navigation
+You are assigned to locate every caller of a deprecated function `process_payment_v1()` in a legacy repository containing 4,000 files across 80 directories. What is the most efficient, cost-effective first step?
 
-**Q3.** An Edit fails because the target line appears three times. What is the best recovery?
-- A) Retry the same Edit.
-- B) Replace the entire repo.
-- C) Expand the anchor with surrounding unique lines; if still ambiguous, Read then Write.
-- D) Skip the change.
+- **A)** Call `Read` on every Python file under `src/`.
+- **B)** Ask the developer in chat to provide a list of callers.
+- **C)** Execute a bash command that runs `cat` on all files and pipe it into the LLM context.
+- **D)** Call `Grep` with pattern `"process_payment_v1"` to locate matching file paths and line numbers, then `Read` only the matching files.
 
-**Q4.** A team wants a shared Jira MCP server for everyone in the repo. The server needs an API token. What is the right setup?
-- A) Put the server in each developer's personal config.
-- B) Put the server in the repo's `.mcp.json` with the token as `${JIRA_TOKEN}`.
-- C) Put the token directly in `.mcp.json`.
-- D) Paste the token into the system prompt.
+**Correct Answer:** D
 
-**Q5.** A long exploration fills the main session with raw search output, and the agent loses earlier findings. What helps most?
-- A) Raise the token limit.
-- B) Delete earlier findings.
-- C) Run the exploration in a subagent that returns a summary, and keep key findings in a scratchpad file.
-- D) Restart and avoid exploring.
+**Distractor Teardown:**
+- **A is incorrect (The Brute-Force Reading Trap):** Reading 4,000 files consumes tens of millions of tokens, costs hundreds of dollars, and crashes context limits.
+- **B is incorrect:** The user tasked the assistant with discovering this; asking the user defeats the purpose of developer automation.
+- **C is incorrect:** Using `cat` to dump files into bash output causes the exact same massive context flood as Option A.
+- **D is correct (Progressive Discovery):** `Grep` executes deterministically in host code, returning only matching line references without loading irrelevant files into LLM context.
 
-**Q6.** Static API documentation should be easy for the agent to discover. What is a good design?
-- A) Expose it as an MCP resource, so the agent can see what exists.
-- B) Wrap it in a tool that needs a query guess for every lookup.
-- C) Paste the full docs into every prompt.
-- D) Keep it on a wiki the agent cannot reach.
+---
 
-### Answers
+### Q2. Selecting File Finding Tools
+You need to find all integration test files in a repository matching the naming convention `*.integration.spec.ts`. Which tool should be invoked?
 
-**Q1: D.** A fails: expensive and floods context. B fails: the agent should find it. C fails: same cost as A, and Read/Grep are the right tools.
+- **A)** `Grep` with search string `"integration"`.
+- **B)** `Glob` with pattern `"**/*.integration.spec.ts"`.
+- **C)** `Read` targeting the repository root directory.
+- **D)** `Bash` executing a recursive Python script that walks the filesystem.
 
-**Q2: B.** A fails: Grep searches content, not names. C fails: lists only one directory level. D fails: Glob is the purpose-built tool.
+**Correct Answer:** B
 
-**Q3: C.** A fails: same failure. B fails: absurd and destructive. D fails: gives up on a recoverable error.
+**Distractor Teardown:**
+- **A is incorrect:** `Grep` searches the *content* inside files, not file names and path structures.
+- **B is correct:** `Glob` is the purpose-built tool for pattern-matching filesystem paths and file names.
+- **C is incorrect:** `Read` opens file contents; passing a directory path to `Read` returns a filesystem error.
+- **D is incorrect:** Writing custom Python scripts is an over-engineered anti-pattern when a native `Glob` tool is available.
 
-**Q4: B.** A fails: not shared with the team. C fails: leaks a secret into version control. D fails: leaks the secret and wastes context.
+---
 
-**Q5: C.** A fails: more room, same clutter. B fails: loses data. D fails: gives up the task.
+### Q3. Recovering from Edit Anchor Collisions
+An `Edit` tool execution fails with the error message:
+`"Target string 'status = True' appears 4 times in user_service.py. Target must be unique."`
+What is the proper recovery procedure?
 
-**Q6: A.** B fails: hides what exists. C fails: bloats every prompt. D fails: unreachable.
+- **A)** Re-issue the exact same `Edit` call immediately.
+- **B)** Delete `user_service.py` and rewrite the entire file from memory.
+- **C)** Expand the target anchor to include surrounding unique lines (such as function declarations or unique variable assignments); if still ambiguous, perform a targeted `Read` and replace via `Write`.
+- **D)** Halt execution and tell the user the file cannot be modified.
+
+**Correct Answer:** C
+
+**Distractor Teardown:**
+- **A is incorrect:** Repeating the identical call will fail with the identical collision error.
+- **B is incorrect:** Deleting files destroys production code and introduces severe hallucination risks.
+- **C is correct (The Edit Fallback Ladder):** Expanding surrounding anchor context creates a unique string match. If context remains ambiguous, a full read-and-write replaces the file deterministically.
+- **D is incorrect:** Giving up on a routine string collision represents fragile agent engineering.
+
+---
+
+### Q4. Shared Team MCP Configuration & Secrets
+A team wants to integrate an internal Jira MCP server for all engineers working on a shared repository. The server requires an authentication token. What is the correct architectural configuration?
+
+- **A)** Configure the server in each developer's personal `~/.claude/config.json`.
+- **B)** Commit the server definition in the repository's `.mcp.json`, referencing the token via environment variable expansion: `"token": "${JIRA_API_TOKEN}"`.
+- **C)** Paste the raw plaintext API token directly into the committed `.mcp.json`.
+- **D)** Hardcode the API token inside the assistant's system prompt in `CLAUDE.md`.
+
+**Correct Answer:** B
+
+**Distractor Teardown:**
+- **A is incorrect:** User-level configs do not synchronize across the Git repository, forcing manual setup for every team member.
+- **C is incorrect (The Hardcoded Secret Trap):** Committing raw credentials into version control leaks secrets across Git history.
+- **D is incorrect:** Pasting credentials in prompts leaks secrets across LLM API boundaries and wastes prompt tokens.
+- **B is correct:** Committing `.mcp.json` standardizes tool access for the entire team, while `${ENV_VAR}` ensures credentials stay secure in developer environment variables.
+
+---
+
+### Q5. Context Preservation During Deep Code Exploration
+An agent is tasked with tracing a complex legacy dependency graph. After 30 exploratory grep and read tool calls, the conversation context is cluttered with 60,000 tokens of raw source snippets, and the agent begins losing track of its original goal. What architectural design prevents this?
+
+- **A)** Increase the model's `max_tokens` output limit.
+- **B)** Delete the initial user prompt from the conversation history.
+- **C)** Delegate exploratory investigation to an isolated subagent (`context: fork`) that returns only a synthesized summary, and persist key findings in an external `scratchpad.md` file.
+- **D)** Restart the machine and instruct the agent to avoid reading files.
+
+**Correct Answer:** C
+
+**Distractor Teardown:**
+- **A is incorrect:** `max_tokens` limits generation output; it does not solve input context bloat.
+- **B is incorrect:** Deleting the initial prompt causes amnesia regarding the user's primary objective.
+- **C is correct (Isolated Exploration & Scratchpads):** Running exploratory lookups in a forked subagent keeps intermediate noise out of the primary session, while `scratchpad.md` preserves findings durably.
+- **D is incorrect:** Avoiding file reads prevents the agent from performing necessary software engineering work.
+
+---
+
+### Q6. Exposing Internal Knowledge: Tools vs. Resources
+An enterprise maintains static OpenAPI specifications and architecture decision records (ADRs) that developers frequently need. How should these documents be exposed through MCP?
+
+- **A)** Expose them as MCP Resources (`resources/*`), allowing the model to browse and attach document URIs directly into context without exploratory tool calls.
+- **B)** Wrap every document in an executable MCP Tool that requires the model to guess search parameters.
+- **C)** Paste all OpenAPI specifications directly into the system prompt of `CLAUDE.md`.
+- **D)** Store the documents in an encrypted archive that the agent cannot reach.
+
+**Correct Answer:** A
+
+**Distractor Teardown:**
+- **A is correct (MCP Resources for Static Data):** MCP Resources act as read-only context endpoints (like GET endpoints). Exposing specs as resources allows the host to list and attach documentation cleanly without tool guessing.
+- **B is incorrect:** Tool wrapping requires iterative guess-and-check calling, burning latency and token budgets.
+- **C is incorrect:** Pasting full OpenAPI specifications into `CLAUDE.md` causes severe prompt bloat on every interaction.
+- **D is incorrect:** Unreachable archives eliminate developer productivity benefits.
+
+---
 
 ## 7. Self-Check Checklist
 
-- [ ] I pick Glob, Grep, or Read from the question wording.
-- [ ] I can describe the Edit failure recovery steps.
-- [ ] I know where shared MCP config lives and how secrets are handled.
-- [ ] I can explain resources vs tools in one line.
-- [ ] I protect context with subagents and a scratchpad.
+- [ ] I can recite the progressive discovery funnel: `Glob` (names) → `Grep` (content) → `Read` (targeted lines) → `Edit` (anchored write).
+- [ ] I know the 3-stage fallback ladder for `Edit` collisions.
+- [ ] I understand how `.mcp.json` uses `${ENV_VAR}` to protect credentials.
+- [ ] I know why static documentation belongs in MCP Resources rather than Tools.
+- [ ] I use `scratchpad.md` and forked subagents to protect the main session from exploratory noise.
 
-**Memory hook:** "Glob names, Grep content, Read last, Edit with a unique anchor."
+**Memory Hook:** *"Glob names, Grep content, Read last, Edit with a unique anchor."*
+
+**Related Practice Bank Questions:**
+* [Set 4 (CLAUDE.md & Rules): Q101, Q102, Q104, Q116](../../practice_exam_bank_300/set_04_domain2_claude_code_config.md)
+* [Set 8 (Tool Schemas & Error Handling): Q216, Q225, Q234](../../practice_exam_bank_300/set_08_domain4_tool_schemas_error_handling.md)
+* [Set 9 (MCP Architecture & Stateless Spec): Q246, Q247, Q251, Q252, Q261, Q263](../../practice_exam_bank_300/set_09_domain4_mcp_architecture_stateless.md)

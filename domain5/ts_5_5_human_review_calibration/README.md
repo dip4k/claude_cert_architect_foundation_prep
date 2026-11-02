@@ -78,10 +78,6 @@ Run `main.py` to print these numbers. The tests check them.
 ## Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Doc["Extracted field + confidence"] --> Sig{"Ambiguous or<br>conflicting sources?"}
     Sig -->|"Yes"| Human["Human review queue"]

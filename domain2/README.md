@@ -11,10 +11,6 @@ Domain 2 is **18%** of the **Claude Certified Architect – Foundations (CCAR-F)
 ## 🗺️ Study Order
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     A["2.1 Tool<br>descriptions"] --> B["2.2 Structured<br>errors"]
     B --> C["2.3 Tool distribution<br>and tool_choice"]
@@ -85,10 +81,6 @@ Why this order: good tool descriptions (2.1) come first. Then how tools fail (2.
 ## 🧭 Quick Decision Flow
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Q1["Agent picks the wrong tool?"] -->|"Yes"| A1["Expand descriptions first (2.1)"]
     Q1 -->|"No"| Q2["Tool failed?"]
@@ -96,7 +88,7 @@ flowchart TD
     Q2 -->|"No"| Q3["Too many tools or must call one?"]
     Q3 -->|"Yes"| A3["Scope tools, pick tool_choice (2.3)"]
     Q3 -->|"No"| Q4["Server, secret or catalog?"]
-    Q4 -->|"Yes"| A4["Project .mcp.json, env-var expansion,<br>resources (2.4)"]
+    Q4 -->|"Yes"| A4[".mcp.json with env vars,<br>resources for static data (2.4)"]
     Q4 -->|"No"| A5["Pick the right built-in tool (2.5)"]
 ```
 

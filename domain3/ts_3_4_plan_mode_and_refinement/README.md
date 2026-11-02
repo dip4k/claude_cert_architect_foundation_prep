@@ -59,12 +59,8 @@ Starting big changes without a plan causes rework: edits land in the wrong place
 ## Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Task["New task"] --> Size{"Large, multi-file,<br>or several valid approaches?"}
+    Task["New task"] --> Size{"Large, multi-file,<br>or several designs?"}
     Size -->|"Yes"| Plan["Plan mode<br>Explore subagent investigates"]
     Plan --> Approve["Review and approve the plan"]
     Approve --> Direct["Direct execution<br>implement the plan"]

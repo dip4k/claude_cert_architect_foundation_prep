@@ -100,10 +100,6 @@ Resubmit only doc-02 as: doc-02-chunk1of3, doc-02-chunk2of3, doc-02-chunk3of3
 ## 🏗️ Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Work{"Is someone waiting<br>for the result?"}
     Work -->|"Yes: PR gate, chat"| Sync["Synchronous Messages API"]

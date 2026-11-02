@@ -14,10 +14,6 @@
 | 2.5 | Built-in tools | Grep content, Glob paths, Edit unique text, else Read + Write | [2.5](ts_2_5_builtin_tools_usage/README.md) |
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     T1["2.1 Descriptions<br>and boundaries"] --> T2["2.2 Structured<br>errors"]
     T2 --> T3["2.3 Scoped tools<br>and tool_choice"]
@@ -34,10 +30,6 @@ flowchart LR
 A strong description has: purpose, input formats, example queries, edge cases, boundaries.
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Intent["User asks about order status"] --> Eval["Claude reads descriptions"]
     Eval -->|"Thin or overlapping"| Wrong["Guesses, may pick get_customer"]
@@ -125,10 +117,6 @@ tool_choice = {"type": "auto", "disable_parallel_tool_use": True}
 | `Edit` | Targeted replacement of unique text |
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     E1["Edit with an anchor"] --> E2{"Anchor unique?"}
     E2 -->|"Yes"| E3["Applied"]

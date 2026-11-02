@@ -148,10 +148,6 @@ elif response.stop_reason == "end_turn":
 - **Progressive Discovery & Edit Fallback Protocol ([TS 2.5](domain2/ts_2_5_builtin_tools_usage/main.py))**:
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Start["Explore Codebase"] --> Glob["1. Glob Tool<br>(Candidate paths)"]
     Glob --> Grep["2. Grep Tool<br>(Symbols & regex)"]
@@ -169,10 +165,6 @@ flowchart TD
 - **`CLAUDE.md` Hierarchy ([TS 3.1](domain3/ts_3_1_claude_code_workflows/main.py))**:
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     User["User Scope<br>(~/.claude/CLAUDE.md)"] --> Project["Project Scope<br>(.claude/CLAUDE.md or root)"]
     Project --> Subdir["Directory Scope<br>(subdir/CLAUDE.md)"]
@@ -225,10 +217,6 @@ flowchart LR
 - **Validation Retry Limits ([TS 4.4](domain4/ts_4_4_validation_retry_feedback/main.py))**: Retries resolve schema and arithmetic errors; retries fail when facts are absent from source documents. Fast-fail and escalate.
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Extr["Extract Structured Entity<br>via tool_use"] --> Val{"Schema & Math Valid?"}
     Val -- "Valid" --> Success["Commit Record"]
@@ -245,18 +233,14 @@ flowchart TD
 
 ### [Domain 5: Context Management & Reliability (15%)](domain5/README.md) · [Key Concepts](domain5/KEY_CONCEPTS.md)
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     subgraph Facts["Immutable Case Facts Layer"]
-        CF["Customer ID: C-88129 | Order #: ORD-44102<br>Amount: $149.99 | Tracking: 1Z9999999999"]
+        CF["Customer ID: C-88129<br>Order #: ORD-44102<br>Amount: \$149.99<br>Tracking: 1Z9999999999"]
     end
     subgraph History["Compacted Conversation History"]
-        CH["Summarized Turns 1-12...<br>'Customer requested return due to transit damage...'"]
+        CH["Summarized Turns 1-12...<br>'Customer requested return<br>due to transit damage...'"]
     end
-    Facts --> Context["Combined Context Injected into Next Turn Prompt"]
+    Facts --> Context["Combined Context Injected<br>into Next Turn Prompt"]
     History --> Context
 ```
 - **Context Preservation ([TS 5.1](domain5/ts_5_1_context_preservation/main.py))**: Extract numbers into immutable Case Facts block; trim 50+ raw tool return fields to the 4 essential fields.
@@ -287,10 +271,6 @@ flowchart TD
 ## ⏱️ 6. Exam Day Time Management & Test-Taking Protocol
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     P1["Pass 1 (0:00 - 0:45)<br>Direct Architecture Items<br>Target: 25-30 items"] --> P2["Pass 2 (0:45 - 1:40)<br>Scenario Deep Dive<br>Target: 30-35 items"]
     P2 --> P3["Pass 3 (1:40 - 2:00)<br>Review & Verification<br>Audit marked items"]

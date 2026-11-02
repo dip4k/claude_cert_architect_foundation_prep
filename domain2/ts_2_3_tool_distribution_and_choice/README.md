@@ -75,13 +75,9 @@
 ## 🏗️ Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user, escalate_to_human"]
-    Coord --> Search["Search agent<br>claude-haiku-4-5<br>web_search, load_document, extract_metadata"]
+    Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user,<br>escalate_to_human"]
+    Coord --> Search["Search agent<br>claude-haiku-4-5<br>web_search, load_doc,<br>extract_metadata"]
     Coord --> Synth["Synthesis agent<br>claude-haiku-4-5<br>summarize_content, verify_fact"]
     Coord --> Support["Support agent<br>claude-haiku-4-5<br>get_customer, lookup_order,<br>process_refund, escalate_to_human"]
     Synth -.->|"Complex case"| Coord

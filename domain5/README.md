@@ -37,10 +37,6 @@ Some folder names mix topics. **Folder names stay unchanged** (tests import them
 ## Map of Ideas
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     subgraph Context["Keep context accurate"]
         T51["TS 5.1<br>Case facts + trimming"]
@@ -103,10 +99,6 @@ flowchart LR
 ## Rapid Decision Matrix
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Q1["Customer asks for a human?"] -->|"Yes"| A1["Escalate now (5.2)"]
     Q1 -->|"No"| Q2["Several customer matches?"]
@@ -114,9 +106,9 @@ flowchart TD
     Q2 -->|"No"| Q3["Exact facts at risk in a long chat?"]
     Q3 -->|"Yes"| A3["Case facts + trimming (5.1)"]
     Q3 -->|"No"| Q4["Subagent failed?"]
-    Q4 -->|"Yes"| A4["Structured error + coverage note (5.3)"]
+    Q4 -->|"Yes"| A4["Structured error +<br>coverage note (5.3)"]
     Q4 -->|"No"| Q5["Sources disagree?"]
-    Q5 -->|"Yes"| A5["Annotate both with sources and dates (5.6)"]
+    Q5 -->|"Yes"| A5["Annotate both with<br>sources and dates (5.6)"]
     Q5 -->|"No"| A6["High aggregate accuracy?<br>Check segments and sample (5.5)"]
 ```
 

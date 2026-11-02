@@ -6,10 +6,6 @@
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart LR
     subgraph Precision["Precision & Enforcement"]
         direction TB
@@ -67,14 +63,10 @@ A common failure mode in LLM prompting is attempting to tune precision using sub
   - *"Do not flag comments for grammatical style, brevity, or missing punctuation."*
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Spectrum["Prompt Precision Spectrum"]
     Spectrum -->|Vague Directives| Vague["Vague: 'Be conservative'<br>High false positives; erodes trust"]
-    Spectrum -->|Explicit Criteria| Explicit["Explicit: Negative boundaries & rubrics<br>Low false positives; reproducible"]
+    Spectrum -->|Explicit Criteria| Explicit["Explicit: Negative<br>boundaries & rubrics<br>Low false positives; reproducible"]
 ```
 
 #### 2. Negative Boundaries (Defining What NOT to Flag)
@@ -154,10 +146,6 @@ When extracting structured data, prompting Claude to *"Return raw valid JSON"* i
 - **`tool_choice` guide**: `auto` (may reply in text), `any` (must call some tool; use when the document type is unknown and several extraction tools exist), named tool (must call that one; use to run `extract_metadata` first).
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Tech["Structured Data Extraction"]
     Tech -->|Prompt to Markdown| PromptMode["Markdown JSON Fences<br>Syntax errors & parse failures"]
@@ -221,12 +209,8 @@ A crucial architectural concept on the certification exam:
   - *Remedy*: Detect that missing required data cannot be resolved, break the retry loop immediately, and return a structured failure manifest for human exception handling.
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Start["Validation Error Occurs"] --> Check{"Is data present in document?"}
+    Start["Validation Error Occurs"] --> Check{"Is data present<br>in document?"}
     Check -- "YES" --> Rec["Recoverable Error<br>(Formatting / Math)<br>Send targeted feedback"]
     Check -- "NO" --> Unrec["Unrecoverable Error<br>(Data missing from source)<br>Escalate to human review"]
 ```
@@ -308,10 +292,6 @@ for result in client.messages.batches.results(batch.id):
 For pull requests spanning multiple files:
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     PR["Multi-File PR (5+ Files)"] --> Split["Split Files into Isolated Contexts"]
     
@@ -616,14 +596,10 @@ Option B is correct. This is the canonical **Two-Pass Prompt Chaining / Review A
 ### 🧠 Domain 4 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax (semantics still need validation)"]
+    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax<br>(semantics need checks)"]
     Q1 -->|No| Q2["2. Document attributes missing?"]
-    Q2 -->|Yes| A2["Mark Nullable: type ['string', 'null']<br>Prevents hallucinated values"]
+    Q2 -->|Yes| A2["Mark Nullable:<br>type ['string', 'null']<br>Prevents hallucinated values"]
     Q2 -->|No| Q3["3. Missing physical source facts?"]
     Q3 -->|Yes| A3["Fast-Fail to Human Review<br>Retries cannot invent absent data"]
     Q3 -->|No| Q4["4. Message Batches for PR checks?"]

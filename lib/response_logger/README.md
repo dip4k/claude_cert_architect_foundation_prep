@@ -460,6 +460,6 @@ replay_trail(get_agent_trail_path(__file__))
 
 ## See Also
 
-- [stop_reason/main.py](../../stop_reason/main.py) — Full agent example with logging
+- [1_stop_reason/main.py](../../1_stop_reason/main.py) — Full agent example with logging
 - [CLAUDE.md](../../CLAUDE.md) — Project overview
 - [Anthropic Documentation](https://docs.anthropic.com) — Claude API docs

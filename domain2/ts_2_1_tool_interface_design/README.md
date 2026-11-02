@@ -68,10 +68,6 @@ Use `tool_choice` to force a mandatory step (see [2.3](../ts_2_3_tool_distributi
 ## 🏗️ Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     Query["User asks:<br>Where is order ORD-9821?"] --> Router["Claude reads all<br>tool descriptions"]
     Router --> Check{"Which description<br>matches best?"}

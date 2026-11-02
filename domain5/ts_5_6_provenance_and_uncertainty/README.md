@@ -87,10 +87,6 @@ Do not squash everything into one uniform format.
 ## Architecture
 
 ```mermaid
----
-config:
-  htmlLabels: false
----
 flowchart TD
     SubA["Subagent A<br>claim + source + excerpt + date"] --> Merge["Synthesiser:<br>group by metric"]
     SubB["Subagent B<br>claim + source + excerpt + date"] --> Merge
