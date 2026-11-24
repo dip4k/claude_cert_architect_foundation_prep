@@ -1,10 +1,41 @@
 # Domain 5: Context Management and Reliability (15% of the Exam)
 
-Domain 5 is **15%** of the **Claude Certified Architect - Foundations (CCAR-F)** exam. Weights: D1 27%, D2 18%, D3 20%, D4 20%, **D5 15%**. It tests how to keep context accurate in long work, hand off to humans well, survive failures in multi-agent systems, and keep sources traceable.
+Domain 5 represents **15%** of the **Claude Certified Architect – Foundations (CCAR-F)** exam (D1 27%, D2 18%, D3 20%, D4 20%, **D5 15%**). It focuses on keeping context accurate across long multi-turn sessions, handling graceful escalations and ambiguity, surviving errors across multi-agent workflows, managing large-codebase exploration, calibrating confidence for human review, and preserving provenance and uncertainty in synthesis.
 
-> Deep dive: [KEY_CONCEPTS.md](KEY_CONCEPTS.md) (diagrams, traps, 7 long scenario questions).
+> 📖 **Deep Dive Master Guide**: For exhaustive technical explanations, architecture diagrams, sequence flows, gotchas, to-remember points, and practical scenario questions & answers, see [KEY_CONCEPTS.md](KEY_CONCEPTS.md).
 >
-> Quick revision: [CHEATSHEET.md](CHEATSHEET.md) (question wording to answer, look-alike pairs, exact values, elimination filters).
+> ⚡ **Quick revision**: [CHEATSHEET.md](CHEATSHEET.md) (question wording to answer, look-alike pairs, exact values, elimination filters).
+
+---
+
+## 🧠 How to Master Domain 5 (5 Clear Steps)
+
+$$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architecture)} \longrightarrow \text{3. Working Code / Schema} \longrightarrow \text{4. Exam Traps \& Wrong Answers} \longrightarrow \text{5. Memory Hook}$$
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart LR
+    M1["1. Simple Picture<br>Everyday physical metaphor<br>Why the problem is hard"] --> M2["2. Why It Matters<br>Context drift & blind spots<br>Comparing failure models"]
+    M2 --> M3["3. Working Code & Schemas<br>Case facts & tool trimming<br>Stratified audit sampling"]
+    M3 --> M4["4. Exam Traps & Tricky Options<br>Why wrong answers tempt you<br>Root Cause vs Symptom"]
+    M4 --> M5["5. Quick Memory Hook<br>One-line exam rules<br>Self-check checklists"]
+```
+
+---
+
+## 🏛️ Everyday Metaphors: Foundational Mental Models
+
+| Task Statement | Topic | Everyday Physical Metaphor | Why Naive Approaches Fail | Correct Architectural Pattern |
+| :--- | :--- | :--- | :--- | :--- |
+| **TS 5.1** | **Context Preservation** | **Executive Briefing Folder** | As a meeting goes on, oral summaries turn "$142.50 on March 12" into "a recent charge"; details vanish. | **Case Facts Block Outside Summary**: Store transactional IDs, amounts, and dates in a dedicated top-level block passed alongside history ([TS 5.1](ts_5_1_context_preservation/README.md)). |
+| **TS 5.2** | **Escalation & Ambiguity** | **Floor Manager Escalation** | Guessing customer intent from vague sentiment leads to arguing or acting on the wrong customer account. | **Rule-Based Triggers & Disambiguation**: Hand off immediately on explicit human request; ask for more IDs on multi-match ([TS 5.2](ts_5_2_escalation_and_provenance/README.md)). |
+| **TS 5.3** | **Multi-Agent Errors** | **Weather Station Telemetry** | Reporting "0 mm rainfall" when the sensor was unplugged misleads forecasters into thinking it was sunny. | **Failure vs Valid Empty + Coverage Notes**: Return structured error type and query; annotate coverage gaps in synthesis ([TS 5.3](ts_5_3_error_propagation_coverage/README.md)). |
+| **TS 5.4** | **Large Codebases** | **Detective's Caseboard** | Relying on mental memory during a 20-file investigation leads to confabulation and lost filenames. | **Scratchpad Files & `/compact`**: Write intermediate discoveries to disk; use subagents for deep dives and manifests for recovery ([TS 5.4](ts_5_4_scratchpads_and_human_review/README.md)). |
+| **TS 5.5** | **Confidence & Review** | **Factory Quality Spot-Check** | Celebrating 97% factory yield hides the fact that 30% of rare specialized parts were cracked. | **Stratified Random Sampling**: Audit 5–10% across every subgroup and calibrate confidence on labelled sets before gating ([TS 5.5](ts_5_5_human_review_calibration/README.md)). |
+| **TS 5.6** | **Provenance & Synthesis** | **Historical Ledger with Citations** | Averaging two conflicting dates or numbers invents a third fake number that neither historical record supports. | **Claim-to-Source Mapping & Side-by-Side Attribution**: Preserve source and timestamp; present conflicting data side-by-side ([TS 5.6](ts_5_6_provenance_and_uncertainty/README.md)). |
 
 ---
 
@@ -172,3 +203,12 @@ Every folder has a `README.md`, an offline `main.py` and a notebook. Nothing her
 ```powershell
 wsl -d Ubuntu-26.04 bash -c "cd /mnt/c/Repos/Claude_cert && ~/.local/bin/uv run pytest tests/test_domain5_enhancements.py -q"
 ```
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Domain**: [Domain 4: Prompt Engineering & Model Guidance](../domain4/README.md)
+- 📋 **Exam Blueprint**: [5-Domain Blueprint Matrix](../EXAM_BLUEPRINT.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Topic**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)

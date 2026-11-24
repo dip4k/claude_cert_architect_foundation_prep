@@ -8,6 +8,37 @@ Domain 4 represents **20%** of the **Claude Certified Architect – Foundations 
 
 ---
 
+## 🧠 How to Master Domain 4 (5 Clear Steps)
+
+$$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architecture)} \longrightarrow \text{3. Working Code / Schema} \longrightarrow \text{4. Exam Traps \& Wrong Answers} \longrightarrow \text{5. Memory Hook}$$
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart LR
+    M1["1. Simple Picture<br>Everyday physical metaphor<br>Why the problem is hard"] --> M2["2. Why It Matters<br>Attention loss & batch tradeoffs<br>Comparing prompt strategies"]
+    M2 --> M3["3. Working Code & Schemas<br>Exact tool_use schemas<br>Validation retry loops"]
+    M3 --> M4["4. Exam Traps & Tricky Options<br>Why wrong answers tempt you<br>Root Cause vs Symptom"]
+    M4 --> M5["5. Quick Memory Hook<br>One-line exam rules<br>Self-check checklists"]
+```
+
+---
+
+## 🏛️ Everyday Metaphors: Foundational Mental Models
+
+| Task Statement | Topic | Everyday Physical Metaphor | Why Naive Approaches Fail | Correct Architectural Pattern |
+| :--- | :--- | :--- | :--- | :--- |
+| **TS 4.1** | **Explicit Criteria** | **Strict Building Code Checklist** | Telling an inspector to "be careful and sensible" results in wildly inconsistent violations. | **Concrete Categorical Rubrics**: Code examples and explicit negative boundaries (what to ignore) ([TS 4.1](ts_4_1_explicit_criteria_classification/main.py)). |
+| **TS 4.2** | **Few-Shot Prompting** | **Master Apprentice Demonstration** | Showing an apprentice 20 identical easy nails teaches nothing; showing 2 tricky corner joints teaches mastery. | **2–4 Structurally Diverse Examples**: Show varied layouts (tables, receipts, narratives) and reasoning steps ([TS 4.2](ts_4_2_few_shot_and_multi_instance/main.py)). |
+| **TS 4.3** | **Structured Output** | **Customs Declaration with "N/A"** | If a customs form has no "N/A" box, nervous travelers invent fake numbers to avoid leaving blanks. | **Schema via `tool_use` + Nullable Fields**: Mark optional attributes as `["string", "null"]` to eliminate hallucinations ([TS 4.3](ts_4_3_structured_output_tool_use/main.py)). |
+| **TS 4.4** | **Validation & Retry** | **Math Quiz Correction** | Teacher circles an arithmetic mistake for re-calculation; teacher escalates immediately if the page is missing. | **Targeted Retry vs Fast-Fail**: Retry on schema/math errors; fast-fail immediately when data is absent from source ([TS 4.4](ts_4_4_validation_retry_feedback/main.py)). |
+| **TS 4.5** | **Message Batches API** | **Bulk Postal Mail vs Courier** | Shipping packages overnight costs half price; hiring an emergency motorcycle courier is needed for instant delivery. | **Batch API for Asynchronous Jobs**: 50% discount for 24h jobs (nightly audits); never use for blocking PR gates ([TS 4.5](ts_4_5_message_batches_api/main.py)). |
+| **TS 4.6** | **Multi-Pass Review** | **Independent Peer Review** | Authors always overlook their own typos; a fresh colleague with clean eyes spots mistakes immediately. | **Independent Reviewer & Two-Pass**: Separate review instance; Pass 1 per-file local, Pass 2 cross-file integration ([TS 4.6](ts_4_6_multi_pass_review/main.py)). |
+
+---
+
 ## 🗺️ Study Order and Quick Map
 
 ```mermaid
@@ -167,5 +198,14 @@ flowchart TD
 | **Validation fails due to physically absent source facts?** | **YES** | Fast-fail and abort retries immediately; route to human review *(retries cannot invent data)*. |
 | **Message Batches API for pre-merge PR blocking checks?** | **YES** | Reject: Batches have up to 24h turnaround *(reserve Batches for overnight non-blocking jobs)*. |
 | **Auditing multi-file PRs without attention dilution?** | **YES** | Two-Pass Review: Pass 1 (local per-file) + Pass 2 (cross-file integration). |
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Domain**: [Domain 3: Claude Code & Developer Workflows](../domain3/README.md)
+- 📋 **Exam Blueprint**: [5-Domain Blueprint Matrix](../EXAM_BLUEPRINT.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Domain**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../domain5/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)
 
 

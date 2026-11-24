@@ -56,41 +56,63 @@ Do **not** use it to silently drop findings. This matches TS 4.1: model confiden
 
 ## 🧪 Worked Example
 
-**Setup.** `auth_api.py` defines `verify_session(bearer_token)`. `auth_client.py` calls `verify_session(auth_token='jwt')`. `auth_api.py` also has `except Exception: pass`.
+### ❌ Invalid Example (Anti-Pattern: Author Self-Review & Single Mega-Prompt)
+```python
+# BROKEN: Asking the same generator session to review its own generated code
+generator_messages = [
+    {"role": "user", "content": "Write auth_api.py and auth_client.py with JWT auth."},
+    {"role": "assistant", "content": "Here is the code... I used a silent try/except block for resilience..."},
+    {"role": "user", "content": "Now review your own code for bugs and security issues."}
+]
+response = client.messages.create(messages=generator_messages, ...)
+# What Claude replies:
+# "The implementation strictly follows the architecture I outlined. Everything looks solid!"
 
-**Self-review (same session)**
-```text
-Context seen: task + author's reasoning + code
-Typical reply: "The code follows the design I described. Looks fine."
+Why it fails in production:
+1. Author confirmation bias: The model's own prior reasoning tokens are in context; it rationalizes its previous decisions and overlooks its own bugs (e.g. 'except Exception: pass').
+2. Attention dilution: Dumping 20 modified files into a single prompt causes cross-file contract bugs (caller using 'auth_token' while callee expects 'bearer_token') to be completely missed.
 ```
 
-**Independent reviewer**
-```text
-Context seen: code + checklist only
-Pass 1 (auth_api.py):    HIGH  silent exception swallowing
-Pass 1 (auth_client.py): nothing local
-Pass 2 (interfaces + call sites):
-                         CRITICAL  client sends auth_token, server expects bearer_token
-```
+### ✅ Valid Example (Production Pattern: Clean-Context Independent Two-Pass Review)
+```python
+# CORRECT: Independent Claude instance + Two-Pass architecture
 
-**Verification routing**
-```text
-HIGH     auth_api.py:3      confidence 0.90 -> report
-CRITICAL auth_client.py:2   confidence 0.50 -> human review (still shown, not dropped)
-```
+# Pass 1: Per-File Local Bug Inspection (Independent instance, zero author history)
+pass1_prompt = f"""
+Review this single file for local bugs: unhandled nulls, swallowed exceptions, off-by-one errors.
+Code:
+{auth_api_code}
+"""
+pass1_findings = run_independent_review(pass1_prompt)
+# Output: HIGH | auth_api.py:14 | Swallowed exception ('except Exception: pass') hides auth failures!
 
-In [main.py](main.py) the mock client scripts the model replies, so the tests prove which context each reviewer **receives** (and that stop reasons are handled), not how good a real model's review is.
+# Pass 2: Cross-File Integration Review (Interface contracts & call sites)
+pass2_prompt = f"""
+Review cross-file call site compatibility:
+Signatures:
+  auth_api.py -> def verify_session(bearer_token: str)
+Call sites:
+  auth_client.py:22 -> verify_session(auth_token=user_jwt)
+"""
+pass2_findings = run_independent_review(pass2_prompt)
+# Output: CRITICAL | Argument name mismatch: client passes 'auth_token', server expects 'bearer_token'!
+
+# Verification & Routing:
+# High-confidence findings -> Automated report to engineer
+# Low-confidence findings -> Routed to human reviewer for triage (never silently dropped)
+```
 
 ---
 
 ## 🔑 Key Terms
 
-- **Self-review bias**: the author defends its own work because its reasoning is in context.
-- **Independent instance**: a new conversation with no generator history.
-- **Pass 1 / Pass 2**: per-file local review / cross-file integration review.
-- **Attention dilution**: quality drops when too many files share one prompt.
-- **Verification pass**: model reports confidence per finding to route review.
-- **Interface contract drift**: caller and callee disagree on names, types or timing.
+- **Self-Review Bias**: An architectural failure mode where an agent evaluating its own freshly written code rationalizes prior decisions because its author reasoning remains in context, causing it to overlook obvious bugs.
+- **Independent Instance**: A brand new Claude conversation initialized with zero generator history, receiving only clean source code and an objective review checklist to ensure impartial evaluation.
+- **Pass 1 (Per-File Local Review)**: A parallelized review stage where isolated Claude instances inspect individual files for localized bugs such as unhandled nulls, syntax slips, and swallowed exceptions.
+- **Pass 2 (Cross-File Integration Review)**: A second-stage review where a fresh Claude instance inspects interface signatures and call sites across files to catch breaking contract mismatches that single-file reviews miss.
+- **Attention Dilution**: The degradation of reasoning and recall accuracy that occurs when too many files or overly long instructions are stuffed into a single prompt context.
+- **Verification Routing**: Using model-reported confidence scores to route ambiguous or low-confidence findings to human triage, rather than using confidence to silently suppress issues.
+- **Interface Contract Drift**: A defect where caller code and callee services disagree on parameter names, types, or calling conventions because components evolved out of sync.
 
 ---
 
@@ -214,3 +236,11 @@ In [`ts_4_6_multi_pass_review.ipynb`](ts_4_6_multi_pass_review.ipynb):
 4. **Step 4: Verification**: asserts the context difference, one finding per pass, and that low confidence is routed, not dropped.
 
 Everything runs offline; the mock client scripts replies, so this demonstrates architecture, not model quality.
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 4.5: High-Throughput Batch Processing via Message Batches API](../ts_4_5_message_batches_api/README.md)
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Structured Output](../README.md)
+- ➡️ **Next Domain**: [Domain 5: Context Management & Reliability](../../domain5/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

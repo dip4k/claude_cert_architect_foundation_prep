@@ -74,12 +74,12 @@ A catalog as a resource means the agent sees what exists **before** it starts gu
 
 ## 🔑 Key Terms
 
-- **`.mcp.json`**: Project-level MCP config. Shared through version control.
-- **`~/.claude.json`**: User-level config. Personal or experimental.
-- **`${VAR}` expansion**: A placeholder replaced from the environment, so secrets stay out of git.
-- **MCP resource**: Read-only content exposed by a server, such as a schema or a doc tree.
-- **MCP tool**: A callable function exposed by a server.
-- **Community server**: A ready-made MCP server for a standard service.
+- **`.mcp.json`**: The repository-scoped configuration file tracked in version control that defines team-wide Model Context Protocol server connections for all developers.
+- **`~/.claude.json`**: The user-level configuration file stored in the local home directory for personal tools, experimental servers, or private workflows.
+- **`${VAR}` environment expansion**: A secure configuration syntax that resolves dynamic system environment variables at runtime, preventing API keys and secrets from being committed to source control.
+- **MCP resource**: Read-only structured data or context artifacts (such as database schemas, documentation indexes, or project boards) that an agent inspects without triggering side effects.
+- **MCP tool**: An executable, parameter-driven function exposed by an MCP server that allows an agent to take actions, query remote APIs, or mutate external state.
+- **Community MCP server**: A battle-tested, pre-built Model Context Protocol server developed for standard platforms (such as GitHub, Jira, or PostgreSQL) that should be prioritized over building custom servers from scratch.
 
 ---
 
@@ -103,18 +103,64 @@ flowchart TD
 
 ---
 
-## 🧪 Worked Example (Developer Productivity)
+## 🧪 Worked Example
 
-**Goal**: The team wants Jira and GitHub available to everyone. One developer also wants a personal notes server.
+### ❌ Invalid Example (Anti-Pattern: Hardcoded Secrets in Git & Multi-Turn Schema Probing)
+```json
+// BROKEN 1: Hardcoding plaintext credentials into committed repository file (.mcp.json)
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_live_secret_token_12345"  // LEAKED IN GIT HISTORY!
+      }
+    }
+  }
+}
 
-1. **Pick community servers** for Jira and GitHub. These are standard integrations.
-2. **Put both in `.mcp.json`** at the repo root so they are shared.
-3. **Write secrets as `${JIRA_API_TOKEN}` and `${GITHUB_TOKEN}`.** Each developer sets them locally. Nothing sensitive is committed.
-4. **Put the notes server in `~/.claude.json`.** It is personal.
-5. **Expose the issue list as a resource.** The agent reads a summary first, then calls tools only for the issues it needs.
-6. **Improve tool descriptions.** The agent used `Grep` to look for tickets in the repo. A richer Jira tool description says "searches Jira issues by key, status or text. Use this instead of Grep for ticket questions."
+// BROKEN 2: Forcing Claude to discover OpenAPI specs or database schemas via 15 exploratory Bash tool calls
+// Result: Consumes 30,000 tokens of command output just to learn what database tables exist!
+```
 
-Code: `load_mcp_config()`, `expand_env()`, `find_hardcoded_secrets()`, `discover_tools()` and `DeveloperMCPService` in [main.py](main.py).
+### ✅ Valid Example (Production Pattern: Environment Expansion & Zero-Turn MCP Resources)
+```json
+// CORRECT 1: Project-level .mcp.json using ${ENV_VAR} substitution
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"  // Reads from developer's secure environment!
+      }
+    },
+    "jira": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-jira"],
+      "env": {
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      }
+    }
+  }
+}
+
+// CORRECT 2: Exposing database schema or issue catalog as an MCP Resource (spec:// or db://schema)
+// Claude accesses the entire table catalog as an immutable context resource before planning:
+// - Zero exploratory bash tool turns.
+// - Zero risk of destructive table modification during discovery.
+```
+
+**Walkthrough:**
+1. Standard community MCP servers are selected for Jira and GitHub.
+2. Put both in `.mcp.json` at the repo root so they are version-controlled and shared across the team.
+3. Write secrets as `${JIRA_API_TOKEN}` and `${GITHUB_TOKEN}` so nothing sensitive is committed.
+4. Put personal or experimental tools in `~/.claude.json` on the individual engineer's workstation.
+5. Expose the issue list or OpenAPI catalog as an MCP Resource so the agent reads the summary upfront instead of guessing with tools.
+6. Provide rich tool descriptions so Claude knows when to pick MCP tools over built-in Grep.
+
+Code: `load_mcp_config()`, `expand_env()`, `find_hardcoded_secrets()`, `discover_tools()`, and `DeveloperMCPService` in [main.py](main.py).
 
 ---
 
@@ -220,3 +266,11 @@ Open [`ts_2_4_mcp_server_integration.ipynb`](ts_2_4_mcp_server_integration.ipynb
 - [ ] I know richer MCP descriptions stop the agent preferring Grep, and community servers are first choice for standard services.
 
 **Memory hook**: *"Team in `.mcp.json`, me in `~/.claude.json`, secrets in `${VARS}`, catalogs as resources."*
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 2.3: Tool Distribution & Selection Strategies](../ts_2_3_tool_distribution_and_choice/README.md)
+- 📋 **Domain Overview**: [Domain 2: Tool Design & Model Context Protocol (MCP)](../README.md)
+- ➡️ **Next Topic**: [TS 2.5: Built-in Tools & Agent Sandbox Optimization](../ts_2_5_builtin_tools_usage/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

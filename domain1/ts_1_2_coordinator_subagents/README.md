@@ -77,17 +77,55 @@ In [main.py](main.py), the `MultiAgentCoordinator` encapsulates this architectur
 
 ## 🧪 Worked Example
 
-Request: *"Research Claude Agent SDK and MCP tool error patterns."*
+### ❌ Invalid Example (Anti-Pattern: Peer-to-Peer Mesh & Shared Mutable History)
+```python
+# BROKEN: Subagents talk directly to each other and share one huge conversation history
+shared_history = [{"role": "user", "content": "Research AI impact on creative industries"}]
+
+# Anti-pattern 1: Subagent A passes entire 40k-token conversation history to Subagent B
+subagent_a_response = client.messages.create(messages=shared_history, ...)
+shared_history.append({"role": "assistant", "content": subagent_a_response.content})
+
+# Anti-pattern 2: Subagent B calls Subagent C directly without coordinator oversight
+# Result: Circular inquiry loops, exploding token costs, and untraceable citations!
+```
+
+### ✅ Valid Example (Production Pattern: Hub-and-Spoke with Context Isolation & Gap Auditing)
+```python
+# CORRECT: Central coordinator dispatches isolated work slices and verifies coverage
+coordinator_prompt = "Research Claude Agent SDK and MCP tool error patterns."
+
+# Turn 1: Coordinator delegates focused slice to isolated web subagent
+# Notice: WebSubagent receives ONLY its specific query; ZERO coordinator history!
+web_result = web_subagent.run(query="Claude Agent SDK architecture")
+coordinator.accumulated_findings.append(web_result)
+
+# Turn 2: Coordinator audits coverage against initial topic requirements
+evaluation = synthesis_subagent.evaluate(
+    findings=coordinator.accumulated_findings,
+    required_topics=["Claude Agent SDK", "MCP tool error patterns"]
+)
+# Returns: coverage_sufficient = False, missing_topics = ["MCP tool error patterns"]
+
+# Turn 3: Coordinator detects the gap and dispatches targeted follow-up
+mcp_result = web_subagent.run(query="MCP tool error patterns")
+coordinator.accumulated_findings.append(mcp_result)
+
+# Turn 4: Re-audit confirms 100% coverage -> Coordinator synthesizes final report
+final_report = synthesis_subagent.synthesize(coordinator.accumulated_findings)
+```
+
+**Step-by-step turn sequence:**
 
 | Turn | Coordinator output (`stop_reason`) | Host action |
 |---|---|---|
-| 1 | `tool_use`: `delegate_web_search("claude agent sdk")` | Web subagent returns a finding. Stored in `accumulated_findings` |
+| 1 | `tool_use`: `delegate_web_search("claude agent sdk")` | Web subagent returns finding. Stored in `accumulated_findings` |
 | 2 | `tool_use`: `evaluate_synthesis(required_topics=["claude agent sdk", "mcp tool error patterns"])` | Synthesis returns `coverage_sufficient: false`, `missing_topics: ["mcp tool error patterns"]` |
 | 3 | `tool_use`: `delegate_web_search("mcp tool error patterns")` | New finding stored |
 | 4 | `tool_use`: `evaluate_synthesis(...)` | `coverage_sufficient: true` |
-| 5 | `end_turn`: final report | Loop ends |
+| 5 | `end_turn`: final report | Loop ends cleanly |
 
-The gap was found by an explicit check, then fixed by a **targeted** follow-up. The subagents never talked to each other, and each only saw its own query.
+The gap was caught by an explicit check, then fixed by a **targeted** follow-up. The subagents never talked to each other, and each saw only its own task parameters.
 
 **The narrow decomposition sample.** Request: "Research the impact of AI in creative industries." The coordinator creates only visual-arts subtasks (digital art, graphic design, photography). Every subagent does its job well. The report still says nothing about music, writing, or film. **Root cause: the coordinator's decomposition**, not the subagents, the search tool, or the synthesis step.
 
@@ -95,12 +133,12 @@ The gap was found by an explicit check, then fixed by a **targeted** follow-up. 
 
 ## 🔑 Key Terms
 
-- **Hub-and-spoke**: a coordinator (hub) manages subagents (spokes). All traffic goes through the hub.
-- **Context isolation**: a subagent does not inherit the coordinator's conversation or other subagents' results.
-- **Dynamic selection**: choosing which subagents to run based on the query's complexity.
-- **Scope partitioning**: giving subagents distinct slices to avoid duplicate work.
-- **Coverage gap**: a required topic missing from the findings.
-- **Iterative refinement**: evaluate gaps, re-delegate, re-synthesise.
+- **Hub-and-Spoke Topology**: An architectural pattern where a central coordinator agent (the hub) manages task decomposition, assigns work slices, and synthesizes results from isolated subagents (the spokes).
+- **Strict Context Isolation**: The architectural principle where subagents begin with a pristine context buffer containing only their system prompt and task parameters, inheriting zero history from other agents.
+- **Dynamic Routing by Query Complexity**: Evaluating user request difficulty to answer simple lookups with a single lightweight tool call, reserving multi-agent coordination strictly for broad research workflows.
+- **Scope Partitioning**: Dividing a high-level objective into strictly non-overlapping topical or temporal domains so subagents do not waste tokens on duplicate searches.
+- **Coverage Gap Auditing**: A programmatic or model-driven evaluation step (`evaluate_synthesis`) where the coordinator cross-references accumulated findings against required topics before generating final output.
+- **Iterative Refinement Loop**: Dispatched follow-up turns where the coordinator queries specific subagents to fill missing gaps identified during synthesis evaluation before publishing the final report.
 
 ---
 
@@ -272,3 +310,11 @@ Open [ts_1_2_coordinator_subagents.ipynb](ts_1_2_coordinator_subagents.ipynb) (o
 5. **Checks**: assertions on coverage, gap detection with a missing topic, and the audit log.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 1.1: Multi-Tool Agent Loop](../ts_1_1_multi_tool_agent_loop/README.md)
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](../README.md)
+- ➡️ **Next Topic**: [TS 1.3: Subagent Spawning & Invocation](../ts_1_3_subagent_invocation_spawning/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

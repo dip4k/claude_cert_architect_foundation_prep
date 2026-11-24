@@ -12,7 +12,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** Delivery notes. "Failed" is useless. "Door locked, tried twice, left a slip, can retry after 5pm" lets the next person decide. And "I checked the shelf and it was empty" is very different from "I never opened the shop".
 
@@ -54,31 +54,78 @@ The final report says which sources answered and which did not. Readers can then
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-**Scenario (sample-question style):** A web search subagent **times out** while the document analysis subagent succeeds.
+### ❌ Invalid Example (Anti-Pattern: Empty-as-Success & Aborting Workflow on 1 Failure)
+```python
+# BROKEN 1: Returning empty array [] on network timeout
+try:
+    patents = call_uspto_api(query)
+except TimeoutError:
+    return []  # ANTI-PATTERN: Masks an API outage as "0 patents exist"!
+# What happens: The synthesis agent writes "The company holds zero patents", misleading the board!
+
+# BROKEN 2: Crashing the entire coordinator when 1 of 5 sources times out
+try:
+    news = fetch_news()
+except Exception as e:
+    raise RuntimeError("Research workflow aborted due to news failure!")  # Wastes 4 successful searches!
+```
+
+### ✅ Valid Example (Production Pattern: Structured Error Context & Coverage Annotations)
+```python
+# CORRECT 1: Distinguishing Failure from Valid Empty
+# When sensor/API fails:
+{
+    "isError": True,
+    "errorCategory": "transient",
+    "failure_type": "UPSTREAM_TIMEOUT",
+    "attempted_query": "solid-state battery patents",
+    "partial_results": [{"title": "Cached 2024 filing"}],
+    "alternatives": ["retry_with_backoff", "use_offline_cache"]
+}
+
+# When query succeeds with 0 matches:
+{
+    "isError": False,
+    "result_status": "VALID_EMPTY",
+    "count": 0,
+    "message": "Search executed successfully: verified 0 matches found in registry."
+}
+
+# CORRECT 2: Synthesis with Partial Coverage Disclaimers
+# Coordinator continues with surviving sources and attaches coverage notes to final report:
+report_header = """
+# Executive Synthesis
+**Coverage Note**: 2 of 3 sources answered (SEC Filings, USPTO Patents).
+**Disclaimer**: News source experienced UPSTREAM_TIMEOUT; news sentiment is omitted from this release.
+"""
+```
+
+**Walkthrough:**
+A web search subagent **times out** while the document analysis subagent succeeds.
 
 | Step | What happens |
 |---|---|
-| 1 | Subagent retries the search twice (transient error handling). Still fails. |
-| 2 | It returns: `failure_type=TRANSIENT`, `attempted_query="solid-state battery patents"`, `partial_results=[1 cached item]`, `alternatives=["retry later", "use cached index"]`. |
-| 3 | Coordinator keeps the document results and decides to retry once, then proceed. |
-| 4 | Final report states: *"Coverage: 2 of 3 sources answered. NOT CHECKED: web search (TRANSIENT)."* |
+| 1 | Subagent retries the search twice locally (transient error handling). Still fails. |
+| 2 | It returns structured error: `failure_type=TRANSIENT`, `attempted_query="solid-state battery patents"`, `partial_results=[1 cached item]`, `alternatives=["retry later", "use cached index"]`. |
+| 3 | Coordinator keeps the document results and decides to proceed without crashing. |
+| 4 | Final report explicitly states: *"Coverage: 2 of 3 sources answered. NOT CHECKED: web search (TRANSIENT)."* |
 
 `run_subagent_query()` and `render_report()` in `main.py` implement exactly this.
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Structured error context:** failure type, attempted query, partial results, alternatives.
-- **Valid empty result:** a successful query that matched nothing.
-- **Local recovery:** a subagent handling a transient error without involving the coordinator.
-- **Coverage annotation:** report text stating which sources were or were not checked.
+- **Structured error context**: A standardized failure payload (capturing failure category, query attempted, partial results retrieved, and recommended alternatives) that gives parent coordinators the information needed to recover.
+- **Valid empty result**: An execution status confirming that an external database or search tool was successfully queried and correctly returned zero matching records.
+- **Subagent local recovery**: The resilient design pattern where transient network or rate-limit errors are retried locally within the worker subagent before escalating an unresolved failure upward.
+- **Coverage annotation**: Explicit report metadata disclosing exactly which sources answered successfully and which failed or were bypassed, preventing false assumptions of comprehensive research.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -102,7 +149,7 @@ flowchart TD
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: The generic status
 
@@ -153,7 +200,7 @@ Escalating every blip floods the coordinator. Retrying a permanent error wastes 
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 3).** A search subagent times out. The coordinator receives `"Error: search unavailable"`. What is the best improvement?
 
@@ -184,7 +231,7 @@ Escalating every blip floods the coordinator. Retrying a permanent error wastes 
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can list the four parts of structured error context.
 - [ ] I can tell an access failure from a valid empty result.
@@ -196,7 +243,7 @@ Escalating every blip floods the coordinator. Retrying a permanent error wastes 
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Notebook: [`ts_5_3_error_propagation_coverage.ipynb`](ts_5_3_error_propagation_coverage.ipynb). Code: [`main.py`](main.py). Both run offline.
 
@@ -207,3 +254,11 @@ Notebook: [`ts_5_3_error_propagation_coverage.ipynb`](ts_5_3_error_propagation_c
 5. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
 
 **Related:** [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (what to attach to each claim in the synthesis).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 5.2: Escalation Protocols & Deterministic Provenance](../ts_5_2_escalation_and_provenance/README.md)
+- 📋 **Domain Overview**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../README.md)
+- ➡️ **Next Topic**: [TS 5.4: Scratchpads, Checkpoints & State Recovery](../ts_5_4_scratchpads_and_human_review/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

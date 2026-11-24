@@ -57,11 +57,11 @@ Use `tool_choice` to force a mandatory step (see [2.3](../ts_2_3_tool_distributi
 
 ## 🔑 Key Terms
 
-- **Tool description**: The text that tells Claude when and how to use a tool. The primary selection mechanism.
-- **Boundary statement**: A line such as "Do NOT use for tracking; use `lookup_order`".
-- **Overlapping descriptions**: Two tools that read almost the same. A cause of misrouting.
-- **Input format**: The exact shape of an argument, for example `ORD-9821`.
-- **Split / rename**: Replace one vague tool by several single-purpose tools with clear names.
+- **Tool description**: The authoritative markdown text within a tool's JSON schema that guides Claude's semantic routing by defining its exact purpose, trigger phrases, argument formats, and explicit negative boundaries.
+- **Boundary statement**: An explicit negative constraint within a tool description (for example, "Do NOT use for tracking; use `lookup_order`") that steers the model away from near-neighbor tools.
+- **Overlapping descriptions**: Semantic ambiguity between two or more tools with similar or generic summaries, which causes non-deterministic tool selection and frequent misrouting errors.
+- **Input format**: The exact structural specification, pattern, or syntax expected for a tool parameter (such as `ORD-[0-9]{4}`), preventing Claude from passing invalid or hallucinated arguments.
+- **Tool decomposition (split / rename)**: The architectural practice of replacing a broad, multi-purpose tool with focused, single-responsibility functions that each have distinct names and unambiguous scopes.
 
 ---
 
@@ -83,17 +83,68 @@ flowchart TD
 
 ---
 
-## 🧪 Worked Example (Customer Support)
+## 🧪 Worked Example
 
-**Problem**: The agent gets "Where is my package? Order ORD-9821". It calls `get_customer`.
+### ❌ Invalid Example (Anti-Pattern: Vague, Overlapping One-Line Tool Descriptions)
+```python
+# BROKEN: Minimal one-line descriptions with zero boundaries or format specifications
+tools = [
+    {
+        "name": "lookup_order",
+        "description": "Retrieves order details.",  # Vague! Doesn't mention tracking or delivery status
+        "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}}
+    },
+    {
+        "name": "get_customer",
+        "description": "Retrieves customer information.",  # Overlaps! Doesn't specify boundaries
+        "input_schema": {"type": "object", "properties": {"id": {"type": "string"}}}
+    }
+]
 
-1. **Look at the tools.** Both have one-line descriptions: "Retrieves customer details" and "Retrieves order details".
-2. **Find the cause.** Nothing says which one handles tracking. The model guesses.
-3. **Rewrite `lookup_order`.** Add purpose (status, carrier, return eligibility), input format (`ORD-` plus digits), examples ("Where is order ORD-9821?"), edge case (`found=false` if unknown), and a boundary ("not for profile lookups; use `get_customer`").
-4. **Rewrite `get_customer`.** Add the mirror boundary: "Do NOT use for order tracking; use `lookup_order`".
-5. **Retest.** The same request now routes to `lookup_order`.
+# User prompt: "Where is my package? Order ORD-9821"
+# What happens: Claude flips a coin and calls get_customer(id="ORD-9821").
+# The customer lookup fails or returns the wrong data, derailing the support turn!
+```
 
-The code in [main.py](main.py) has both tools, `audit_tool()` to flag thin descriptions and `description_overlap()` to measure how similar two descriptions are.
+### ✅ Valid Example (Production Pattern: 5-Part Description with Negative Boundaries)
+```python
+# CORRECT: Rich description with purpose, input format, sample queries, edge cases, and boundaries
+tools = [
+    {
+        "name": "lookup_order",
+        "description": (
+            "Lookup real-time order status, tracking numbers, shipping carriers, and return eligibility.\n"
+            "Input: order_id formatted strictly as 'ORD-' followed by digits (e.g. 'ORD-9821').\n"
+            "Sample queries: 'Where is order ORD-9821?', 'Has my shipment arrived?'.\n"
+            "Edge cases: Returns found=false if the order ID is not in the database.\n"
+            "Negative Boundary: Do NOT use for customer contact info or email lookups; use get_customer."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"order_id": {"type": "string", "pattern": "^ORD-[0-9]+$"}},
+            "required": ["order_id"]
+        }
+    },
+    {
+        "name": "get_customer",
+        "description": (
+            "Lookup customer account profile, loyalty tier, and registered contact email.\n"
+            "Input: customer_id (e.g. 'CUST-101') or verified email address.\n"
+            "Negative Boundary: Do NOT use for order tracking or shipping status; use lookup_order."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"identifier": {"type": "string"}},
+            "required": ["identifier"]
+        }
+    }
+]
+
+# User prompt: "Where is my package? Order ORD-9821"
+# Result: Claude deterministically selects lookup_order because the negative boundary explicitly rules out get_customer!
+```
+
+The code in [main.py](main.py) has both tools, `audit_tool()` to flag thin descriptions, and `description_overlap()` to measure similarity.
 
 ---
 
@@ -217,3 +268,11 @@ Run live API examples by hand only. See [EXECUTION_POLICY.md](../../EXECUTION_PO
 - [ ] I know a keyword-sensitive system prompt can override descriptions.
 
 **Memory hook**: *"The description is the router. Fix the label before you fix the system."*
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 1.7: Session State & Lifecycle Management](../../domain1/ts_1_7_session_management/README.md)
+- 📋 **Domain Overview**: [Domain 2: Tool Design & Model Context Protocol (MCP)](../README.md)
+- ➡️ **Next Topic**: [TS 2.2: MCP Structured Errors & Self-Correction](../ts_2_2_mcp_structured_errors/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

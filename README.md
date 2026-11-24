@@ -5,14 +5,66 @@
 [![Package Manager](https://img.shields.io/badge/uv-fast%20sync-purple)](https://astral.sh/uv)
 [![Exam](https://img.shields.io/badge/Claude%20Certified%20Architect-Foundations%20(720%2F1000)-orange)](EXAM_BLUEPRINT.md)
 
-Comprehensive hands-on practice repository for the **Claude Certified Architect – Foundations Certification** (passing score 720/1000). Features end-to-end implementations for **100% of the 5 Exam Domains (all 27 Task Statements)**, the **6 Official Production Scenarios**, and a **247-test zero-token offline test suite**.
+Comprehensive hands-on curriculum and practice repository for the **Claude Certified Architect – Foundations Certification (CCAR-F)** (passing score 720/1000, 60 scenario-based questions, 120 minutes).
+
+Features end-to-end production implementations for **100% of the 5 Exam Domains (all 27 Task Statements)**, interactive simulations for the **6 Official Production Scenarios**, and a **247-test zero-token offline test suite**.
+
+---
+
+## 🧭 The Systems Architect Shift
+
+Preparing for the CCAR-F certification requires shifting from conversational prompting to deterministic software architecture. In production, Claude is not an oracle chatbot; it is an intelligent reasoning component within an asynchronous, stateful, and distributed software system.
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart LR
+    subgraph Chatbot ["Conversational Chatbot (Naive)"]
+        direction TB
+        C1["Natural Language Prompt"] --> C2["Single LLM Call"]
+        C2 --> C3["Unchecked Output String"]
+    end
+
+    subgraph Architect ["Systems Architecture (CCAR-F Standard)"]
+        direction TB
+        A1["Programmatic Gate / Hook"] --> A2["Deterministic State Loop<br>(stop_reason == 'end_turn')"]
+        A2 --> A3["Isolated Subagent Spawning<br>(Hub-and-Spoke Topology)"]
+        A3 --> A4["Structured MCP Error Contracts<br>& Immutable Case Facts Layer"]
+    end
+```
+
+### 🧠 How to Master Each Topic (5 Clear Steps)
+Every concept and task statement in this repository follows a structured 5-step learning path designed to build strong architectural reflexes:
+
+$$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architecture)} \longrightarrow \text{3. Working Code / Schema} \longrightarrow \text{4. Exam Traps \& Wrong Answers} \longrightarrow \text{5. Memory Hook}$$
+
+1. **Simple Picture ("Explain Like I'm 13")**: Anchored in an everyday physical metaphor (e.g., electronic turnstile vs. paper sign; air traffic controller vs. pilots) to explain *why* the problem is hard before looking at code.
+2. **Why It Matters (The Architecture)**: Explaining the root causes of failure (attention dilution, context saturation, token quadratics $O(N^2)$, why prompts fail under pressure) and comparing designs in clear trade-off tables.
+3. **Working Code & API Contracts**: Providing syntactically exact JSON schemas, SDK hook signatures, and Python control loops.
+4. **Exam Traps & Tricky Options**: Deconstructing tricky exam options by showing: (a) what looks tempting, (b) why people pick it, (c) what breaks in production, and (d) the real architectural fix.
+5. **Memory Hook & Self-Check**: High-yield one-line memory hooks and self-check verification checklists.
+
+---
+
+## 🏛️ Foundational Mental Models & Everyday Metaphors
+
+| Domain | Architectural Concept | Everyday Physical Metaphor | Why Naive Approaches Fail | Correct CCAR-F Pattern |
+| :---: | :--- | :--- | :--- | :--- |
+| **D1** | **Workflow Prerequisite Enforcement** | **Bank Vault Turnstile vs Warning Sign** | A warning sign ("Please verify ID") fails probabilistically. Users or agents bypass prompts. | **Programmatic Code Gate**: Hard Python/SDK prerequisite check blocking execution until verified ([TS 1.4](domain1/ts_1_4_prerequisite_enforcement/main.py)). |
+| **D1** | **Multi-Agent Coordination** | **Air Traffic Controller vs Pilot Chatter** | Pilots chatting directly over shared radio create confusion and missed alerts. | **Hub-and-Spoke Topology**: Coordinator manages isolated subagents; zero peer-to-peer chatter ([TS 1.2](domain1/ts_1_2_coordinator_subagents/main.py)). |
+| **D2** | **Tool Interface Design** | **Kitchen Drawer Labels** | A drawer labeled "stuff" causes mixed utensils; a label "dinner forks, NOT knives" prevents misrouting. | **Rich Tool Descriptions**: Explicit input formats, example queries, edge cases, and boundary statements ([TS 2.1](domain2/ts_2_1_tool_interface_design/main.py)). |
+| **D3** | **Headless CI/CD Automation** | **Automated Factory Robot** | A robot that halts mid-assembly waiting for an operator to hit Enter stalls the entire factory line. | **Non-Interactive `-p` Flag**: Pass `claude -p "..." --output-format json` to eliminate terminal stdin hangs ([TS 3.6](domain3/ts_3_6_cicd_pipeline_automation/main.py)). |
+| **D4** | **Structured Output & Extraction** | **Strict Customs Declaration Form** | If a customs form has no "N/A" checkbox, travelers invent plausible details to avoid leaving blanks. | **Nullable Schema Fields**: Declare optional fields as `["string", "null"]` via `tool_use` to stop hallucinations ([TS 4.3](domain4/ts_4_3_structured_output_tool_use/main.py)). |
+| **D5** | **Context Window Preservation** | **Executive Briefing Folder** | As notes get summarized over weeks, vital account numbers and dollar figures degrade into vague prose. | **Immutable Case Facts Layer**: Pin transactional facts outside the compacted conversation history ([TS 5.1](domain5/ts_5_1_context_preservation/main.py)). |
 
 ---
 
 ## ⚠️ Critical Policy: Zero Live Claude API Execution
 
-To protect API budgets and prevent unintended token spend:
-- ❌ **Automated Execution Prohibited**: Never execute scripts or tools that make automated live Anthropic API calls.
+To guarantee predictable budgets, zero accidental billing, and reproducible testing:
+- ❌ **Automated Execution Prohibited**: Never execute scripts or test harnesses that make automated live Anthropic API calls (`client.messages.create()`, live API keys).
 - ✅ **100% Zero-Token Offline Testing**: All 247 unit tests (`pytest tests/ scenarios/`) run entirely offline using deterministic mocks (`lib.mock_claude`).
 - 👤 **Manual Live Practice Only**: Candidates execute live scripts manually in their WSL Ubuntu terminal when testing with real API credentials:
   ```bash
@@ -27,7 +79,7 @@ See [EXECUTION_POLICY.md](EXECUTION_POLICY.md) for complete safety guidelines.
 ```bash
 # In WSL Ubuntu Terminal:
 
-# 1. Install dependencies
+# 1. Install dependencies and synchronize workspace
 uv sync
 
 # 2. Run the complete offline unit test suite (247 tests, zero API tokens)

@@ -671,4 +671,13 @@ flowchart TD
 | **98% aggregate accuracy in extraction pipeline?** | **YES** | Maintain **5–10% stratified random sampling** of high-confidence predictions. |
 | **Prevent loss of critical numbers across 30+ turns?** | **YES** | Maintain a persistent **Case Facts** block outside summarized history. |
 
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Domain**: [Domain 4: Prompt Engineering & Structured Output](../domain4/KEY_CONCEPTS.md)
+- 📋 **Domain Overview**: [Domain 5: Context Management & Reliability](README.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Topic**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)
+
 

@@ -27,10 +27,10 @@
 
 ## 📖 Concepts Explained
 
-### 1. The Cognitive Role of Few-Shot Examples in Foundation Models
-While detailed system prompts provide abstract semantic rules, autoregressive language models generalize most reliably when abstract instructions are paired with **concrete input/output demonstrations**. When detailed instructions alone produce inconsistent formatting, hallucinated required fields, or tool misrouting, few-shot prompting is the highest-leverage technique to restore consistency.
+### 1. Why Few-Shot Examples Work: Show, Don't Just Tell
+Written rules can be abstract and open to interpretation. When you tell a model to "be conservative" or "format nicely," it has to guess what you mean. 
 
-Few-shot examples do not simply teach a format; they teach **decision boundaries and latent reasoning patterns**. By demonstrating *why* an action was chosen over plausible alternatives, few-shot examples allow Claude to generalize its judgment to novel, unseen inputs rather than rote-matching pre-specified phrases.
+Giving **2 to 4 concrete examples** of inputs and outputs removes that guesswork. Good examples don't just teach the shape of the data; they show **where the boundaries are** between acceptable code and real bugs, or how to handle missing data without making things up. By showing *why* an answer is right (with a short reasoning note), Claude learns the underlying logic and can apply it to new situations it hasn't seen before.
 
 ### 2. Four Key Syllabus Patterns Demonstrated Through Few-Shot Prompting
 To maximize exam readiness and production reliability, few-shot demonstrations must target the primary failure modes tested in the CCAR-F blueprint:
@@ -48,32 +48,46 @@ A common misconception is that more examples always improve accuracy. In product
 
 ## 🧪 Worked Example
 
-**Review prompt with two examples**
+### ❌ Invalid Example (Anti-Pattern: 10 Identical Examples Without Reasons)
 ```text
-Output format: location | issue | severity | suggested_fix
+# BROKEN: Floods the prompt with repetitive, easy examples and no reasoning
+Prompt:
+Classify tickets as "bug" or "feature_request":
+Example 1: "Button broken" -> bug
+Example 2: "App crashed" -> bug
+Example 3: "Login failed" -> bug
+... [8 more repetitive examples]
 
-Example 1 (ACCEPTABLE - do not report)
-  tests/test_auth.py:12  mock_key = 'sk-ant-test_dummy_000000000000'
-  Reason: mock key in a test file, not a live credential.
-
-Example 2 (GENUINE - report)
-  src/auth.py:30  user = db.get(uid); return user.orders
-  Output: src/auth.py:30 | possible None dereference | MEDIUM | if user is None: raise UserNotFound(uid)
-  Reason: get() can return None, so .orders raises AttributeError.
+Why it fails in production:
+1. High token cost: Burns 1,500+ context tokens on every request for zero extra learning.
+2. Rigid overfitting: Claude copies exact phrasing instead of understanding the rule.
+3. No reasoning: When given an ambiguous case like "Invoice page crashes on download", Claude flips a coin because it never learned whether crashes in billing count as billing or bug.
 ```
 
-**Extraction prompt with a null example**
+### ✅ Valid Example (Production Pattern: 2–4 Diverse Examples with Reasons)
 ```text
-Input: Purchase order with no tax number and no due date.
-Output: {"stated_total": 120.0, "due_date": null, "tax_id": null, "conflict_detected": false}
-Reason: the document does not state them, so return null. Never invent.
-```
+# CORRECT: 2-4 targeted examples on tricky boundaries with explicit "Why" notes
+<examples>
+Example 1 (ACCEPTABLE - do not report):
+  Input: tests/test_auth.py:12 mock_key = 'sk-ant-test_dummy_000000000000'
+  Verdict: NO_ISSUE
+  Why: Mock key located in a test directory; not a leaked production credential.
 
-**Varied structure**
-```text
-Inline:        "as shown by Lee (2021, p. 4)"       -> {"author": "Lee", "year": 2021, "page": 4}
-Bibliography:  "References: [1] Kim, J. (2019)..."  -> {"author": "Kim", "year": 2019, "page": null}
-None:          memo without citations               -> {"citations": []}
+Example 2 (GENUINE BUG - report):
+  Input: src/auth.py:30 user = db.get(uid); return user.orders
+  Verdict: BUG | MEDIUM | Check if user is None before accessing orders
+  Why: db.get() can return None, which causes an unhandled AttributeError.
+
+Example 3 (MISSING ATTRIBUTE - return null):
+  Input: Purchase order with vendor name and total, but no tax number or due date.
+  Verdict: {"stated_total": 120.0, "tax_id": null, "due_date": null}
+  Why: Attributes not printed in document must be null; never fabricate placeholders.
+</examples>
+
+Varied structure examples:
+  Inline:        "as shown by Lee (2021, p. 4)"       -> {"author": "Lee", "year": 2021, "page": 4}
+  Bibliography:  "References: [1] Kim, J. (2019)..."  -> {"author": "Kim", "year": 2019, "page": null}
+  None:          memo without citations               -> {"citations": []}
 ```
 
 See `FEW_SHOT_EXTRACTION_EXAMPLES`, `VARIED_STRUCTURE_EXAMPLES`, and `REVIEW_FEW_SHOT_EXAMPLES` in [main.py](main.py). `validate_example_count()` enforces the 2-4 range.
@@ -82,12 +96,12 @@ See `FEW_SHOT_EXTRACTION_EXAMPLES`, `VARIED_STRUCTURE_EXAMPLES`, and `REVIEW_FEW
 
 ## 🔑 Key Terms
 
-- **Few-shot prompting**: giving worked examples inside the prompt.
-- **Targeted example**: one that covers an ambiguous case, not an easy one.
-- **Acceptable pattern**: code that looks odd but is fine; showing it cuts false positives.
-- **Genuine issue**: a real defect; showing it keeps recall.
-- **Generalisation**: handling unseen inputs because the example taught the reason.
-- **Varied structure**: examples with different layouts of the same information.
+- **Few-Shot Prompting**: An in-context learning technique where 2 to 4 concrete input-output demonstrations are included in the prompt to illustrate formatting and decision logic.
+- **Targeted Example**: A demonstration chosen specifically to illustrate a difficult boundary case, such as an ambiguous classification or a missing attribute, rather than an obvious happy path.
+- **Acceptable Pattern Demonstration**: An example showing code or syntax that looks unconventional but is legitimately safe, preventing overzealous false positives.
+- **Genuine Vulnerability Demonstration**: An example showing a true critical defect along with its root-cause explanation, ensuring the model maintains high detection recall.
+- **Latent Generalization**: The model's ability to apply the underlying rationale learned from few-shot examples to novel, unseen inputs instead of rote keyword matching.
+- **Structural Layout Diversity**: Providing examples across varied visual arrangements (such as tabular grids, narrative paragraphs, and receipts) so the model does not overfit to a single template.
 
 ---
 
@@ -214,3 +228,11 @@ In [`ts_4_2_few_shot_and_multi_instance.ipynb`](ts_4_2_few_shot_and_multi_instan
 4. **Step 4: Verification**: asserts the 2-4 example rule, the null and empty cases, and the review format.
 
 Everything runs offline; no API calls.
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 4.1: Explicit Criteria & Negative Boundaries](../ts_4_1_explicit_criteria_classification/README.md)
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Structured Output](../README.md)
+- ➡️ **Next Topic**: [TS 4.3: Reliable Structured Output via Tool Use](../ts_4_3_structured_output_tool_use/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

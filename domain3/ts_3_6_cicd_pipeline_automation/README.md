@@ -27,7 +27,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### Why it matters
 A job that waits for input never ends. Free-text output forces fragile text scraping. Both break pipelines.
@@ -57,17 +57,17 @@ claude -p "Review this PR diff against our CLAUDE.md criteria" \
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Non-interactive mode**: `-p` / `--print`.
-- **Structured output**: `--output-format json` with `--json-schema`.
-- **Inline PR comment**: a comment tied to a file and line.
-- **Gate**: a pipeline step that passes or fails the build from the findings.
-- **Independent review instance**: a separate Claude Code session used only to review.
+- **Non-interactive mode (`-p` / `--print`)**: The CLI invocation flag that disables terminal interactivity, executes a single-turn agent prompt headlessly, streams or outputs the result, and terminates immediately.
+- **Structured JSON output (`--output-format json --json-schema`)**: CLI flags that enforce a strict JSON Schema contract on Claude's response, producing validated, machine-parseable artifacts for downstream automation.
+- **Inline PR review comment**: A targeted code annotation posted via API directly to a specific file and line number within a pull request diff.
+- **Programmatic quality gate**: A deterministic CI pipeline script that evaluates Claude's structured JSON findings and emits a zero or non-zero exit code to block merging when critical violations occur.
+- **Independent review instance**: A freshly spawned, clean-context Claude session tasked solely with reviewing code changes, avoiding the confirmation bias of the instance that generated the PR.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -86,16 +86,41 @@ flowchart TD
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-Command (as built by `build_ci_command` in `main.py`):
+### ❌ Invalid Example (Anti-Pattern: Missing -p Flag & Exit 0 on Critical Defects)
+```bash
+# BROKEN 1: Invoking Claude Code without -p in GitHub Actions / GitLab CI
+claude "Review this PR diff"
+# What happens: Claude starts in interactive terminal mode, prints a prompt, and waits forever for stdin!
+# Result: CI runner hangs until the 6-hour runner timeout, wasting organization runner minutes!
 
-```text
-claude -p "Review this PR diff against CLAUDE.md criteria" --output-format json --json-schema "$(cat .ci/review.schema.json)"
+# BROKEN 2: Printing error text but exiting code 0
+python -c 'print("CRITICAL SECURITY VULNERABILITY FOUND"); sys.exit(0)'
+# What happens: CI job shows a green checkmark! Merge button is unblocked, and vulnerability deploys to prod!
 ```
 
-Illustrative findings payload:
+### ✅ Valid Example (Production Pattern: Non-Interactive -p with Strict Schema & Exit 1 Gating)
+```bash
+# CORRECT: Headless execution with structured JSON output and inline schema
+claude -p "Review this PR diff against CLAUDE.md criteria" \
+  --output-format json \
+  --json-schema "$(cat .ci/review.schema.json)" \
+  > review_results.json
 
+# Deterministic CI gate script in Python:
+python3 -c '
+import json, sys
+data = json.load(open("review_results.json"))
+criticals = [f for f in data.get("findings", []) if f["severity"] in ("CRITICAL", "HIGH")]
+if criticals:
+    print(f"FAILED: {len(criticals)} blocking security violations detected!")
+    sys.exit(1)  # Non-zero exit code fails the CI pipeline and blocks merge!
+sys.exit(0)
+'
+```
+
+Illustrative structured findings payload:
 ```json
 {
   "status": "CHANGES_REQUESTED",
@@ -113,14 +138,13 @@ Illustrative findings payload:
 }
 ```
 
-The script turns this into an inline comment on `auth/eval_handler.py` line 42 and exits 1.
+The script turns this into an inline PR comment on `auth/eval_handler.py` line 42 and exits 1.
 
-On the next push, the re-run prompt (`build_rerun_prompt`) adds:
-
+On the next push, the re-run prompt (`build_rerun_prompt`) includes prior findings:
 ```text
 Prior findings from earlier runs:
 - auth/eval_handler.py:42 SEC001_NO_DYNAMIC_EXEC: Detected unsafe dynamic evaluation via eval()
-Report only NEW issues or prior findings that are still unaddressed.
+Report only NEW issues or prior findings that are still unaddressed. Avoid duplicate comments.
 ```
 
 `validate_ci_command(["claude", "Review PR"])` reports the missing `-p` and `--output-format`. The review step in `main.py` is a **simulation**; no `claude` process runs.
@@ -206,7 +230,7 @@ The Message Batches API saves 50% but can take up to 24 hours with no latency SL
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I know `-p` / `--print` fixes a hanging CI job.
 - [ ] I can name the flags for structured output.
@@ -218,7 +242,7 @@ The Message Batches API saves 50% but can take up to 24 hours with no latency SL
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Open [`ts_3_6_cicd_pipeline_automation.ipynb`](ts_3_6_cicd_pipeline_automation.ipynb) (offline, no `claude` process). It uses [main.py](main.py):
 
@@ -227,4 +251,10 @@ Open [`ts_3_6_cicd_pipeline_automation.ipynb`](ts_3_6_cicd_pipeline_automation.i
 3. Simulate the review, validate the payload, create inline comments, compute the gate.
 4. Assertions, including the re-run prompt.
 
-Previous: [TS 3.5](../ts_3_5_iterative_refinement_interview/README.md). Overview: [Domain 3 README](../README.md).
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 3.5: Interactive Refinement & Plan Clarification](../ts_3_5_iterative_refinement_interview/README.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code & Developer Workflows](../README.md)
+- ➡️ **Next Topic**: [TS 4.1: Explicit Criteria & Classification](../../domain4/ts_4_1_explicit_criteria_classification/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

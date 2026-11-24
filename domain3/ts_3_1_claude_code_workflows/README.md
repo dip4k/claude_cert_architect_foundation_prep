@@ -50,17 +50,17 @@ If your standards live only in your home folder, your teammates and the CI job n
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **User-level config**: `~/.claude/CLAUDE.md`. Personal. Never reaches teammates or CI.
-- **Project-level config**: root `CLAUDE.md` or `.claude/CLAUDE.md`. Committed and shared.
-- **Directory-level config**: a `CLAUDE.md` inside a subfolder. Committed and shared.
-- **`@import`**: the `@path/to/file` syntax that includes another file so a `CLAUDE.md` stays modular.
-- **`/memory`**: command that shows the loaded memory files.
+- **User-level configuration (`~/.claude/CLAUDE.md`)**: A developer's local, personal instruction file containing editor preferences and shell quirks that is never committed to source control or seen by CI.
+- **Project-level configuration (`./CLAUDE.md` or `.claude/CLAUDE.md`)**: The repository's authoritative, committed configuration file that standardizes build commands, testing rules, and architectural guidelines across the entire development team.
+- **Directory-level configuration (`<subfolder>/CLAUDE.md`)**: A localized instruction file committed within a specific component subtree that loads on demand only when Claude inspects or modifies files within that directory.
+- **`@import` directive**: The `@path/to/file` syntax that modularizes large instructions by pulling external markdown snippets into `CLAUDE.md` while preserving concise root files.
+- **`/memory` slash command**: An interactive diagnostic command in Claude Code that reveals every loaded instruction file and active scope to quickly debug rule precedence issues.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -83,29 +83,52 @@ flowchart TD
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-A repo and two developers:
+### ❌ Invalid Example (Anti-Pattern: Storing Team Rules in User-Level ~/.claude/CLAUDE.md)
+```markdown
+# BROKEN: Developer Ana adds team code-formatting and commit-signing rules to her personal user file:
+# ~/.claude/CLAUDE.md (on Ana's MacBook):
+- All commits must include Jira ticket IDs in brackets: [PROJ-XXXX]
+- Run `npm run lint` before committing.
+- Database queries must always use parameterized statements.
 
-```text
-~/.claude/CLAUDE.md                 <- user scope (Ana's laptop only)
+What happens:
+1. Teammate Ben clones the repository and asks Claude Code to write a feature.
+2. Ben's Claude Code does NOT read Ana's home directory!
+3. Ben's PR fails CI because commits lack Jira IDs and lint checks were never executed.
+4. In headless CI (`claude -p`), ~/.claude/CLAUDE.md does not exist, so automated runs fail team conventions.
+```
+
+### ✅ Valid Example (Production Pattern: Project-Scoped Root CLAUDE.md with Modular Topic Rules)
+```markdown
+# CORRECT: Committed to Git at repository root
+# ./CLAUDE.md (Shared with all teammates and CI runners):
+# Team Architecture Guidelines
+- Build & Test Commands:
+  - Unit tests: `npm test`
+  - Integration: `npm run test:e2e`
+- Commit Convention: `[TICKET-ID] Description`
+- Modularity imports:
+  @.claude/rules/testing.md
+  @.claude/rules/api-conventions.md
+
+Directory layout:
 my-repo/
-  CLAUDE.md                         <- project scope
+  CLAUDE.md                         <- project scope (Committed to Git)
   .claude/rules/
-    testing.md                      <- topic file
+    testing.md                      <- topic file (@import modularity)
     api-conventions.md
-    deployment.md
-  services/billing/CLAUDE.md        <- directory scope
+  services/billing/CLAUDE.md        <- directory scope (Only loaded when editing under services/billing/)
   services/billing/api.py
 ```
 
-Ana edits `services/billing/api.py`. Claude sees: her user file, the project `CLAUDE.md`, and `services/billing/CLAUDE.md`.
+**Walkthrough:**
+Ana edits `services/billing/api.py`: Claude loads her user file, root `CLAUDE.md`, and `services/billing/CLAUDE.md`.
+Ben clones the repo and edits the same file: Claude loads root `CLAUDE.md` and `services/billing/CLAUDE.md`.
+Because team conventions are in the committed project `CLAUDE.md`, Ben and the CI runner automatically follow the exact same standards as Ana!
 
-Ben clones the repo and edits the same file. Claude sees: the project `CLAUDE.md` and `services/billing/CLAUDE.md`. **Ben never gets Ana's user file.** If the commit-message rules were only in Ana's user file, Ben's Claude ignores them.
-
-Fix: move those rules to the project `CLAUDE.md` (or a topic file) and commit.
-
-The `main.py` in this folder does this on the real files of this repo (`resolve_claude_md_chain`, `teammate_visible`).
+The `main.py` in this folder checks this on repository files (`resolve_claude_md_chain`, `teammate_visible`).
 
 ---
 
@@ -193,7 +216,7 @@ When Claude "ignores" an instruction, the cause is usually that the file was nev
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can name the three scopes and their file locations.
 - [ ] I know the user-level file is not shared via version control.
@@ -205,7 +228,7 @@ When Claude "ignores" an instruction, the cause is usually that the file was nev
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Open [`ts_3_1_claude_code_workflows.ipynb`](ts_3_1_claude_code_workflows.ipynb) (offline, no API calls). It runs the code in [main.py](main.py):
 
@@ -214,4 +237,10 @@ Open [`ts_3_1_claude_code_workflows.ipynb`](ts_3_1_claude_code_workflows.ipynb) 
 3. Load the real `.claude/rules/` files and see which match a file.
 4. Assertions that confirm the order and the teammate view.
 
-Next: [TS 3.2 Slash Commands and Skills](../ts_3_2_slash_commands_and_skills/README.md). Overview: [Domain 3 README](../README.md).
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 2.5: Built-in Tools & Agent Sandbox Optimization](../../domain2/ts_2_5_builtin_tools_usage/README.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code & Developer Workflows](../README.md)
+- ➡️ **Next Topic**: [TS 3.2: Slash Commands & Custom Skills](../ts_3_2_slash_commands_and_skills/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

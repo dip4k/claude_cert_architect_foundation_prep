@@ -72,29 +72,83 @@ A `tool_result` without the assistant `tool_use` before it is rejected with HTTP
 
 ## 🧪 Worked Example
 
+### ❌ Invalid Example (Anti-Pattern: Fixed `range()` Iteration & Text Matching)
+```python
+# BROKEN: Hardcodes turn loops, checks text strings for completion, and ignores stop_reason
+for turn in range(5):
+    response = client.messages.create(model="claude-sonnet-4-5", messages=messages)
+    # Anti-pattern 1: Guessing completion from text keywords instead of response.stop_reason
+    if "Finished" in response.content[0].text:
+        break
+    # Anti-pattern 2: Blindly falling back to 'end_turn' on unknown reasons
+    # Anti-pattern 3: If stop_reason == "max_tokens", input was cut off, but this ignores it!
+    # Anti-pattern 4: Forgetting to append the assistant message before appending tool results (HTTP 400!)
+```
+
+### ✅ Valid Example (Production Pattern: State Machine on `stop_reason` with Two-Message Contract)
+```python
+# CORRECT: Deterministic stop_reason routing with bidirectional dual-message append
+while iterations < MAX_ITERATIONS:
+    iterations += 1
+    response = client.messages.create(
+        model="claude-sonnet-4-5",
+        messages=messages,
+        tools=tools
+    )
+    
+    # 1. Exit condition: Claude explicitly signals task completion
+    if response.stop_reason == "end_turn":
+        return extract_text_response(response)
+        
+    # 2. Tool execution branch:
+    if response.stop_reason == "tool_use":
+        # Step A: Append assistant turn with full content (keeps tool_use blocks & thinking signatures)
+        messages.append({"role": "assistant", "content": response.content})
+        
+        # Step B: Execute tools locally and append user turn with matching tool_result blocks
+        tool_results = []
+        for block in response.content:
+            if block.type == "tool_use":
+                output = execute_local_tool(block.name, block.input)
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": block.id,
+                    "content": json.dumps(output)
+                })
+        messages.append({"role": "user", "content": tool_results})
+        continue
+
+    # 3. Server pause branch:
+    if response.stop_reason == "pause_turn":
+        messages.append({"role": "assistant", "content": response.content})
+        continue
+        
+    # 4. Any other stop reason (max_tokens, refusal, etc.) is an explicit failure, not success!
+    raise LoopStopped(f"Halted on abnormal stop_reason: {response.stop_reason}")
+```
+
+**Walkthrough: Search and calculate**
 User asks: *"Search for the population of Tokyo, then calculate 15% of it."*
 
 | Step | Who | What happens |
 |---|---|---|
 | 1 | Host | Sends `messages = [user: question]` and the two tools |
 | 2 | Claude | `stop_reason = "tool_use"`. Content: `tool_use web_search {"query": "tokyo population"}` (id `toolu_A`) |
-| 3 | Host | Appends the assistant turn. Runs the search. Appends user turn: `tool_result` for `toolu_A` with the snippet "37,400,000" |
+| 3 | Host | Appends the assistant turn. Runs the search. Appends user turn: `tool_result` for `toolu_A` with snippet "37,400,000" |
 | 4 | Claude | `stop_reason = "tool_use"`. Content: `tool_use calculator {"expression": "37400000 * 0.15"}` (id `toolu_B`) |
-| 5 | Host | Appends the assistant turn. Runs the calculator. Appends `tool_result` for `toolu_B`: `5610000` |
+| 5 | Host | Appends the assistant turn. Runs calculator. Appends `tool_result` for `toolu_B`: `5610000` |
 | 6 | Claude | `stop_reason = "end_turn"`. Text: "15% of Tokyo's population is about 5.61 million." |
-| 7 | Host | Returns the text. Loop ends |
-
-Claude chose search first, then the calculator. The host never hard-coded that order. Three API calls, two tool rounds, and the end came from `end_turn`.
+| 7 | Host | Returns the text. Loop ends cleanly |
 
 ---
 
 ## 🔑 Key Terms
 
-- **`stop_reason`**: the API field that says why generation stopped. Values: `tool_use`, `end_turn`, `max_tokens`, `stop_sequence`, `pause_turn`, `refusal`.
-- **`tool_use_id`**: the id on each `tool_use` block. The `tool_result` must repeat it exactly.
-- **Two-message contract**: assistant `tool_use` turn first, then user `tool_result` turn.
-- **Safety cap**: an iteration limit used only as a fallback for runaway loops.
-- **Thinking block**: reasoning content with a `signature`. Echo it back unchanged.
+- **`stop_reason`**: The deterministic API response metadata field indicating why generation terminated, with explicit states: `tool_use` (run tools and continue), `end_turn` (task complete, return text), `pause_turn` (send assistant turn back to continue), `max_tokens` (output cut off prematurely, treat as failure), `stop_sequence` (custom string matched), and `refusal` (safety block).
+- **Tool Correlation ID (`tool_use_id`)**: The unique cryptographic identifier on each `tool_use` content block that must be repeated verbatim in the corresponding `tool_result` block to maintain turn correlation.
+- **Two-Message Append Contract**: The protocol requirement to append the assistant's complete `tool_use` response to history before appending the user's `tool_result` message, preserving conversation integrity.
+- **Safety Iteration Cap**: A defensive upper bound (e.g. `MAX_ITERATIONS = 20`) designed strictly as a fail-safe against runaway infinite loops, never used as the normal termination mechanism.
+- **Cryptographic Thinking Block**: An assistant content block (`type: "thinking"`) produced by Claude 4.5 extended thinking that carries a digital signature and must be echoed back unmodified in subsequent turns.
 
 ---
 
@@ -295,3 +349,10 @@ Open [ts_1_1_multi_tool_agent_loop.ipynb](ts_1_1_multi_tool_agent_loop.ipynb) (o
 5. **Checks**: assertions on results and on the explicit `stop_reason` handling.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)
+
+---
+
+## 🧭 Navigation & Study Links
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](../README.md)
+- ➡️ **Next Topic**: [TS 1.2: Coordinator-Subagent Patterns & Topologies](../ts_1_2_coordinator_subagents/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

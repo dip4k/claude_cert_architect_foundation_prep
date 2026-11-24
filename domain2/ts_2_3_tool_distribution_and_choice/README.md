@@ -64,11 +64,11 @@
 
 ## 🔑 Key Terms
 
-- **Least privilege**: Each agent gets only the tools its job needs.
-- **Tool overload**: Too many tools, causing wrong or slow selection.
-- **Constrained tool**: A narrow replacement for a broad one (`load_document` for `fetch_url`).
-- **Scoped cross-role tool**: A small tool given to another role for a frequent need (`verify_fact`).
-- **Forced tool choice**: `{"type": "tool", "name": ...}`.
+- **Least privilege tool scoping**: The architectural principle of granting each agent or subagent only the minimal set of 3 to 5 tools strictly required for its specialized task, minimizing distraction and misrouting.
+- **Tool overload**: Cognitive degradation occurring when an agent is presented with an excessive number of tools (typically over 10 to 15), leading to latency, increased token consumption, and frequent selection errors.
+- **Constrained tool**: A secured, restricted alternative to an overly permissive utility (such as replacing open-ended `fetch_url` with host-allowlisted `load_document`).
+- **Scoped cross-role tool**: A small, read-only helper tool granted directly to a specialist agent (such as giving `verify_fact` to a synthesis agent) to eliminate repetitive round-trip coordinator latency.
+- **`tool_choice` directive**: An API parameter configuring Claude's tool invocation behavior across `auto` (model decides), `any` (forces some tool call), `tool` (forces a specific named tool), or `none` (prohibits tool calls).
 
 ---
 
@@ -89,17 +89,56 @@ flowchart TD
 
 ---
 
-## 🧪 Worked Example (Research Scenario)
+## 🧪 Worked Example
 
-**Problem**: A synthesis agent has 18 tools, including `web_search` and `fetch_url`. It keeps picking the wrong one and sometimes browses the open web.
+### ❌ Invalid Example (Anti-Pattern: Monolithic Agent with 18 Tools & Forced Tool + Thinking)
+```python
+# BROKEN 1: Overloading a single synthesis agent with 18 disparate tools
+synthesis_tools = [
+    web_search, fetch_url, bash_exec, sql_query, drop_table,
+    calc, verify_fact, get_customer, process_refund, ... # 18 tools!
+]
+# Result: Attention budget exhausted, frequent tool misrouting, and security violations!
 
-1. **Count the tools.** 18 is far above the 4–5 target.
-2. **Cut to role.** Synthesis keeps `summarize_content` and `verify_fact`. Search tools move to the search agent.
-3. **Replace `fetch_url`.** The search agent gets `load_document`, which only allows listed hosts.
-4. **Add `verify_fact`.** The synthesis agent can check one claim in one call. Hard cases go to the coordinator.
-5. **Force the first step.** The search agent must always run `extract_metadata` first. Turn 1 uses `{"type": "tool", "name": "extract_metadata"}`. Later turns use `auto`. This request has **no** `thinking`.
+# BROKEN 2: Pairing forced tool_choice with Extended Thinking (Causes HTTP 400!)
+request = {
+    "model": "claude-sonnet-4-5",
+    "thinking": {"type": "enabled", "budget_tokens": 2048},
+    "tools": synthesis_tools,
+    "tool_choice": {"type": "tool", "name": "extract_metadata"},  # REJECTED! HTTP 400 Bad Request
+    "temperature": 0.2  # REJECTED! Temperature must be omitted with thinking
+}
+```
 
-Code: `ROLE_TOOLSETS`, `check_tool_budget()`, `load_document()`, `verify_fact()`, `tool_choice_for_turn()` and `validate_request_params()` in [main.py](main.py).
+### ✅ Valid Example (Production Pattern: Least-Privilege Scoped Roles & Dynamic tool_choice)
+```python
+# CORRECT 1: Scoped tool sets adhering to the 4-5 tool attention budget
+COORDINATOR_TOOLS = [delegate_task, ask_user, escalate_to_human]       # 3 tools
+SEARCH_AGENT_TOOLS = [web_search, load_document, extract_metadata]     # 3 tools (load_document domain-whitelisted)
+SYNTHESIS_TOOLS = [summarize_content, verify_fact]                     # 2 tools (verify_fact scoped cross-role)
+
+# CORRECT 2: Mandatory first step via tool_choice (WITHOUT thinking)
+turn_1_request = {
+    "model": "claude-haiku-4-5",
+    "tools": SEARCH_AGENT_TOOLS,
+    "tool_choice": {"type": "tool", "name": "extract_metadata"},  # Guaranteed first step!
+    "messages": [{"role": "user", "content": "Analyze quarterly report"}]
+}
+
+# Subsequent turns switch back to "auto" so Claude can reason and answer:
+turn_2_request = {
+    "model": "claude-haiku-4-5",
+    "tools": SEARCH_AGENT_TOOLS,
+    "tool_choice": {"type": "auto"},
+    "messages": conversation_history
+}
+```
+
+**Walkthrough:**
+1. Initial state: Synthesis agent was equipped with 18 tools, picking wrong tools and crawling unauthorized sites.
+2. Refactored architecture: Synthesis agent stripped down to `summarize_content` and lightweight `verify_fact`.
+3. Broad `fetch_url` replaced with constrained `load_document` restricted to pre-approved corporate domains.
+4. Turn 1 forces `extract_metadata` without thinking; Turn 2 relaxes `tool_choice` to `auto`. All tool sets stay within 3–4 tools per agent.
 
 ---
 
@@ -213,3 +252,11 @@ Open [`ts_2_3_tool_distribution_and_choice.ipynb`](ts_2_3_tool_distribution_and_
 - [ ] I know thinking allows only `auto` or `none`.
 
 **Memory hook**: *"Small toolbox per role. `any` means any tool, forced means that tool, thinking means auto."*
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 2.2: MCP Structured Errors & Self-Correction](../ts_2_2_mcp_structured_errors/README.md)
+- 📋 **Domain Overview**: [Domain 2: Tool Design & Model Context Protocol (MCP)](../README.md)
+- ➡️ **Next Topic**: [TS 2.4: MCP Server Integration & Multi-Transport Architecture](../ts_2_4_mcp_server_integration/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

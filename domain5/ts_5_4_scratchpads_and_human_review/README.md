@@ -14,7 +14,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** A detective's case notebook. After many days the detective forgets details unless they are written down. So: write specifics in the notebook (`scratchpad.md`), send a scout (Explore subagent) to read piles of files and bring back a summary, and save a checkpoint so a crash does not mean starting again.
 
@@ -64,9 +64,47 @@ Inside Claude Code, developers running long interactive exploration sessions can
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-**Scenario:** Mapping an old monolith. By turn 40 Claude suggests a PostgreSQL syntax. The team found MySQL on turn 6.
+### ❌ Invalid Example (Anti-Pattern: "Remind the Model" & Rerunning Everything After Crashes)
+```text
+# BROKEN 1: "Remind the model" prompt hacks during long sessions
+Turn 40: Claude forgets that the database was MySQL and generates PostgreSQL code.
+Developer Prompt: "Remember, we are using MySQL! Be more mindful of our earlier discussion in turn 6!"
+Why it fails: Shouting at the model in prompt prose does not restore degraded attention.
+Earlier files and specific schemas are already lost in the middle or pushed out of context!
+
+# BROKEN 2: Rerunning 6-hour research workflow from scratch after a network disconnect
+Crash at subtask 9 of 10: Process dies with no disk checkpoints.
+Action: Restarting the coordinator re-runs all 10 subagents from turn 1, wasting $150 in API tokens!
+```
+
+### ✅ Valid Example (Production Pattern: External Scratchpad & Coordinator Crash Manifest)
+```python
+# CORRECT 1: Persistent Scratchpad File (scratchpad.md)
+# Turn 6: Agent discovers database engine and logs immutable fact to disk:
+scratchpad.write_finding(
+    category="database",
+    fact="Database is MySQL 8.0 with InnoDB (verified via services/db/connection.py:14)",
+    timestamp="2026-10-06T12:00:00Z"
+)
+# At Turn 40: Claude reads scratchpad.md on demand, generating exact MySQL syntax without drift.
+
+# CORRECT 2: Coordinator Crash Recovery Manifest (manifest.json)
+manifest = {
+    "workflow_id": "migration-wf-001",
+    "completed_tasks": {
+        "auth_explorer": {"status": "DONE", "output_path": "state/auth.json"},
+        "payment_explorer": {"status": "DONE", "output_path": "state/payment.json"}
+    },
+    "pending_tasks": ["billing_explorer"]
+}
+# On system reboot: Coordinator loads manifest.json, injects completed state files,
+# and spawns ONLY the pending 'billing_explorer' subagent!
+```
+
+**Walkthrough:**
+Mapping a legacy codebase where Claude begins suggesting PostgreSQL syntax at turn 40 after discovering MySQL at turn 6:
 
 | Step | Action |
 |---|---|
@@ -80,17 +118,17 @@ Inside Claude Code, developers running long interactive exploration sessions can
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Context degradation:** Specific details fade and generic patterns replace them in long sessions.
-- **Scratchpad:** A file of key findings that persists beyond the context window.
-- **Explore subagent:** A subagent that reads a lot and returns a compact summary.
-- **Manifest:** A coordinator file that records each agent's phase and state file for resume.
-- **`/compact`:** Claude Code command that condenses the conversation.
+- **Context degradation**: The gradual loss of specific factual recall in long-running sessions, where models revert to generic patterns instead of maintaining earlier discoveries.
+- **Persistent scratchpad (`scratchpad.md`)**: An external markdown document maintained by the agent across turns that records key architectural findings, symbol locations, and unresolved questions beyond volatile session memory.
+- **Explore subagent**: An ephemeral worker spawned to perform noisy reconnaissance (such as scanning hundreds of files with Grep or Glob) that returns a compact summary to the parent agent.
+- **Crash recovery manifest**: A persistent JSON state file tracking completed and pending agent tasks, enabling interrupted workflows to resume without re-running finished stages.
+- **`/compact` directive**: A Claude Code command that synthesizes conversational history into an abbreviated summary to reclaim token capacity during extended debugging sessions.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -109,7 +147,7 @@ flowchart TD
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Telling the model to "remember"
 
@@ -153,7 +191,7 @@ On resume, load the manifest into the coordinator's prompt and run only the pend
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 4).** Forty turns into mapping a legacy codebase, Claude describes "typical repository patterns" and misses the real `LedgerService` class it found earlier. What is the best fix?
 
@@ -184,7 +222,7 @@ On resume, load the manifest into the coordinator's prompt and run only the pend
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can describe context degradation in a long exploration.
 - [ ] I know what goes in a scratchpad.
@@ -196,7 +234,7 @@ On resume, load the manifest into the coordinator's prompt and run only the pend
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Notebook: [`ts_5_4_scratchpads_and_human_review.ipynb`](ts_5_4_scratchpads_and_human_review.ipynb). Code: [`main.py`](main.py). Both run offline.
 
@@ -207,3 +245,11 @@ Notebook: [`ts_5_4_scratchpads_and_human_review.ipynb`](ts_5_4_scratchpads_and_h
 5. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
 
 **Related:** [TS 5.1](../ts_5_1_context_preservation/README.md) (the same ideas for chat) | [TS 5.5](../ts_5_5_human_review_calibration/README.md) (human review, which was mixed into this folder).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 5.3: Error Propagation & Resilience in Multi-Agent Topologies](../ts_5_3_error_propagation_coverage/README.md)
+- 📋 **Domain Overview**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../README.md)
+- ➡️ **Next Topic**: [TS 5.5: Human Review Calibration & Uncertainty Triage](../ts_5_5_human_review_calibration/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

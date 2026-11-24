@@ -59,41 +59,70 @@ For a 30-hour SLA: the interval can be at most $30 - 24 = 6$ h. Leave a 2-hour m
 
 ## 🧪 Worked Example
 
-**Q11-style decision.** A team wants lower cost on two workloads.
-- A pre-merge check that blocks the PR until Claude's review passes.
-- A weekly technical-debt report.
+### ❌ Invalid Example (Anti-Pattern: Batch API for Blocking PR Gate or Multi-Turn Tools)
+```python
+# BROKEN: Using Message Batches API for pre-merge PR review checks
+# Developer opens a PR and waits for CI check to pass before merging:
+batch = client.messages.batches.create(
+    requests=[{
+        "custom_id": f"pr-{pr_id}",
+        "params": {
+            "model": "claude-sonnet-4-5",
+            "messages": [{"role": "user", "content": "Review this PR diff"}]
+        }
+    }]
+)
+# Developer waits... and waits... up to 24 hours for the batch to complete!
 
-Decision: batch **only the technical-debt report**. The pre-merge check is blocking and needs an answer in minutes, so it stays on the synchronous API.
-
-**Timeline for a 30-hour SLA (submit every 4 hours)**
-```text
-00:00  submit batch 1 (docs that arrived 20:00-00:00)
-...    batch window: up to 24 h, often much sooner
-04:00  submit batch 2 ...
-Worst case for one document:  4 h wait + 24 h batch + 2 h margin = 30 h
+Why it fails in production:
+1. Blocking SLA violation: Pre-merge PR checks must finish in < 5 minutes. The Message Batches API has up to a 24-hour turnaround with no latency SLA.
+2. No mid-batch tool calls: If Claude returns a tool_use block, the batch cannot run the tool and feed results back. Multi-turn workflows fail inside a single batch request.
 ```
 
-**Partial failure**
-```text
-Submitted 3 requests:  doc-01 ok | doc-02 errored (150,000 tokens) | doc-03 ok
-Resubmit only doc-02 as: doc-02-chunk1of3, doc-02-chunk2of3, doc-02-chunk3of3
-```
+### ✅ Valid Example (Production Pattern: Async Overnight Audits with SLA Scheduling & custom_id)
+```python
+# CORRECT: Routing non-blocking workloads to Batches (50% discount) with custom_id correlation
+# Workload: Weekly architecture audit across 40,000 files, or nightly backfill
 
-[main.py](main.py) mirrors these shapes offline (`create_batch`, `complete`, `results`, `request_counts`, result types) without importing `anthropic`.
+# 1. Prepare batch requests with unique custom_id (1-64 chars: letters, digits, _, -)
+requests = [
+    {
+        "custom_id": f"doc-audit-{file_id}",
+        "params": {
+            "model": "claude-haiku-4-5",
+            "max_tokens": 1024,
+            "messages": [{"role": "user", "content": f"Audit file: {code_content}"}]
+        }
+    }
+    for file_id, code_content in file_manifest.items()
+]
+
+# 2. Submit batch (50% price discount, up to 100,000 requests or 256 MB per batch)
+batch = client.messages.batches.create(requests=requests)
+
+# 3. Retrieve and correlate results asynchronously by custom_id:
+for result in client.messages.batches.results(batch.id):
+    file_id = result.custom_id
+    if result.result.type == "succeeded":
+        save_finding(file_id, result.result.message.content)
+    elif result.result.type in ("errored", "expired"):
+        # Resubmit ONLY failed requests in the next batch window
+        queue_for_retry(file_id)
+
+# SLA Timeline for a 30-hour customer SLA:
+# Target SLA (30h) - Max Batch Window (24h) - Buffer (2h) = Submit every 4 hours!
+```
 
 ---
 
 ## 🔑 Key Terms
 
-- **Message Batches API**: asynchronous endpoint, 50% cost saving, up to 24 h.
-- **`custom_id`**: your id on each request, returned on each result. It must be 1 to 64 characters: letters, digits, `_` or `-`, and unique in the batch.
-- **Limits**: a batch holds up to 100,000 requests or 256 MB, whichever comes first. Results stay downloadable for 29 days. Most batches end within an hour; at 24 hours unfinished requests `expire`.
-- **Result types**: `succeeded`, `errored`, `canceled`, `expired`. An `errored` result of type `invalid_request_error` needs a fixed request; other errors and `expired` requests can be resubmitted. You are not billed for errored, canceled or expired requests.
-- **No tool loop inside a batch**: each request is one call. If Claude returns `tool_use`, you run the tool yourself and send a follow-up request; a batch cannot execute tools mid-request.
-- **`processing_status`**: `in_progress` or `ended` (also `canceling`).
-- **`result.type`**: `succeeded`, `errored`, `canceled`, `expired`.
-- **Submission interval**: time between batch submissions; sets the SLA.
-- **Chunking**: splitting an oversized document into several requests.
+- **Anthropic Message Batches API**: An asynchronous batch processing endpoint offering a 50% discount on input and output tokens with a completion turnaround window of up to 24 hours.
+- **Request Correlation (`custom_id`)**: A developer-assigned unique identifier (1–64 characters: alphanumeric, `_`, `-`) mapped 1:1 between submission requests and asynchronous response items.
+- **Batch SLA Submission Interval**: The maximum scheduled window for accumulating and submitting batch jobs to ensure total turnaround satisfies customer SLA constraints ($\text{Submit Interval} = \text{Target SLA} - 24\text{h} - \text{buffer}$).
+- **Single-Turn Batch Constraint**: An architectural limitation where batches cannot pause to execute mid-request client tools, making the API suitable only for single-turn extraction or classification.
+- **Selective Resubmission**: An operational error-handling standard where only `errored` or `expired` items are re-queued in subsequent batches, avoiding paying twice for successful requests.
+- **Document Chunking Protocol**: Splitting an oversized payload into smaller sub-requests (such as `doc-01-chunk1of3`) to fit within token boundaries while maintaining lineage tracking.
 
 ---
 
@@ -227,3 +256,11 @@ In [`ts_4_5_message_batches_api.ipynb`](ts_4_5_message_batches_api.ipynb):
 4. **Step 4: Verification**: asserts the SLA numbers, the failed-only resubmission, and that tool calls are not executed mid-batch.
 
 Everything runs offline; the simulator never imports `anthropic`.
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 4.4: Validation-Retry Feedback Loops](../ts_4_4_validation_retry_feedback/README.md)
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Structured Output](../README.md)
+- ➡️ **Next Topic**: [TS 4.6: Multi-Pass Review & Independent Verification](../ts_4_6_multi_pass_review/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

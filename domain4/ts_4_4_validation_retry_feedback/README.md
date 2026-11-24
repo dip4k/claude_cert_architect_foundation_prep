@@ -56,46 +56,73 @@ When Claude Code or an agent generates review findings, every finding must carry
 
 ## 🧪 Worked Example
 
-**Case 1: fixable**
+### ❌ Invalid Example (Anti-Pattern: Blind Retries on Missing Data)
 ```text
-Document:  Invoice 101. Subtotal $100. Tax $10. Total $110. Tax ID: TX-999
-Attempt 1: {"subtotal": 100, "total": 90, "tax_id": "TX-999"}
-Error:     total (90) cannot be less than subtotal (100)
-Retry sends: <document>...</document> <failed_extraction>{...}</failed_extraction>
-             <validation_errors>- total (90) < subtotal (100)</validation_errors>
-Attempt 2: {"subtotal": 100, "total": 110, "tax_id": "TX-999"}  -> accepted
+# BROKEN: Retrying blindly without diagnostics, or retrying physically absent facts
+Document: "Coffee Shop Receipt. Total: $5.00." (No tax ID printed on the paper)
+
+Attempt 1 Output:
+  {"total": 5.0, "tax_id": null}
+
+Pipeline Validation Check:
+  "tax_id is null! Re-running prompt..."
+
+Retry 1 Prompt sent to Claude:
+  "Extract invoice details again. Make sure tax_id is filled!"
+
+What happens:
+  Claude feels forced to satisfy the required field and invents "TX-0012345" out of thin air!
+  
+Why it fails in production:
+1. Retrying missing facts induces hallucinations.
+2. Repeating the exact same prompt without specific error feedback wastes tokens and API budget.
 ```
 
-**Case 2: absent**
+### ✅ Valid Example (Production Pattern: Targeted Diagnostic Feedback & Fast-Fail on Absent Data)
 ```text
-Document:  Receipt from Coffee Shop: Total $5. No tax details.
-Attempt 1: {"subtotal": 5, "total": 5, "tax_id": null}
-Decision:  tax_id is absent in the source -> no retry -> route_to_human
-```
-A retry here would only push the model to invent a tax ID.
+# CORRECT: Targeted diagnostic feedback for recoverable errors, fast-fail for absent facts
 
-**Case 3: model missed it**
-```text
-Document:  Receipt. VAT ID: GB123
-Attempt 1: tax_id null  -> the source does mention VAT -> retry is useful
+Scenario A (Recoverable Math Error):
+  Document: "Invoice 101. Subtotal $100. Tax $10. Total $110. Tax ID: TX-999"
+  Attempt 1 Output: {"subtotal": 100.0, "total": 90.0, "tax_id": "TX-999"}
+  
+  Code Validation Check:
+    subtotal (100.0) cannot be greater than total (90.0). Recoverable arithmetic mismatch!
+
+  Retry Payload sent to Claude:
+    <document>Invoice 101. Subtotal $100. Tax $10. Total $110. Tax ID: TX-999</document>
+    <failed_extraction>{"subtotal": 100.0, "total": 90.0, "tax_id": "TX-999"}</failed_extraction>
+    <validation_error>
+      Total ($90.00) cannot be less than Subtotal ($100.00). Re-examine line items and grand total.
+    </validation_error>
+
+  Attempt 2 Output:
+    {"subtotal": 100.0, "total": 110.0, "tax_id": "TX-999"}  -> PASSED!
+
+Scenario B (Physically Absent Fact):
+  Document: "Coffee Shop Receipt. Total: $5.00." (Tax ID is physically absent)
+  Attempt 1 Output: {"total": 5.0, "tax_id": null}
+
+  Code Validation Check:
+    tax_id is physically absent from document text -> Abort retry immediately -> route_to_human_triage.
 ```
 
-**Dismissal analysis**
+**Dismissal telemetry tracking (`detected_pattern`)**:
 ```text
-print_in_cli      4 findings, 3 dismissed -> 75%  -> noisy, rewrite or disable
-none_deref        3 findings, 0 dismissed ->  0%  -> keep
+print_in_cli      4 findings, 3 dismissed -> 75% dismissal rate -> Noisy rule! Disable or rewrite.
+none_deref        3 findings, 0 dismissed ->  0% dismissal rate -> High-value rule! Keep.
 ```
 
 ---
 
 ## 🔑 Key Terms
 
-- **Validation-retry loop**: validate, send specific feedback, retry (bounded).
-- **Retryable**: the model can fix it by re-reading the source.
-- **Absent in source**: the document never states the value.
-- **Semantic error**: valid structure, inconsistent meaning.
-- **`detected_pattern`**: the construct that triggered a finding; used to analyse dismissals.
-- **`conflict_detected`**: true when calculated and stated totals differ.
+- **Validation-Retry Feedback Loop**: A bounded, closed-loop architectural pattern where client application code validates model output and returns specific diagnostic error feedback for self-correction.
+- **Recoverable Extraction Defect**: An error (such as an arithmetic mismatch or bad date formatting) where the underlying facts physically exist in the source document and can be resolved by re-examination.
+- **Physically Absent Fact**: An attribute that was never printed or recorded in the source text, making automated retries futile and requiring immediate fast-fail routing to human exception triage.
+- **Diagnostic Retry Payload**: A targeted prompt structure providing three essential context elements: the original document, the failed extraction JSON, and the exact validation failure message.
+- **Pattern Telemetry (`detected_pattern`)**: A structured metadata tag tracking which specific review rule triggered a finding, used to calculate dismissal rates and eliminate noisy prompt rules.
+- **Semantic Cross-Field Validation**: Client-side code logic that verifies relational invariants (such as line items summing to total amount) that strict JSON Schemas cannot enforce alone.
 
 ---
 
@@ -219,3 +246,11 @@ In [`ts_4_4_validation_retry_feedback.ipynb`](ts_4_4_validation_retry_feedback.i
 4. **Step 4: Verification**: asserts the retry decisions, the human-review route, and the noisy-pattern detection.
 
 Everything runs offline; no API calls.
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 4.3: Reliable Structured Output via Tool Use](../ts_4_3_structured_output_tool_use/README.md)
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Structured Output](../README.md)
+- ➡️ **Next Topic**: [TS 4.5: High-Throughput Batch Processing via Message Batches API](../ts_4_5_message_batches_api/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

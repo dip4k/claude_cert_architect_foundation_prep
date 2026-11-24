@@ -14,7 +14,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** Two news sources give different numbers. A good reporter shows **both**, with the name and date of each, and explains why they might differ. They do not average the numbers (nobody published that), and they do not quietly pick one.
 
@@ -64,9 +64,48 @@ Avoid converting all findings into uniform paragraphs of text:
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-**Subagents report:**
+### ❌ Invalid Example (Anti-Pattern: Averaging Conflicting Numbers & Omitting Dates)
+```text
+# BROKEN 1: Averaging conflicting numbers into a fake mean
+Source 1 (Oct 1 Preliminary Press Release): Revenue = $1.2B
+Source 2 (Oct 15 Audited SEC 10-Q): Revenue = $1.4B
+Synthesizer Output: "The company reported an average revenue of $1.3B."
+Why it fails in production: Neither source said $1.3B! Averaging invents a fictional third number
+and destroys legal and financial auditing compliance!
+
+# BROKEN 2: Treating temporal differences as contradictions due to missing timestamps
+Source A (2024-Q1): Headcount = 1,200 employees
+Source B (2026-Q1): Headcount = 1,850 employees
+Synthesizer Output: "CONTRADICTION DETECTED: Sources disagree on company headcount."
+Why it fails: Omitting collection timestamps turns normal organizational growth into false contradictions!
+```
+
+### ✅ Valid Example (Production Pattern: Claim-to-Source Mapping & Side-by-Side Attribution)
+```markdown
+# CORRECT: Preserving both statistics with dates, methodology, and direct citations
+
+## Established Findings
+- **Headcount**: 12,500 employees as of October 15, 2024 [SEC 10-Q Filing, payroll records].
+
+## Temporal Progression (Timeline)
+- **Inventory Levels**:
+  - June 30, 2025: 50,000 units [Warehouse Audit Report A]
+  - September 30, 2026: 12,000 units [Warehouse Audit Report B]
+  *(Reflects seasonal drawdown rather than data conflict)*
+
+## Contested & Divergent Findings
+| Metric | Reported Value | Source | Publication Date | Accounting Method |
+| :--- | :--- | :--- | :--- | :--- |
+| **Q3 2024 Revenue** | $1.2B | Press Wire Release | 2024-10-01 | Preliminary Unaudited |
+| **Q3 2024 Revenue** | $1.4B | SEC 10-Q Filing | 2024-10-15 | Formal Audited Filing |
+
+*Note: The formal SEC filing reflects post-close adjustments and represents the authoritative figure.*
+```
+
+**Walkthrough:**
+Subagents report:
 
 | Metric | Value | Source | Pub. date | Period | Method |
 |---|---|---|---|---|---|
@@ -77,24 +116,24 @@ Avoid converting all findings into uniform paragraphs of text:
 | Headcount | 12,500 | 10-Q filing | 2024-10-15 | n/a | Payroll |
 
 **Synthesis result:**
-- **Q3 revenue:** same period, different values -> **contested**. Show both, with source and method. No average.
-- **Inventory:** different periods -> **temporal difference**, not a conflict. Present as a dated timeline.
-- **Headcount:** one source -> **established**.
+- **Q3 revenue:** same period, different values $\to$ **contested**. Show both with source and method. Never average.
+- **Inventory:** different periods $\to$ **temporal difference**, not a conflict. Present as a dated timeline.
+- **Headcount:** single verified source $\to$ **established**.
 
 `ProvenanceSynthesizer` and `render_report()` in `main.py` produce exactly this.
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Claim-source mapping:** Link between a claim and its source, excerpt and date.
-- **Contested finding:** Credible sources disagree for the same period.
-- **Temporal difference:** Values differ because they describe different times.
-- **Methodology note:** Short text on how a number was produced (e.g. audited vs preliminary).
+- **Claim-source mapping**: The programmatic association linking an extracted factual statement directly to its source document, verbatim text excerpt, publication date, and methodology.
+- **Contested finding**: An architectural classification for metrics where two or more credible sources report divergent values for the exact same reporting period, requiring side-by-side presentation rather than mathematical averaging.
+- **Temporal difference**: An apparent numerical disagreement between sources that actually represents valid evolution over different points in time, resolved by formatting the values as a dated chronological progression.
+- **Methodology annotation**: Explicit explanatory text detailing how an extracted figure was calculated or gathered (such as distinguishing audited financial statements from preliminary analyst estimates).
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -116,7 +155,7 @@ flowchart TD
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Averaging or silently choosing between two sources
 
@@ -165,7 +204,7 @@ Financial figures go in a table, news in prose, technical findings in a list. Fo
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 3).** Two subagents report different market-size statistics for the same year, from two credible sources. What should the synthesis agent do?
 
@@ -196,7 +235,7 @@ Financial figures go in a table, news in prose, technical findings in a list. Fo
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can list what a claim-source mapping contains.
 - [ ] I know why conflicting values are annotated, not averaged.
@@ -208,7 +247,7 @@ Financial figures go in a table, news in prose, technical findings in a list. Fo
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Notebook: [`ts_5_6_provenance_and_uncertainty.ipynb`](ts_5_6_provenance_and_uncertainty.ipynb). Code: [`main.py`](main.py). Both run offline.
 
@@ -218,3 +257,11 @@ Notebook: [`ts_5_6_provenance_and_uncertainty.ipynb`](ts_5_6_provenance_and_unce
 4. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
 
 **Related:** [TS 5.1](../ts_5_1_context_preservation/README.md) (structured subagent output) | [TS 5.3](../ts_5_3_error_propagation_coverage/README.md) (coverage annotations).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 5.5: Human Review Calibration & Uncertainty Triage](../ts_5_5_human_review_calibration/README.md)
+- 📋 **Domain Overview**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../README.md)
+- ➡️ **Next Topic**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

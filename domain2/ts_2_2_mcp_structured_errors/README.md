@@ -66,12 +66,12 @@ If you flag "no orders found" as an error, the agent retries a healthy system an
 
 ## 🔑 Key Terms
 
-- **`isError`**: Flag on a tool result that marks a failure.
-- **`errorCategory`**: One of `transient`, `validation`, `business`, `permission`.
-- **`isRetryable`**: `true` only when retrying the same call can succeed. Business-rule errors use `false`.
-- **Valid empty result**: Successful query with zero matches.
-- **Local recovery**: Handling a transient error inside the subagent before reporting.
-- **Partial results**: Data collected before the failure, passed up with the error.
+- **`isError`**: A boolean flag on a Model Context Protocol tool result indicating whether the tool invocation encountered an execution failure or returned an error payload.
+- **`errorCategory`**: A machine-readable taxonomy classifying the failure as `transient`, `validation`, `business`, or `permission` so Claude knows whether to retry, fix arguments, or escalate.
+- **`isRetryable`**: A boolean property signaling whether repeating the exact same tool call could reasonably succeed without code or parameter modifications (`false` for business rule violations).
+- **Valid empty result**: A successful query execution that accurately returns zero records (such as an empty search list), which must return `isError: false` rather than throwing an error.
+- **Local recovery**: The subagent design pattern of attempting bounded retries for transient errors internally before escalating to the parent coordinator.
+- **Partial results**: Meaningful data retrieved before an error occurred that is passed alongside failure metadata to help the coordinator make informed recovery decisions.
 
 ---
 
@@ -96,18 +96,61 @@ flowchart TD
 
 ---
 
-## 🧪 Worked Example (Customer Support)
+## 🧪 Worked Example
 
-A customer asks for a $750 refund. The agent calls `process_refund`.
+### ❌ Invalid Example (Anti-Pattern: Generic String Errors & Treating Empty as Error)
+```json
+// BROKEN 1: Returning vague plain-text error string
+{
+  "isError": true,
+  "content": [{"type": "text", "text": "Error: Operation failed."}]
+}
+// Why it fails: Claude cannot distinguish if this was a network timeout (transient),
+// an invalid parameter (validation), or a policy block (business). It loops retrying un-retryable actions!
 
-1. The tool checks the rule: automated limit is $500.
-2. It returns `isError: true`, `errorCategory: "business"`, `isRetryable: false`, and a clear message.
-3. The agent reads the category. It does **not** retry.
-4. The agent calls `escalate_to_human` with the order ID, amount and reason.
-5. It tells the customer: "This amount needs a supervisor's approval. I have passed your case on."
+// BROKEN 2: Treating zero search matches as a system failure
+{
+  "isError": true,
+  "content": [{"type": "text", "text": "Error: 0 orders found for customer."}]
+}
+// Why it fails: Zero records found is a VALID factual answer (VALID_EMPTY). Treating it as an error
+// causes subagents to retry queries against healthy databases and report false outages!
+```
 
-Now a different case: `lookup_order` times out.
-1. Result: `errorCategory: "transient"`, `isRetryable: true`.
+### ✅ Valid Example (Production Pattern: Structured Error Taxonomy & Valid Empty Result)
+```json
+// CORRECT 1: Structured Business Rule Error (Non-retryable)
+{
+  "isError": true,
+  "content": [{
+    "type": "text",
+    "text": "Refund of $750.00 exceeds automated tier limit of $500.00. Supervisor escalation required."
+  }],
+  "errorCategory": "business",
+  "isRetryable": false,
+  "details": {
+    "requested_amount": 750.0,
+    "max_allowed_automated": 500.0,
+    "policy_rule": "FIN_RULE_44"
+  }
+}
+// Result: Claude sees isRetryable=false and errorCategory="business" -> escalates immediately without looping!
+
+// CORRECT 2: Valid Empty Search Result (isError: false)
+{
+  "isError": false,
+  "content": [{"type": "text", "text": "{\"count\": 0, \"orders\": []}"}],
+  "query": "customer_id=CUST-101",
+  "result_status": "VALID_EMPTY"
+}
+```
+
+**Walkthrough:**
+1. Customer requests a $750 refund. The agent calls `process_refund`.
+2. Tool checks policy: automated limit is $500.
+3. Tool returns structured error with `errorCategory: "business"` and `isRetryable: false`.
+4. Agent reads category: does **not** retry; invokes `escalate_to_human` with case facts.
+5. Customer receives clear explanation: *"This amount exceeds automated limits and has been transferred to a supervisor."*
 2. The subagent retries twice. The second retry works. The coordinator never sees an error.
 
 And one more: the customer has no orders in January. `lookup_order` returns `isError: false`, `count: 0`. The agent says "You have no orders in January."
@@ -224,3 +267,11 @@ Open [`ts_2_2_mcp_structured_errors.ipynb`](ts_2_2_mcp_structured_errors.ipynb).
 - [ ] I know subagents retry transient errors locally and propagate only unresolved ones with partial results.
 
 **Memory hook**: *"Name the failure, say if it can be retried, and never call an empty answer an error."*
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 2.1: Tool Interface Design](../ts_2_1_tool_interface_design/README.md)
+- 📋 **Domain Overview**: [Domain 2: Tool Design & Model Context Protocol (MCP)](../README.md)
+- ➡️ **Next Topic**: [TS 2.3: Tool Distribution & Selection Strategies](../ts_2_3_tool_distribution_and_choice/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

@@ -13,7 +13,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** A telephone game. If each person re-tells the story in their own words, "$47.83" slowly becomes "about fifty". Keep a **facts card** on the desk that is never retold, and let only the rest of the chat be summarised. Also, do not copy a 47-field form into your notes when you only need 4 boxes.
 
@@ -64,32 +64,75 @@ When specialized subagents (e.g. Web Search or Document Analysis subagents) comp
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-**Scenario:** A customer writes on turn 1: *"Refund ORD-2026-9921. I paid $149.99 on 2026-09-28."*
+### ❌ Invalid Example (Anti-Pattern: Progressive Summarization Washing Away Numbers)
+```text
+# BROKEN: Repeatedly summarizing older turns directly into conversational memory
+Turn 1: "Customer ID CUST-9921, Order ORD-2026-9921, Amount $149.99 paid on 2026-09-28 via FedEx 1Z999."
+Turn 6 Summary:  "Customer asked for a refund on a recent charge."
+Turn 12 Summary: "User requested assistance with an order."
+
+What happens in production:
+1. Exact transactional numbers (order ID, dollar amount, date) vanish into vague natural prose.
+2. At Turn 14, when Claude calls `process_refund`, it has to guess or hallucinate the order ID!
+3. Tool payloads (47 raw CRM fields, 1,800 tokens each turn) flood context and trigger attention dilution.
+```
+
+### ✅ Valid Example (Production Pattern: Immutable Case Facts Layer & PostToolUse Trimming)
+```python
+# CORRECT: Extract immutable facts into a pinned layer outside the summarized narrative
+
+# 1. Dedicated Case Facts layer pinned in system prompt prefix:
+case_facts = {
+    "customer_id": "CUST-9921",
+    "order_id": "ORD-2026-9921",
+    "amount": 149.99,
+    "transaction_date": "2026-09-28",
+    "tracking_number": "1Z999"
+}
+
+# 2. PostToolUse hook trims 47 raw CRM fields down to 4 decision fields:
+def trim_crm_payload(raw_crm: dict) -> dict:
+    return {
+        "order_id": raw_crm["order_id"],
+        "status": raw_crm["status"],
+        "total": raw_crm["total"],
+        "delivery_date": raw_crm["delivery_date"]
+    }
+
+# 3. Prompt Assembly:
+# - Case Facts block pinned at the very top (immune to summarization drift)
+# - Narrative summaries for turns 1-10
+# - Verbatim recent turns (11-14) at the end
+# Result: Claude issues the exact refund for $149.99 without hallucinating!
+```
+
+**Walkthrough:**
+Customer writes on turn 1: *"Refund ORD-2026-9921. I paid $149.99 on 2026-09-28."*
 
 | Step | What happens | Result |
 |---|---|---|
 | Turn 1 | Code extracts case facts with regexes. | `order=ORD-2026-9921`, `amount=$149.99`, `date=2026-09-28` |
-| Turn 6 | A summary replaces turns 1-5: *"Customer asked about an order refund."* | Numbers are gone from the summary. |
-| Turn 7 | `lookup_order` returns 47 fields (illustratively, about 1,800 tokens). Hook keeps 5 fields. | Far fewer tokens stay in history. |
-| Turn 8 | Prompt = case facts (top) + summary + last turns + new message. | Agent refunds exactly `$149.99`. |
+| Turn 6 | A summary replaces turns 1-5: *"Customer asked about an order refund."* | Numbers are gone from narrative, but preserved in Case Facts block! |
+| Turn 7 | `lookup_order` returns 47 fields (1,800 tokens). Hook keeps 4 fields. | Far fewer tokens enter context. |
+| Turn 8 | Prompt = case facts (top) + narrative summary + recent turns. | Agent refunds exactly `$149.99`. |
 
 Run `main.py` to see this offline: `lossy_summary()` shows the drift, `facts_survive()` proves the facts block protects the numbers.
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Case facts:** Structured, persistent block of exact transactional facts kept outside summarised history.
-- **Progressive summarisation:** Repeatedly condensing old turns. Fine for tone, risky for exact values.
-- **Trimming (PostToolUse):** Keeping only needed fields from a tool result before it joins the history.
-- **Lost in the middle:** Weaker use of information placed in the middle of a long input.
-- **Structured subagent output:** Facts + citations + relevance + dates instead of verbose reasoning.
+- **Case Facts layer**: A dedicated, immutable structured block of transactional entities (order IDs, dollar amounts, timestamps, tracking numbers) maintained outside summarized conversation history and prepended to every turn.
+- **Progressive summarization**: The technique of iteratively compressing older conversational turns into running narrative prose, which inevitably rounds exact numbers and erodes critical transactional details over long sessions.
+- **`PostToolUse` context trimming**: An architectural normalization hook that filters voluminous raw database payloads down to the essential fields before appending them to the persistent message history.
+- **Lost in the middle phenomenon**: An inherent characteristic of transformer attention mechanisms where models recall information at the start and end of large prompts significantly better than tokens in the middle 60%.
+- **Structured subagent contracts**: The practice of requiring upstream specialist agents to return concise, structured facts (claims, dates, sources) rather than multi-thousand-token raw thinking chains to the coordinator.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -109,7 +152,7 @@ flowchart TD
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Summarising harder to keep exact values
 
@@ -157,7 +200,7 @@ If each of five research subagents returns 4,000 tokens of reasoning, the coordi
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 1).** A support agent runs 35 turns. The platform summarises every 8 turns. At turn 30 it refunds `$480` instead of `$487.50` for the wrong order. What is the best fix?
 
@@ -188,7 +231,7 @@ If each of five research subagents returns 4,000 tokens of reasoning, the coordi
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can explain why summaries lose numbers, dates and expectations.
 - [ ] I can list what goes in a case facts block and where it is placed.
@@ -200,7 +243,7 @@ If each of five research subagents returns 4,000 tokens of reasoning, the coordi
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Notebook: [`ts_5_1_context_preservation.ipynb`](ts_5_1_context_preservation.ipynb). Code: [`main.py`](main.py). Both run offline.
 
@@ -211,3 +254,11 @@ Notebook: [`ts_5_1_context_preservation.ipynb`](ts_5_1_context_preservation.ipyn
 5. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
 
 **Related:** [TS 5.4](../ts_5_4_scratchpads_and_human_review/README.md) (the same ideas at codebase scale) | [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (keep claim-source links through summaries).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 4.6: Multi-Pass Code Review & Consensus](../../domain4/ts_4_6_multi_pass_review/README.md)
+- 📋 **Domain Overview**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../README.md)
+- ➡️ **Next Topic**: [TS 5.2: Escalation Protocols & Deterministic Provenance](../ts_5_2_escalation_and_provenance/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

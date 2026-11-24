@@ -734,4 +734,13 @@ flowchart TD
 | **Managing multi-file reviews without missing bugs?** | **YES** | Two-Pass Prompt Chaining: Pass 1 (per-file) + Pass 2 (cross-file integration). |
 | **Source code changed out-of-band during extended session?** | **YES** | Discard stale session; inject structured summary into a fresh session. |
 
+---
+
+## 🧭 Navigation & Study Links
+- 🏠 **Repository Home**: [CCAR-F Exam Preparation Guide](../README.md)
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](README.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Domain**: [Domain 2: Tool Design & MCP Integration](../domain2/KEY_CONCEPTS.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)
+
 

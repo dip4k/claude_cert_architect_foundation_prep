@@ -13,7 +13,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** A school with a 97% average. One subject could be failing badly while the big subjects are perfect. So look at **each subject**. And when spot-checking homework, check some of the answers the student felt **sure** about too, or you never find confident mistakes.
 
@@ -58,34 +58,69 @@ Automated pipelines should route an extraction to human reviewers under three ex
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-**Data:** 100 labelled fields. 90 are `standard_invoice/total` (all correct, confidence 0.97). 10 are `customs_form/hs_code` (7 correct, confidence 0.95).
+### ❌ Invalid Example (Anti-Pattern: Approving Straight-Through Automation on 97% Aggregate Accuracy)
+```python
+# BROKEN: Disabling human review across all documents based on 97.5% aggregate accuracy
+overall_accuracy = evaluate_accuracy(50000_sample_invoices)  # 97.5% overall!
+if overall_accuracy > 0.95:
+    disable_human_review(confidence_threshold=0.90)
+
+What happens in production (Simpson's Paradox):
+- Standard US domestic receipts (85% of volume): 99.8% accurate (confidence 0.98).
+- Foreign multi-currency customs declarations (15% of volume): 40% failure rate! (confidence 0.95).
+- Because foreign forms are only 15% of volume, aggregate accuracy remains 90.8%.
+- Thousands of corrupted customs declarations bypass human review and corrupt ERP databases!
+```
+
+### ✅ Valid Example (Production Pattern: Per-Segment Calibration & Continuous Stratified Audits)
+```python
+# CORRECT: Evaluate per segment, calibrate ECE, and mandate continuous 5-10% stratified sampling
+def route_for_review(extraction: ExtractedDocument) -> str:
+    # 1. Condition: Ambiguous document scan or conflicting numbers -> Human review
+    if extraction.conflict_detected or extraction.is_ambiguous:
+        return "HUMAN_TRIAGE"
+        
+    # 2. Condition: Segment-specific calibration check
+    # Customs HS codes require validated straight-through proof on labelled sets:
+    if extraction.doc_type == "customs_form" and not is_segment_calibrated("customs_form"):
+        return "HUMAN_REVIEW"  # Kept in human review until segment accuracy proves >= 95%
+        
+    # 3. Condition: Ongoing stratified random audit (5-10% across every single subgroup)
+    if is_in_stratified_sample(extraction, rate=0.08, strata=["doc_type", "vendor"]):
+        return "HUMAN_AUDIT_SAMPLE"  # Ongoing spot check catches silent prompt/model drift!
+        
+    return "STRAIGHT_THROUGH_AUTOMATION"
+```
+
+**Worked numbers walkthrough:**
+100 labelled fields. 90 are `standard_invoice/total` (all correct, confidence 0.97). 10 are `customs_form/hs_code` (7 correct, confidence 0.95).
 
 | Check | Result | Meaning |
 |---|---|---|
-| Aggregate accuracy | **97%** | Looks ready for automation. |
-| Per segment accuracy | invoice total **100%**; customs HS code **70%** | One weak segment is hidden. |
-| Overall ECE | about 0.002 | Overall calibration looks fine. |
-| ECE for customs HS code | about 0.25 | That segment is badly overconfident. |
-| Stratified sample (10%, high confidence) | 9 invoice items + **1** customs item | The weak segment is guaranteed a review. |
+| Aggregate accuracy | **97%** | Looks ready for automation on paper. |
+| Per segment accuracy | invoice total **100%**; customs HS code **70%** | One weak segment is completely hidden. |
+| Overall ECE | ~0.002 | Overall calibration looks fine. |
+| ECE for customs HS code | ~0.25 | That segment is badly overconfident. |
+| Stratified sample (10%, high confidence) | 9 invoice items + **1** customs item | The weak segment is guaranteed representation in audits. |
 | Decision | Keep human review for customs HS code; automate invoice totals. | Validated per segment. |
 
 Run `main.py` to print these numbers. The tests check them.
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Stratum / segment:** A group such as (document type, field).
-- **Stratified random sampling:** Random sampling within each stratum.
-- **Calibration:** Stated confidence matches real accuracy.
-- **ECE:** Expected calibration error, the weighted gap between confidence and accuracy.
-- **Labelled validation set:** Data with known correct answers used to test accuracy and calibration.
+- **Performance segment (stratum)**: A granular slice of operational volume defined by document type, format, or specific field (such as `(handwritten_receipt, tax_id)`).
+- **Stratified random audit sampling**: The statistical practice of drawing random verification samples proportionately across every segment (specifically including high-confidence predictions) to catch silent false positives.
+- **Confidence calibration**: The mathematical alignment between an agent's self-reported probability score and its actual empirical accuracy rate (meaning 90% confidence yields 90% accuracy).
+- **Expected Calibration Error (ECE)**: A scalar metric quantifying the weighted difference between model confidence and observed accuracy across discrete probability bins.
+- **Labelled validation set**: A curated, ground-truth reference dataset used to empirically measure per-segment error rates and verify calibration before authorizing automated processing.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -107,7 +142,7 @@ flowchart TD
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: "97% accurate overall, so remove human review"
 
@@ -144,7 +179,7 @@ When two documents disagree on a value, route to a human. Choosing silently hide
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 6).** An extraction pipeline reports 97% overall accuracy. Leadership wants to remove human review. What should you do first?
 
@@ -175,7 +210,7 @@ When two documents disagree on a value, route to a human. Choosing silently hide
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can explain how 97% overall accuracy hides a weak segment.
 - [ ] I can describe stratified sampling by (document type, field).
@@ -187,7 +222,7 @@ When two documents disagree on a value, route to a human. Choosing silently hide
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Notebook: [`ts_5_5_human_review_calibration.ipynb`](ts_5_5_human_review_calibration.ipynb). Code: [`main.py`](main.py). Both run offline.
 
@@ -199,3 +234,11 @@ Notebook: [`ts_5_5_human_review_calibration.ipynb`](ts_5_5_human_review_calibrat
 6. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
 
 **Related:** [TS 5.2](../ts_5_2_escalation_and_provenance/README.md) (escalation in chat) | [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (conflicting sources).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 5.4: Scratchpads, Checkpoints & State Recovery](../ts_5_4_scratchpads_and_human_review/README.md)
+- 📋 **Domain Overview**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../README.md)
+- ➡️ **Next Topic**: [TS 5.6: Provenance, Source Attribution & Fact Verification](../ts_5_6_provenance_and_uncertainty/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

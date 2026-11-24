@@ -71,16 +71,16 @@ Path-scoping adheres to standard glob semantics:
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Path-scoped rule**: a `.claude/rules/*.md` file with a `paths:` frontmatter list.
-- **Glob**: a pattern like `**/*.test.tsx`.
-- **Conditional loading**: loading a rule only when a matching file is being worked on.
-- **Universal rule**: a rule with no `paths:`.
+- **Path-scoped rule (`.claude/rules/*.md`)**: A modular configuration document containing YAML `paths:` frontmatter that automatically loads into context only when targeted workspace files match.
+- **Glob pattern matching**: A pattern-matching mechanism (such as `**/*.test.tsx`) that recursively matches filesystem paths to scope instruction delivery across arbitrary folder depths.
+- **Conditional just-in-time loading**: The architectural optimization of injecting rules into session memory only when relevant files are edited, preserving token budget and preventing attention degradation.
+- **Universal rule**: A rule file placed in `.claude/rules/` that omits the `paths:` key, causing it to load globally across every session turn regardless of active file targets.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -96,28 +96,58 @@ flowchart TD
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
+### ❌ Invalid Example (Anti-Pattern: Directory CLAUDE.md for Multi-Folder Patterns)
+```text
+# BROKEN: Creating duplicate CLAUDE.md files across multiple folders for test rules
+my-repo/
+  services/auth/tests/CLAUDE.md       # "Use Jest and mock external APIs"
+  services/billing/tests/CLAUDE.md    # Duplicate copy of Jest rules!
+  services/shipping/tests/CLAUDE.md   # Duplicate copy of Jest rules!
+
+Why it fails in production:
+1. Maintenance nightmare: Changing a testing rule requires editing 10 different files.
+2. Fragile scoping: If a new service is created without a local CLAUDE.md, testing rules are never applied!
+3. Monolithic alternative: Putting all Jest, Go, Terraform, and Python rules in root CLAUDE.md wastes 15,000 tokens on every single turn.
+```
+
+### ✅ Valid Example (Production Pattern: Path-Scoped Rules with YAML Glob Matching)
+```yaml
+# CORRECT: Centralized in .claude/rules/ with dynamic glob path-scoping
+# File: .claude/rules/testing.md
+---
+paths:
+  - "**/*.test.tsx"
+  - "**/tests/**/*.py"
+---
+# Test Quality Guidelines
+- Unit tests must be hermetic and execute offline.
+- Mock all network calls using lib.mock_claude.
+- Assert explicit return codes and structured payloads.
+```
+
+Layout and dynamic loading table:
 ```text
 my-repo/
   .claude/rules/
-    testing.md          paths: ["**/*.test.tsx"]
+    testing.md          paths: ["**/*.test.tsx", "**/tests/**/*.py"]
     terraform.md        paths: ["terraform/**/*"]
-    style.md            (no paths: loads always)
+    style.md            (no paths: loads for all files)
   src/auth/auth.tsx
   src/auth/auth.test.tsx
   src/billing/billing.test.tsx
   terraform/main.tf
 ```
 
-| File being edited | Rules loaded |
+| File being edited | Rules dynamically loaded into context |
 |---|---|
 | `src/auth/auth.tsx` | `style` |
 | `src/auth/auth.test.tsx` | `style`, `testing` |
 | `src/billing/billing.test.tsx` | `style`, `testing` |
 | `terraform/main.tf` | `style`, `terraform` |
 
-This repo uses the same mechanism: `.claude/rules/python_quality.md` has `paths: ["**/*.py"]` and `.claude/rules/mermaid_standards.md` has `paths: ["**/*.md", "**/*.ipynb"]`. The `main.py` here reads those real files with `RuleEngine.register_rules_from_dir`.
+This repo uses the exact same pattern: `.claude/rules/python_quality.md` has `paths: ["**/*.py"]` and `.claude/rules/mermaid_standards.md` has `paths: ["**/*.md", "**/*.ipynb"]`. The `main.py` here reads those real files with `RuleEngine.register_rules_from_dir`.
 
 ---
 
@@ -209,7 +239,7 @@ A rule with no `paths:` loads always, so it is not conditional at all.
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I know rules live in `.claude/rules/` and use `paths:` globs.
 - [ ] I can write a glob for co-located tests.
@@ -221,7 +251,7 @@ A rule with no `paths:` loads always, so it is not conditional at all.
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Open [`ts_3_3_path_specific_rules.ipynb`](ts_3_3_path_specific_rules.ipynb) (offline). It uses [main.py](main.py):
 
@@ -230,4 +260,10 @@ Open [`ts_3_3_path_specific_rules.ipynb`](ts_3_3_path_specific_rules.ipynb) (off
 3. Load this repo's `.claude/rules/` and see which rules match which files.
 4. Assertions on matching and on universal rules.
 
-Previous: [TS 3.2](../ts_3_2_slash_commands_and_skills/README.md). Next: [TS 3.4](../ts_3_4_plan_mode_and_refinement/README.md).
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 3.2: Slash Commands & Custom Skills](../ts_3_2_slash_commands_and_skills/README.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code & Developer Workflows](../README.md)
+- ➡️ **Next Topic**: [TS 3.4: Plan Mode, Task Execution & Human Verification](../ts_3_4_plan_mode_and_refinement/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

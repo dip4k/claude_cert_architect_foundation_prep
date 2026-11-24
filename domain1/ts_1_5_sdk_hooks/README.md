@@ -64,16 +64,59 @@ The tool never runs. The loop sends this back as an `is_error` `tool_result`, so
 
 ## 🧪 Worked Example
 
-**Part A: normalisation.** User: *"Check the status of account ACC-100."*
+### ❌ Invalid Example (Anti-Pattern: Dumping 55 Raw Fields & Prompt-Only Gate)
+```python
+# BROKEN: Injects raw CRM JSON directly into conversation history; checks limits in prompt
+def on_tool_result(tool_name, raw_payload):
+    # Injects 55 fields including server shard IDs, internal hashes, and shift logs!
+    messages.append({
+        "role": "user",
+        "content": [{"type": "tool_result", "content": json.dumps(raw_payload)}]
+    })
+    
+# Why it fails in production:
+# 1. Attention dilution: Floods context with 5,000 tokens of useless internal telemetry.
+# 2. Security leak: Exposes internal database keys and server hashes to model output.
+# 3. Flaky policy check: Claude sometimes ignores the prompt's "$500 maximum" under distraction.
+```
+
+### ✅ Valid Example (Production Pattern: PreToolUse Security Gate & PostToolUse Trimming Hook)
+```python
+# CORRECT: Intercept risky actions before execution; normalize payloads before context entry
+
+# 1. PreToolUse Hook: Blocks execution in code if financial policy is violated
+def pre_tool_hook(tool_name: str, tool_input: dict) -> HookDecision:
+    if tool_name == "process_payout" and tool_input.get("amount", 0) > 500.0:
+        return HookDecision.block(
+            reason="Payout exceeds $500 threshold. Supervisor escalation required.",
+            redirect_action="escalate_to_supervisor"
+        )
+    return HookDecision.allow()
+
+# 2. PostToolUse Hook: Normalizes dates and strips internal noise down to 4 essential fields
+def post_tool_hook(tool_name: str, raw_result: dict) -> dict:
+    if tool_name == "check_account_status":
+        return {
+            "iso_timestamp": datetime.fromtimestamp(raw_result["epoch_timestamp"], tz=timezone.utc).isoformat(),
+            "status": "active" if raw_result["raw_status_code"] == 200 else "inactive",
+            "balance": raw_result["balance"]
+            # All 40+ other fields like _shard_id and _debug_trace are discarded!
+        }
+    return raw_result
+```
+
+**Walkthrough: Normalization and Interception**
+
+**Part A: Normalization.** User: *"Check the status of account ACC-100."*
 
 | Step | What happens |
 |---|---|
 | 1 | Claude: `stop_reason = "tool_use"`, `check_account_status("ACC-100")` |
 | 2 | Tool returns raw `{"epoch_timestamp": 1728216000, "raw_status_code": 200, "balance": 1250.0}` |
-| 3 | `PostToolUse` changes it to `{"iso_timestamp": "2024-10-06T12:00:00+00:00", "status": "active", "balance": 1250.0}` |
-| 4 | Claude sees only the clean form and answers: "The account is active." (`end_turn`) |
+| 3 | `PostToolUse` cleans it to `{"iso_timestamp": "2024-10-06T12:00:00+00:00", "status": "active", "balance": 1250.0}` |
+| 4 | Claude sees only the clean 3 fields and answers: "The account is active." (`end_turn`) |
 
-**Part B: interception.** User: *"Issue a payout of $850 to ACC-100."*
+**Part B: Interception.** User: *"Issue a payout of $850 to ACC-100."*
 
 | Step | What happens |
 |---|---|
@@ -86,11 +129,11 @@ The tool never runs. The loop sends this back as an `is_error` `tool_result`, so
 
 ## 🔑 Key Terms
 
-- **Hook**: code that runs at a defined point in the tool lifecycle, outside the model.
-- **Pre-tool interception (`PreToolUse`)**: runs before the tool. Can block or redirect.
-- **`PostToolUse`**: runs after the tool, before Claude reads the result. Normalises or trims.
-- **Normalisation**: one consistent format for dates, codes, and enums.
-- **Deterministic vs probabilistic**: hooks always apply. Prompts usually apply.
+- **SDK Hook Boundary**: Deterministic programmatic callback functions registered in the agent runtime that intercept tool execution before (`PreToolUse`) or after (`PostToolUse`) invocation.
+- **Pre-Tool Interception (`PreToolUse`)**: A security and compliance checkpoint executed before a tool runs, allowing client code to inspect arguments, enforce financial limits, or block unauthorized actions.
+- **Post-Tool Normalization (`PostToolUse`)**: A sanitization and trimming stage executed after a tool runs, used to convert timestamps, standardize status codes, and strip noisy internal fields before the payload enters conversation context.
+- **Context Trimming**: Discarding unnecessary backend telemetry (such as shard keys, trace IDs, and debug logs) so that only the essential decision fields consume token and attention budgets.
+- **Deterministic Interception Guarantee**: The architectural assurance that security policies implemented in hooks execute without fail on every tool call, completely decoupled from model prompt compliance.
 
 ---
 
@@ -243,3 +286,11 @@ Open [ts_1_5_sdk_hooks.ipynb](ts_1_5_sdk_hooks.ipynb) (offline, mock client):
 5. **Checks**: assertions on the blocked $800 payout and the cleaned account result.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 1.4: Multi-Step Workflow Enforcement](../ts_1_4_prerequisite_enforcement/README.md)
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](../README.md)
+- ➡️ **Next Topic**: [TS 1.6: Task Decomposition Strategies](../ts_1_6_task_decomposition/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

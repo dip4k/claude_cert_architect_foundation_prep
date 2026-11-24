@@ -77,7 +77,37 @@ In [main.py](main.py), the `SessionManager` class implements these exact state t
 
 ## 🧪 Worked Example
 
-Monday: you analyse a legacy database layer in session `legacy_db_analysis`. Claude reads `db/conn.py` (pool size 5).
+### ❌ Invalid Example (Anti-Pattern: Blind Resumption After Major Rebase)
+```bash
+# BROKEN: Resuming a 50-turn session after 40 commits were rebased out-of-band
+claude --resume legacy_db_analysis "Now implement the new connection pool"
+
+# Why it fails in production:
+# 1. Stale tool cache: Claude's context still contains 20,000 tokens of obsolete code from db/conn.py.
+# 2. Conflicted edits: Claude generates diffs targeting deleted functions, failing with edit collisions.
+# 3. Context bloat: 80% of prior turns describe architecture that was rewritten or abandoned.
+```
+
+### ✅ Valid Example (Production Pattern: Fork for Parallel Branches & Manifest Ingestion After Drifts)
+```bash
+# SCENARIO A: Comparing two competing ORMs from a shared baseline analysis
+# Fork session twice so exploration in Fork A never contaminates Fork B:
+claude --resume legacy_db_analysis --fork-session "Prototype using Async SQLAlchemy"
+claude --resume legacy_db_analysis --fork-session "Prototype using Prisma ORM"
+
+# SCENARIO B: After major upstream git rebase (40 commits merged)
+# Discard stale transcripts; start a clean session initialized with a verified state manifest:
+claude "Migrate connection pool" << 'EOF'
+# Migration State Manifest
+- Decision: Migrate from sync psycopg2 to asyncpg.
+- Confirmed: 45 legacy sync models identified in models/legacy/.
+- File changes: db/conn.py was replaced with config/database.py in commit 8f92a1.
+- Current Directive: Implement async connection health-check endpoint.
+EOF
+```
+
+**Timeline walkthrough:**
+Monday: you analyze a legacy database layer in session `legacy_db_analysis`. Claude reads `db/conn.py` (pool size 5).
 
 | Day | Event | Right move |
 |---|---|---|
@@ -92,12 +122,12 @@ Each choice matches how much of the old context is still true.
 
 ## 🔑 Key Terms
 
-- **Session**: a saved conversation that can be continued.
-- **`--resume <session-name>`**: continue a named session.
-- **`fork_session`**: create an independent branch from a baseline.
-- **Stale tool results**: earlier file or data reads that no longer match reality.
-- **Structured summary**: the verified facts and changes, used to seed a fresh session.
-- **Changed-files notice**: a message telling a resumed session which files changed.
+- **Conversational Session State**: The persisted multi-turn transcript, tool outputs, and system configurations stored across user interactions.
+- **Deterministic Session Resumption (`--resume <name>`)**: Restoring an existing conversation session verbatim, ideal when external repository files and environment state remain 100% identical.
+- **Differential Resumption with Changed-Files Notice**: Continuing a conversation session while explicitly injecting a synthetic turn listing modified files, instructing the model to invalidate cached tool outputs.
+- **Session Lineage Forking (`fork_session`)**: Deep-copying an existing conversation lineage into an isolated child session to explore alternative prototypes without polluting the parent baseline.
+- **Stale Tool Context Degradation**: The operational failure where Claude acts on obsolete code or database outputs cached in earlier turns after real-world files were altered out-of-band.
+- **Structured State Manifest Seeding**: Purging obsolete conversational transcripts entirely after large rebases and initializing a fresh session with an immutable Markdown summary of verified decisions.
 
 ---
 
@@ -245,3 +275,11 @@ Open [ts_1_7_session_management.ipynb](ts_1_7_session_management.ipynb) (offline
 5. **Checks**: forks stay isolated, the changed-files notice is added, and summaries carry only verified facts.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 1.6: Dynamic Task Decomposition](../ts_1_6_task_decomposition/README.md)
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](../README.md)
+- ➡️ **Next Topic**: [TS 2.1: Tool Interface Design](../../domain2/ts_2_1_tool_interface_design/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

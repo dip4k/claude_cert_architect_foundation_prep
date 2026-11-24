@@ -47,17 +47,17 @@ Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Concrete input/output example**: a real input paired with its exact expected output.
-- **Test-driven iteration**: tests written first, failures shared to guide fixes.
-- **Interview pattern**: Claude asks clarifying questions before implementing.
-- **Interacting problems**: problems whose fixes affect each other.
-- **Independent problems**: problems that can be fixed separately.
+- **Concrete input/output demonstrations**: Representative pairs of input and output data that provide unambiguous ground truth for formatting, schema shapes, and boundary conditions.
+- **Test-driven iterative feedback**: The engineering practice of establishing automated unit test assertions and passing raw failure outputs to Claude to guide targeted code fixes.
+- **The interview pattern**: A proactive prompting technique where Claude interrogates the developer with 2 to 3 architectural options and trade-offs before generating any implementation code.
+- **Interacting feedback issues**: Multiple bugs or design tasks that share shared dependencies or state (such as auth token shapes and auth middleware), requiring bundled resolution in a single turn.
+- **Orthogonal independent issues**: Disjoint bugs or improvements (such as a backend route logic bug and a CSS styling fix) that should be decomposed into separate, sequential prompts.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -74,32 +74,51 @@ flowchart TD
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-Spec in prose: "Normalize dates." Results vary. Add examples:
-
+### ❌ Invalid Example (Anti-Pattern: Guessing Vague Requirements & Prose Adjectives)
 ```text
-Input:  "2026/10/05"      Output: "2026-10-05"
-Input:  "5 Oct 2026"      Output: "2026-10-05"
-Input:  ""                Output: null
+# BROKEN 1: Prompt engineering with vague adjectives
+User: "The date parsing is buggy. Please be more careful and precise this time!"
+# Result: The model repeats the exact same bug because "be careful" contains zero technical specifications!
+
+# BROKEN 2: Automatically implementing ambiguous requirements without asking
+User: "Add rate limiting to our API."
+Claude: Automatically writes a Redis token-bucket implementation.
+Developer: "We don't use Redis! We use AWS DynamoDB with in-memory caching!"
+# Result: Wasted engineering time and 500 lines of throwaway code.
 ```
 
-Test-driven loop: write `test_normalize_dates`, run it, then send:
-
+### ✅ Valid Example (Production Pattern: The Interview Pattern & Test-Driven Feedback)
 ```text
-These tests fail. Fix the code so they pass without editing the tests:
-- test_empty_string: expected None got ""
+# CORRECT 1: The Interview Pattern (Present 2-3 options with trade-offs on ambiguous specs)
+User: "Add rate limiting to our API."
+Claude:
+"Before implementing rate limiting, there are 2 architectural approaches depending on your infrastructure:
+ Option A: Redis Token Bucket (Best for multi-instance distributed APIs, requires Redis cluster)
+ Option B: In-Memory Token Bucket via Guava/LRU (Zero external dependencies, local per-instance limits)
+ Option C: API Gateway rate limiting (Offloads traffic before reaching container)
+Which backing store fits your deployment?"
+
+# CORRECT 2: Concrete Input/Output Pairs & Test Assertion Feedback
+User:
+"Here are the exact expected conversions:
+- Input: '2026/10/05'  -> Output: '2026-10-05'
+- Input: '5 Oct 2026'  -> Output: '2026-10-05'
+- Input: ''            -> Output: null
+
+And test failure output:
+FAILED tests/test_dates.py::test_empty - AssertionError: expected None, got ''
+Fix the code in services/dates.py so this assertion passes without modifying test assertions."
 ```
 
 Feedback batching with `group_feedback` in `main.py`:
 
-| Issue | Touches |
-|---|---|
-| token payload is wrong | auth, router |
-| router order is wrong | router |
-| CSS padding is off | dashboard |
-
-Result: send *token payload* and *router order* together (they share `router`); send *CSS padding* separately.
+| Issue | Touches | Action |
+|---|---|---|
+| token payload is wrong | auth, router | Batch together (shares `router`) |
+| router order is wrong | router | Batch together (shares `router`) |
+| CSS padding is off | dashboard | Send separately (independent subsystem) |
 
 ---
 
@@ -191,7 +210,7 @@ Rule: interacting problems go together, independent problems go one at a time.
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I know to use 2-3 concrete input/output examples when prose is inconsistent.
 - [ ] I can run a test-first loop and share failures.
@@ -203,7 +222,7 @@ Rule: interacting problems go together, independent problems go one at a time.
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Open [`ts_3_5_iterative_refinement_interview.ipynb`](ts_3_5_iterative_refinement_interview.ipynb) (offline). It uses [main.py](main.py):
 
@@ -212,4 +231,10 @@ Open [`ts_3_5_iterative_refinement_interview.ipynb`](ts_3_5_iterative_refinement
 3. Group issues with `group_feedback` and format test failures.
 4. Assertions on questions, examples and grouping.
 
-Previous: [TS 3.4](../ts_3_4_plan_mode_and_refinement/README.md). Next: [TS 3.6](../ts_3_6_cicd_pipeline_automation/README.md).
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 3.4: Plan Mode, Task Execution & Human Verification](../ts_3_4_plan_mode_and_refinement/README.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code & Developer Workflows](../README.md)
+- ➡️ **Next Topic**: [TS 3.6: CI/CD Pipeline Automation & Headless Execution](../ts_3_6_cicd_pipeline_automation/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

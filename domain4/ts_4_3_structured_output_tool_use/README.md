@@ -67,50 +67,104 @@ Never send `temperature` with thinking. Leave `top_k`/`top_p` unset. In a tool l
 
 ## 🧪 Worked Example
 
-**Invoice text**
+### ❌ Invalid Example (Anti-Pattern: "Return ONLY JSON" in Plain Text Prompt)
 ```text
-ACME Cloud   Total Due: $300.00
-Hosting x2 @ $120 = $240     Support x1 @ $50 = $50
-```
-**Output** (note the `null`s and the flagged conflict)
+# BROKEN: Asking for JSON in prompt prose with non-nullable required fields
+Prompt: "Extract invoice details as raw JSON. Return ONLY valid JSON, no markdown backticks!"
+
+Document:
+"ACME Cloud. Total Due: $300.00. Hosting x2 @ $120 = $240. Support x1 @ $50 = $50."
+(Notice: Invoice number and due date are physically missing from the document!)
+
+What Claude returns:
 ```json
 {
-  "invoice_number": null,
+  "invoice_number": "INV-99999",  // <-- HALLUCINATED! (Schema forced a required string)
   "vendor_name": "ACME Cloud",
-  "issue_date": null,
-  "due_date": null,
-  "purchase_category": "software_subscription",
-  "other_category_detail": null,
-  "line_items": [
-    {"description": "Hosting", "quantity": 2, "unit_price": 120.0, "total": 240.0},
-    {"description": "Support", "quantity": 1, "unit_price": 50.0, "total": 50.0}
-  ],
   "stated_total": 300.0,
-  "calculated_total": 290.0,
-  "conflict_detected": true
+  "calculated_total": 300.0       // <-- FAKED! (Model fudged math so totals matched)
+}
+```
+Why it fails in production:
+1. Syntax failure: 3.5% of outputs include markdown fences (```json) or conversational preamble, crashing json.loads().
+2. Hallucination trap: Because invoice_number was required and not nullable, Claude fabricated "INV-99999".
+3. Semantic blind spot: The prompt didn't verify line-item math in code (240 + 50 = 290 != 300).
+```
+
+### ✅ Valid Example (Production Pattern: Tool Use Schema with Nullable Fields & Math Verification)
+```python
+# CORRECT: JSON schema via tool_use + nullable fields + code validation
+EXTRACTION_TOOL = {
+    "name": "extract_invoice",
+    "description": "Extract structured invoice data. Output null for unstated fields.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "invoice_number": {"type": ["string", "null"]},
+            "vendor_name": {"type": "string"},
+            "purchase_category": {
+                "type": "string",
+                "enum": ["software_subscription", "hardware", "office_supplies", "other", "unclear"]
+            },
+            "other_category_detail": {"type": ["string", "null"]},
+            "line_items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "description": {"type": "string"},
+                        "quantity": {"type": "number"},
+                        "unit_price": {"type": "number"},
+                        "total": {"type": "number"}
+                    },
+                    "required": ["description", "quantity", "unit_price", "total"]
+                }
+            },
+            "stated_total": {"type": "number"},
+            "calculated_total": {"type": "number"},
+            "conflict_detected": {"type": "boolean"}
+        },
+        "required": ["vendor_name", "line_items", "stated_total", "calculated_total", "conflict_detected"]
+    }
+}
+
+# Request configuration (no thinking, no temperature with forced tool_choice)
+request = {
+    "model": "claude-haiku-4-5",
+    "tools": [EXTRACTION_TOOL],
+    "tool_choice": {"type": "tool", "name": "extract_invoice"},
+    "messages": [{"role": "user", "content": invoice_text}]
+}
+
+# Output returned by Claude via tool_use input:
+{
+    "invoice_number": null,          # Honest null! No hallucination.
+    "vendor_name": "ACME Cloud",
+    "purchase_category": "software_subscription",
+    "other_category_detail": null,
+    "line_items": [
+        {"description": "Hosting", "quantity": 2, "unit_price": 120.0, "total": 240.0},
+        {"description": "Support", "quantity": 1, "unit_price": 50.0, "total": 50.0}
+    ],
+    "stated_total": 300.0,
+    "calculated_total": 290.0,
+    "conflict_detected": true        # Caught in Python: 240 + 50 = 290 != 300!
 }
 ```
 - The schema accepts this. It is valid JSON.
 - Python sees `290 != 300`, so `conflict_detected` is true and a human or a retry resolves it.
 - `invoice_number` is `null`. If it had been required, the model would likely invent one.
 
-Request shape (see `build_extraction_request()` in [main.py](main.py)):
-```python
-{"model": "claude-haiku-4-5", "tools": [EXTRACTION_TOOL],
- "tool_choice": {"type": "tool", "name": "extract_invoice"}}   # no thinking, no temperature
-```
-
 ---
 
 ## 🔑 Key Terms
 
-- **Tool use**: Claude calls a tool; its `input` is your structured data.
-- **`tool_choice`**: `auto`, `any`, a forced named tool, or `none`.
-- **Syntax error**: invalid JSON. Tool schemas prevent these.
-- **Semantic error**: valid JSON but wrong meaning. Needs validation in code.
-- **Nullable field**: may be `null` when the source does not say.
-- **Extensible enum**: fixed values plus `unclear` and `other` + detail.
-- **`conflict_detected`**: flag set when computed and stated totals disagree.
+- **Structured Output via `tool_use`**: Constraining model generation to a strict JSON Schema by declaring an extraction tool and configuring `tool_choice` to guarantee 100% syntactically valid JSON.
+- **`tool_choice` Modes**: The parameter controlling tool execution policy (`auto` permits plain text or tools, `any` forces at least one tool call, forced named tool mandates that specific tool, and `none` forbids tools).
+- **Syntax vs. Semantic Validation**: JSON schemas guarantee syntactic structure (brackets, keys, data types), whereas client application code must validate semantic truths (such as arithmetic reconciliations and business invariants).
+- **Nullable Schema Attributes**: Defining non-guaranteed attributes as `{"type": ["string", "null"]}` so the model can honestly output `null` when an attribute is physically missing from the source text, eliminating hallucination pressure.
+- **Extensible Enum Pattern**: Designing categorical fields with a fixed list of common options plus `"unclear"` and `"other"`, paired with an `other_category_detail` field to handle unexpected inputs without failing schema validation.
+- **Discrepancy Flagging (`conflict_detected`)**: A boolean schema attribute set when extracted line-item sums contradict the stated invoice total, signaling downstream workflows to review the document without crashing the parser.
 
 ---
 
@@ -246,3 +300,11 @@ In [`ts_4_3_structured_output_tool_use.ipynb`](ts_4_3_structured_output_tool_use
 4. **Step 4: Verification**: asserts nulls are not errors, conflicts are flagged, and a forced tool with thinking is rejected.
 
 Everything runs offline. The live extraction run in `main.py` is manual only (it uses the API).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 4.2: Few-Shot Prompting for Consistent Output](../ts_4_2_few_shot_and_multi_instance/README.md)
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Structured Output](../README.md)
+- ➡️ **Next Topic**: [TS 4.4: Validation-Retry Feedback Loops](../ts_4_4_validation_retry_feedback/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

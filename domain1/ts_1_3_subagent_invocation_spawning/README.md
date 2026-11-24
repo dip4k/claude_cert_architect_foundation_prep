@@ -94,26 +94,70 @@ Keeping metadata in dedicated fields ensures that when the coordinator synthesiz
 
 ## 🧪 Worked Example
 
+### ❌ Invalid Example (Anti-Pattern: Sequential Turn Spawning & Assumed Memory)
+```python
+# BROKEN: Calling subagents sequentially over multiple turns, assuming they share context
+# Turn 1:
+response_1 = client.messages.create(
+    messages=[{"role": "user", "content": "Analyze customer complaint for CUST-9921"}],
+    tools=[AgentTool]
+)
+# Coordinator emits ONE tool call: Agent(subagent_type="crm_lookup", prompt="Look up customer CUST-9921")
+# Wait 8 seconds...
+
+# Turn 2:
+# Coordinator emits SECOND tool call: Agent(subagent_type="order_checker", prompt="Check their recent orders")
+# Anti-pattern: Subagent 2 has NO IDEA who "their" refers to, because subagents DO NOT inherit context!
+# Latency: 8s + 8s = 16 seconds!
+```
+
+### ✅ Valid Example (Production Pattern: Concurrent Spawning & Explicit Context Delivery)
+```python
+# CORRECT: Spawning multiple subagents in a single turn with self-contained prompts
+# Turn 1: Claude emits BOTH Task/Agent tool calls in ONE response:
+#   tool_use_1: Agent(name="web_researcher", prompt="Search official docs for slash commands")
+#   tool_use_2: Agent(name="code_analyzer", prompt="Check local .claude/commands/ for custom scripts")
+
+# Host executes both subagents concurrently via asyncio or ThreadPool:
+results = await asyncio.gather(
+    run_subagent("web_researcher", "Search official docs for slash commands"),
+    run_subagent("code_analyzer", "Check local .claude/commands/ for custom scripts")
+)
+# Latency: max(8s, 8s) = ~8 seconds (50% reduction!)
+
+# Turn 2: Host returns ALL tool_results in ONE user message:
+messages.append({"role": "assistant", "content": response.content})
+messages.append({
+    "role": "user",
+    "content": [
+        {"type": "tool_result", "tool_use_id": "toolu_A", "content": json.dumps(results[0])},
+        {"type": "tool_result", "tool_use_id": "toolu_B", "content": json.dumps(results[1])}
+    ]
+})
+```
+
+**Walkthrough: Official docs & local rule files**
 Goal: *"Investigate Claude Code slash commands. Use the web researcher for the official docs and the code analyzer for our local rule files."*
 
 | Step | What happens |
 |---|---|
 | 1 | Host sends the goal and `tools=[Agent]`. `"Agent"` is in `allowedTools` |
 | 2 | Claude replies once with `stop_reason = "tool_use"` and **two** blocks: `Agent(web_researcher, ...)` id `toolu_A`, and `Agent(code_analyzer, ...)` id `toolu_B` |
-| 3 | Host runs both subagents at the same time. Total time is about the slower one |
+| 3 | Host runs both subagents at the same time. Total time is bounded by the slower one |
 | 4 | Host appends the assistant turn, then **one** user message with `tool_result toolu_A` and `tool_result toolu_B`, in that order |
-| 5 | Claude replies `stop_reason = "end_turn"` with a report |
+| 5 | Claude replies `stop_reason = "end_turn"` with the synthesized report |
 
-Each result looks like this:
-
+Each subagent result decouples findings from metadata:
 ```json
 {
   "task_id": "T-WEB",
   "status": "completed",
   "findings": [{
     "content": "Claude Code supports project-level and user-level slash commands and skills.",
-    "metadata": {"source_url": "https://docs.anthropic.com/en/docs/claude-code",
-                 "doc_title": "Claude Code User Guide"}
+    "metadata": {
+      "source_url": "https://docs.anthropic.com/en/docs/claude-code",
+      "doc_title": "Claude Code User Guide"
+    }
   }]
 }
 ```
@@ -124,14 +168,13 @@ The report can cite the URL because the metadata stayed attached to the claim.
 
 ## 🔑 Key Terms
 
-- **`Agent` tool**: the built-in tool that spawns a subagent. Renamed from `Task` in Claude Code v2.1.63; existing `Task(...)` references in settings and agent definitions still work as aliases.
-- Older course material and exam wording may still say `Task`. It is the same tool.
-- **`allowedTools`**: the tools the coordinator may use. Must include `"Agent"` (or legacy `"Task"`) to spawn.
-- **`AgentDefinition`**: a subagent's description, system prompt, and tool restrictions.
-- **Parallel spawning**: multiple `Agent` tool_use blocks in one response.
-- **Context passing**: putting needed facts into the subagent prompt.
-- **Content vs metadata**: the claim, and where it came from.
-- **Goal-oriented prompt**: objective plus quality criteria, no step-by-step script.
+- **`Agent` Tool (formerly `Task`)**: The built-in SDK tool that spawns and executes isolated subagents. (Renamed from `Task` in Claude Code v2.1.63, with backward-compatible aliasing).
+- **Tool Whitelist (`allowedTools`)**: The configuration list governing tool execution permissions, which must explicitly contain `"Agent"` (or legacy `"Task"`) for a coordinator to delegate work.
+- **Subagent Definition (`AgentDefinition`)**: The structural specification declaring a subagent's role name, specialized system prompt, description, and restricted tool whitelist.
+- **Single-Turn Concurrent Spawning**: An orchestration optimization where Claude emits multiple `Agent` tool calls in a single assistant turn, allowing the host to run subagents in parallel and reduce turnaround latency by 50% to 70%.
+- **Stateless Context Injection**: Explicitly placing all required entities, constraints, and target schemas into the subagent's invocation prompt, because subagents inherit zero conversation memory from the parent.
+- **Metadata Decoupling**: Structuring subagent return payloads to separate factual text (`content`) from its bibliographic citation details (`metadata`: URL, document title, timestamp).
+- **Goal-Oriented Declarative Prompting**: Specifying the desired factual outcome and acceptance criteria rather than prescribing rigid procedural tool steps, empowering Claude's internal reasoning loop to self-correct during tool failures.
 
 ---
 
@@ -301,3 +344,11 @@ Open [ts_1_3_subagent_invocation_spawning.ipynb](ts_1_3_subagent_invocation_spaw
 5. **Checks**: two subagents ran, and metadata stayed attached.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 1.2: Coordinator-Subagent Patterns & Topologies](../ts_1_2_coordinator_subagents/README.md)
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](../README.md)
+- ➡️ **Next Topic**: [TS 1.4: Multi-Step Workflow Enforcement](../ts_1_4_prerequisite_enforcement/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

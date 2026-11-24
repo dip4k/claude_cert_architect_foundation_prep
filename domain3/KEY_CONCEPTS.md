@@ -435,3 +435,12 @@ flowchart TD
 | **Automated PR review posting inline comments?** | **YES** | Use `--output-format json` with `--json-schema` *(NEVER regex parsing of freeform text)*. |
 | **Code transformation produces inconsistent results?** | **YES** | Provide **2–3 concrete Input/Output examples** *(NEVER vague directives like "be more precise")*. |
 | **Skill generates verbose intermediate exploration logs?** | **YES** | Add `context: fork` to skill frontmatter *(NEVER run inline in primary session)*. |
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Domain**: [Domain 2: Tool Design & MCP Integration](../domain2/KEY_CONCEPTS.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code Configuration & Workflows](README.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Domain**: [Domain 4: Prompt Engineering & Structured Output](../domain4/KEY_CONCEPTS.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)

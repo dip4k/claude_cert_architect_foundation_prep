@@ -480,3 +480,12 @@ flowchart TD
 | **Using Extended Thinking with structured output?** | **YES** | Keep `tool_choice: "auto"` or use two-pass pipeline *(NEVER force tool with thinking -> HTTP 400)*. |
 | **Storing team-wide MCP configurations securely?** | **YES** | Project-level `.mcp.json` with `${ENV_VAR}` expansion *(NEVER user `~/.claude.json` or hardcoded tokens)*. |
 | **Making a one-line change in a 900-line source file?** | **YES** | Surgical `Edit` with unique anchor context *(NEVER overwrite entire file with `Write`)*. |
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Domain**: [Domain 1: Agentic Architecture & Orchestration](../domain1/KEY_CONCEPTS.md)
+- 📋 **Domain Overview**: [Domain 2: Tool Design & MCP Integration](README.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Domain**: [Domain 3: Claude Code Configuration & Workflows](../domain3/KEY_CONCEPTS.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)

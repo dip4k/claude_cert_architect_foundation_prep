@@ -53,16 +53,16 @@ The industry-standard production workflow combines both modes:
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Plan mode**: investigate and propose before editing.
-- **Direct execution**: make the change immediately.
-- **Explore subagent**: isolates discovery output and returns a summary.
-- **Well-scoped change**: small, with a clear cause and clear location.
+- **Plan mode (`Shift+Tab` / `/plan`)**: A read-only exploration state in Claude Code where the model audits architecture, explores dependencies, and proposes an actionable plan before touching code.
+- **Direct execution mode**: The standard operational mode where Claude actively edits files, executes shell commands, and iterates on changes without preliminary design sign-off.
+- **Explore subagent**: An internal subagent spawned during Plan Mode that executes exploratory file searches and code reading in an isolated context, returning a compact summary to the parent session.
+- **Well-scoped surgical change**: A localized modification targeting an isolated file or bug with an explicit stack trace, suited for immediate direct execution without full architectural review.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -79,16 +79,44 @@ flowchart TD
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-Task A: "Split our billing monolith into three microservices. About 45 files are involved."
+### ❌ Invalid Example (Anti-Pattern: Immediate Direct Execution on 45-File Refactor)
+```bash
+# BROKEN: Direct execution on a complex multi-file architectural migration
+claude "Migrate our monolith billing system to 3 microservices"
 
-- Several valid designs, many files, hard to undo. **Plan mode.**
-- Explore subagent maps dependencies and returns a summary. You approve a plan. Then **direct execution** carries it out in steps.
+What happens:
+1. Without drafting a plan or getting developer approval, Claude immediately begins modifying files.
+2. It renames models in 15 files, deletes 5 endpoints, and creates 2 half-finished services.
+3. Mid-refactor, the developer realizes Claude picked the wrong database boundary!
+4. The codebase is broken, git status has 45 dirty files, and the developer must run git reset --hard!
+```
 
-Task B: "`NullPointerException` at `invoice.py:88`, stack trace attached."
+### ✅ Valid Example (Production Pattern: Plan Mode Blueprint Approval & Staged Direct Execution)
+```bash
+# CORRECT: Plan Mode for discovery and blueprinting; Direct Execution for applying approved steps
 
-- One file, known cause. **Direct execution.** Fix it, run the tests.
+# Step 1: Enter Plan Mode (Shift+Tab or `claude --plan`)
+# Claude is restricted to read-only tools: Read, Grep, Glob (Edit and Bash are disabled)
+# Claude drafts the architectural blueprint:
+cat << 'EOF'
+# Microservice Migration Blueprint
+1. Phase 1: Extract shared billing data schemas into `pkg/billing_types/`
+2. Phase 2: Create new standalone invoice service under `services/invoicing/`
+3. Phase 3: Migrate REST call sites in api_router to invoke new service
+4. Risks: Database migration required for invoice_items foreign keys.
+EOF
+
+# Step 2: Developer reviews and approves blueprint (or requests adjustments)
+# Step 3: Switch to Direct Execution mode to execute approved steps with surgical edits and tests.
+```
+
+**Walkthrough comparing tasks:**
+- **Task A (Multi-file / Ambiguous)**: "Split our billing monolith into three microservices. About 45 files are involved."
+  - Multiple valid designs, many files, high blast radius $\to$ **Plan mode** (draft blueprint, developer approves, execute staged steps).
+- **Task B (Local / Unambiguous)**: "`NullPointerException` at `invoice.py:88`, stack trace attached."
+  - One file, known cause $\to$ **Direct execution** (read line 88, apply surgical fix, verify test suite passes).
 
 `main.py` encodes this: `evaluate_execution_mode(45, True, False, False)` returns plan mode with phases `plan mode: investigate and propose` then `direct execution: apply the plan`. `evaluate_execution_mode(1, False, True, True)` returns direct execution.
 
@@ -172,7 +200,7 @@ Using plan for everything wastes time. Using direct for everything risks expensi
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can list signals for plan mode and for direct execution.
 - [ ] I know the monolith to microservices example is plan mode.
@@ -184,7 +212,7 @@ Using plan for everything wastes time. Using direct for everything risks expensi
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Open [`ts_3_4_plan_mode_and_refinement.ipynb`](ts_3_4_plan_mode_and_refinement.ipynb) (offline). It uses [main.py](main.py):
 
@@ -193,4 +221,10 @@ Open [`ts_3_4_plan_mode_and_refinement.ipynb`](ts_3_4_plan_mode_and_refinement.i
 3. Inspect the decision phases and the Explore subagent flag.
 4. Assertions on both decisions.
 
-Previous: [TS 3.3](../ts_3_3_path_specific_rules/README.md). Next: [TS 3.5](../ts_3_5_iterative_refinement_interview/README.md).
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 3.3: Path-Specific Rules & Directory Scoping](../ts_3_3_path_specific_rules/README.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code & Developer Workflows](../README.md)
+- ➡️ **Next Topic**: [TS 3.5: Interactive Refinement & Plan Clarification](../ts_3_5_iterative_refinement_interview/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

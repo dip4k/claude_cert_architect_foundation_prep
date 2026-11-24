@@ -14,7 +14,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** A help desk. Someone says "I want the manager": you get the manager, you do not quiz them. Two customers named Jordan Lee: you ask for an ID, you do not pick one. The rule book says nothing about price matching: you ask the manager, you do not invent a rule.
 
@@ -55,7 +55,43 @@ Engineering teams frequently attempt to solve escalation calibration by adding i
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
+
+### ❌ Invalid Example (Anti-Pattern: Interrogating Customers & Guessing on Ambiguity)
+```text
+# BROKEN 1: Probing and interrogating when a customer demands a supervisor
+Customer: "Your bot failed twice. Transfer me to a human supervisor right now!"
+Agent Response: "I understand your frustration. Before I transfer you, can you answer 3 diagnostic questions about your issue?"
+Why it fails: The customer explicitly requested a human. Delaying transfer with interrogation causes angry churn!
+
+# BROKEN 2: Guessing customer account on multiple matches
+Agent searches CRM for "David Miller" -> returns 3 accounts (TX, NY, CA).
+Agent Action: Arbitrarily selects David Miller in TX because they had the most recent order.
+Why it fails: Severe privacy violation! The agent updates the wrong customer's address and exposes personal data!
+```
+
+### ✅ Valid Example (Production Pattern: Immediate Hand-off & Disambiguation Request)
+```python
+# CORRECT 1: Immediate Hand-off on Explicit Request
+def handle_customer_message(user_input: str, state: ConversationState):
+    if state.explicit_human_requested(user_input):
+        # Escalate immediately without diagnostic interrogation!
+        return escalate_to_human(
+            reason="explicit_customer_demand",
+            handoff_payload={
+                "customer_id": state.customer_id,
+                "order_id": state.order_id,
+                "summary": state.summary,
+                "attempted_tools": state.tool_history
+            }
+        )
+
+# CORRECT 2: Disambiguation on Ties (Never guess!)
+def resolve_customer(matches: list[CustomerRecord]):
+    if len(matches) > 1:
+        # Prompt for unique disambiguating identifier without leaking other accounts:
+        return "I found multiple accounts with that name. Please provide your order number or registered email address."
+```
 
 **Situation (sample-question style):** First-contact resolution is **55%**. The agent escalates easy damaged-item replacements but tries policy exceptions on its own.
 
@@ -63,22 +99,22 @@ Engineering teams frequently attempt to solve escalation calibration by adding i
 |---|---|---|
 | Diagnose | Wrong cases are escalated; wrong cases are attempted. | The agent has no clear boundary. |
 | Reject | Confidence scores, a sentiment classifier. | Both are unreliable proxies. |
-| Fix | Add criteria to the prompt: resolve standard damage and replacement; escalate exceptions and policy gaps. | Add 4-5 few-shot examples (see `ESCALATION_FEW_SHOT_EXAMPLES`). |
-| Result | Easy cases resolve, edge cases reach humans. | Rate rises without extra infrastructure. |
+| Fix | Add criteria to prompt: resolve standard damage & replacement; escalate exceptions & policy gaps. | Add 4-5 few-shot examples (see `ESCALATION_FEW_SHOT_EXAMPLES`). |
+| Result | Easy cases resolve autonomously, edge cases reach humans. | FCR rate rises without extra infrastructure. |
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Explicit escalation criteria:** Written rules, in the prompt, for when to hand off.
-- **Policy gap:** The request is not covered by policy (not the same as "policy says no").
-- **Disambiguation:** Asking for identifiers to select one record.
-- **First-contact resolution (FCR):** Share of issues solved without a handoff or follow-up.
-- **Handoff summary:** Short structured note (customer, issue, steps taken) for the human.
+- **Explicit escalation criteria**: Precise prompt boundaries and few-shot examples defining the exact conditions under which an agent must surrender execution to a human specialist.
+- **Policy gap**: A novel customer request or business scenario that is completely unmentioned by existing operating procedures (distinct from an explicit policy denial), requiring human judgment rather than agent invention.
+- **Entity disambiguation**: The mandatory protocol of requesting secondary identifiers (such as email, account ID, or order number) when a database lookup returns multiple candidate records.
+- **First-Contact Resolution (FCR)**: An operational service metric tracking the percentage of incoming customer tickets resolved successfully in a single interaction without human handoff or subsequent re-opens.
+- **Structured handoff summary**: A concise briefing document (specifying customer identity, verified facts, attempted actions, and escalation rationale) passed to a human representative to prevent customer repetition.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -99,7 +135,7 @@ flowchart TD
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Investigating when the customer asks for a human
 
@@ -149,7 +185,7 @@ Customer asks for price matching against a competitor. The policy covers only th
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 1).** A customer writes: *"Stop. I want to talk to a human."* The agent has `lookup_order` and `process_refund`. What should it do?
 
@@ -180,7 +216,7 @@ Customer asks for price matching against a competitor. The policy covers only th
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can name the three escalation triggers.
 - [ ] I know why frustration alone does not escalate.
@@ -192,7 +228,7 @@ Customer asks for price matching against a competitor. The policy covers only th
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Notebook: [`ts_5_2_escalation_and_provenance.ipynb`](ts_5_2_escalation_and_provenance.ipynb). Code: [`main.py`](main.py). Both run offline.
 
@@ -202,3 +238,11 @@ Notebook: [`ts_5_2_escalation_and_provenance.ipynb`](ts_5_2_escalation_and_prove
 4. **Verify:** `uv run pytest tests/test_domain5_enhancements.py -q` in WSL.
 
 **Related:** [TS 5.5](../ts_5_5_human_review_calibration/README.md) (human review of extraction) | [TS 5.6](../ts_5_6_provenance_and_uncertainty/README.md) (provenance).
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 5.1: Context Preservation Across Long Sessions](../ts_5_1_context_preservation/README.md)
+- 📋 **Domain Overview**: [Domain 5: Operational Excellence, Monitoring & Production Readiness](../README.md)
+- ➡️ **Next Topic**: [TS 5.3: Error Propagation & Resilience in Multi-Agent Topologies](../ts_5_3_error_propagation_coverage/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

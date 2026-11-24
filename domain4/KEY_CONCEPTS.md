@@ -107,20 +107,23 @@ Few-shot prompting is not about filling the context window with dozens of exampl
 
 #### 2. Generalization vs. String Matching
 Poor few-shot examples teach the model to match specific string literals.
-High-quality few-shot examples demonstrate **generalizable architectural principles**:
-```markdown
+High-quality few-shot examples demonstrate **generalizable architectural principles** using explicit XML semantic tags:
+
+```xml
 <example>
-Input:
-```python
+  <input>
 def get_user_orders(user_id: int):
     # Retrieve user record
     user = db.query(User).filter(User.id == user_id).first()
     # BUG: If user is None, user.orders raises AttributeError
     return user.orders
-```
-Analysis: The function does not verify that `user` exists before accessing `.orders`. When an invalid `user_id` is supplied, this raises an unhandled `AttributeError` returning HTTP 500.
-Classification: HIGH_SEVERITY (Null Dereference)
-Remedy: Add `if not user: raise UserNotFoundError(user_id)` before line 5.
+  </input>
+  <analysis>
+The function does not verify that `user` exists before accessing `.orders`.
+When an invalid `user_id` is supplied, this raises an unhandled `AttributeError` returning HTTP 500.
+  </analysis>
+  <classification>HIGH_SEVERITY (Null Dereference)</classification>
+  <remedy>Add `if not user: raise UserNotFoundError(user_id)` before line 5.</remedy>
 </example>
 ```
 
@@ -638,5 +641,14 @@ flowchart TD
 | **Validation fails due to physically absent source facts?** | **YES** | Fast-fail and abort retries immediately; route to human review *(retries cannot invent data)*. |
 | **Message Batches API for pre-merge PR blocking checks?** | **YES** | Reject: Batches have up to 24h turnaround *(reserve Batches for overnight non-blocking jobs)*. |
 | **Auditing multi-file PRs without attention dilution?** | **YES** | Two-Pass Review: Pass 1 (local per-file) + Pass 2 (cross-file integration). |
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Domain**: [Domain 3: Claude Code & Developer Workflows](../domain3/KEY_CONCEPTS.md)
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Model Guidance](README.md)
+- ⚡ **Exam Refresher**: [Core Architectural Rules & Cheatsheet](../EXAM_REFRESHER.md)
+- ➡️ **Next Domain**: [Domain 5: Context Management & Reliability](../domain5/KEY_CONCEPTS.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../scenarios/MASTER_SCENARIO_PRACTICE.md)
 
 

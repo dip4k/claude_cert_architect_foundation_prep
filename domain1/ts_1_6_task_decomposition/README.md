@@ -63,35 +63,69 @@ Use it when you do not know the work until you start, for example "add tests to 
 
 ## 🧪 Worked Example
 
-**Fixed chain.** A pull request changes `auth_service.py` and `api_router.py`.
+### ❌ Invalid Example (Anti-Pattern: Single Mega-Prompt Over 14 Files)
+```python
+# BROKEN: Dumping 14 changed PR files into one massive review prompt
+all_diffs = "\n".join([read_file_diff(f) for f in pr_files])  # 65,000 tokens!
 
-| Step | Call | Result |
-|---|---|---|
-| 1 | Pass 1 on `auth_service.py` | "`create_user_token` builds a JWT with no expiry." Defines `create_user_token(user_id)` |
-| 2 | Pass 1 on `api_router.py` | "SQL built with an f-string (injection risk)." Calls `verify_token(token)` |
-| 3 | Pass 2 with both finding cards | "Tokens never expire, and the router trusts `sub` from them in a raw SQL query. Together this is a worse issue than either alone." |
+review_prompt = f"""
+Review all 14 files in this pull request for bugs, security risks, and integration errors:
+{all_diffs}
+"""
+response = client.messages.create(messages=[{"role": "user", "content": review_prompt}], ...)
 
-The third finding exists only because a pass looked **across** files.
+# Why it fails in production:
+# 1. Attention dilution: Claude spends 90% of its attention budget nitpicking the first 2 files.
+# 2. Lost in the middle: Cross-file contract breakages in files 7 and 11 are completely overlooked.
+# 3. Flaky depth: Some files get 10 comments, while others get zero scrutiny.
+```
 
-**Adaptive.** Task: "Add tests to a legacy service."
+### ✅ Valid Example (Production Pattern: Two-Pass Decomposition & Adaptive Planning)
+```python
+# CORRECT: Pass 1 inspects each file locally; Pass 2 inspects cross-file integration contracts
 
-| Step | Action |
-|---|---|
-| 1 | Map: `controller` imports `service`, `service` imports `utils` |
-| 2 | Prioritise: `utils` first (leaf, used everywhere), then `service`, then `controller` |
-| 3 | After `utils`, tests show a hidden global. The plan adds a "remove the global" task before `service` |
+# Step 1: Pass 1 (Per-file local review across isolated instances)
+pass1_results = {}
+for file_path in pr_files:
+    # Each file receives dedicated attention in a clean context:
+    pass1_results[file_path] = run_local_file_review(file_path)
 
-The plan changed because of what was found. A fixed script could not do that.
+# Findings:
+# - auth_service.py: "create_user_token generates JWTs with no expiration timestamp."
+# - api_router.py:   "Raw SQL query executed via f-string using unescaped 'sub' claim."
+
+# Step 2: Pass 2 (Cross-file integration pass)
+# Pass 2 receives ONLY interface signatures and call sites, not thousands of raw lines:
+integration_prompt = f"""
+Review interface contracts and cross-file data flow:
+Findings from Pass 1:
+{json.dumps(pass1_results)}
+Signatures & Call Sites:
+- auth_service: def create_user_token(user_id: str) -> str
+- api_router: calls verify_token(token), extracts 'sub', runs: cursor.execute(f"SELECT * WHERE id={sub}")
+"""
+integration_result = run_integration_review(integration_prompt)
+
+# Synthesized finding:
+# "CRITICAL COMPOSITE DEFECT: Tokens never expire, and the router trusts the 'sub' claim in a raw SQL query.
+# Together, an attacker with one leaked token has permanent, arbitrary SQL injection!"
+```
+
+**Adaptive decomposition:**
+When adding tests to a legacy repository:
+1. Map: `controller` imports `service`, `service` imports `utils`.
+2. Prioritize leaf-first: `utils` first, then `service`, then `controller`.
+3. If tests reveal a hidden global in `utils`, the plan dynamically adds a "remove hidden global" subtask before attempting `service`.
 
 ---
 
 ## 🔑 Key Terms
 
-- **Prompt chaining**: a fixed sequence of calls where each output feeds the next.
-- **Dynamic adaptive decomposition**: the next subtask depends on what the last one found.
-- **Attention dilution**: quality drops when one call has too much to cover.
-- **Per-file pass**: a call focused on one file.
-- **Cross-file integration pass**: a call that checks contracts and data flow between files.
+- **Prompt Chaining**: A deterministic sequential workflow where each distinct model turn performs a specialized transformation and passes its structured output to the next step.
+- **Dynamic Adaptive Decomposition**: An autonomous planning strategy where the sequence and nature of subtasks are determined at runtime based on intermediate discoveries and dependency graphs.
+- **Attention Dilution**: Cognitive degradation that occurs when an LLM is asked to review or synthesize dozens of complex files in a single prompt, resulting in uneven scrutiny and missed defects.
+- **Per-File Local Pass**: A focused, parallelized review phase where lightweight model instances evaluate individual files in isolation for local logic flaws and syntax errors.
+- **Cross-File Integration Pass**: A specialized synthesis phase where a reasoning model evaluates interfaces, exported signatures, and call sites across files to detect breaking contractual mismatches.
 
 ---
 
@@ -234,3 +268,11 @@ Open [ts_1_6_task_decomposition.ipynb](ts_1_6_task_decomposition.ipynb) (offline
 5. **Checks**: assertions on the findings.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)
+
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 1.5: SDK Hooks & Interception](../ts_1_5_sdk_hooks/README.md)
+- 📋 **Domain Overview**: [Domain 1: Agentic Architecture & Orchestration](../README.md)
+- ➡️ **Next Topic**: [TS 1.7: Session State & Lifecycle Management](../ts_1_7_session_management/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

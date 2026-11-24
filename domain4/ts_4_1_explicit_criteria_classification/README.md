@@ -49,37 +49,45 @@ When production metrics show that a specific review category (e.g. "speculative 
 
 ## 🧪 Worked Example
 
-**Before (vague)**
+### ❌ Invalid Example (Anti-Pattern: Vague Prompt & Alert Fatigue)
 ```text
-You are a conservative reviewer. Only report high-confidence issues. Be careful.
-```
-Typical output on a PR:
-```text
-tests/test_auth.py:12  CRITICAL  hardcoded API key  (it is a mock)
-src/utils.py:3         LOW       variable name 'x' is not descriptive
-src/db.py:40           HIGH      possible SQL injection  (real)
-```
-Two of three comments are noise.
+# BROKEN: Asking for "conservative" review without concrete rules
+System Prompt:
+"You are a conservative code reviewer. Only report high-confidence issues. Be careful."
 
-**After (explicit)**
-```text
-Report ONLY:
-- Bugs that change behaviour (null dereference, wrong comparison, swallowed exception)
-- Security issues (live secrets, SQL or command injection)
-Do NOT report:
-- Minor style (naming, line length, import order)
-- Local patterns the team uses on purpose (print() in CLI scripts)
-- Secrets that are obvious mocks in tests/ or fixtures/ (mock_, test_, dummy_ prefixes)
-Severity (use exactly these):
-- CRITICAL: live secret or remote code execution. Example: API_KEY = "sk-ant-live..."
-- HIGH: user input reaches SQL or a shell. Example: cursor.execute(f"SELECT ... {uid}")
-- MEDIUM: bug that fails on bad input. Example: return user.orders  # user may be None
-- LOW: never blocks a merge
-For each finding give: location, evidence_quote, rationale, severity.
+What happens on a Pull Request:
+1. tests/test_auth.py:12  CRITICAL  Hardcoded API key! (It's a fake mock key in a test!)
+2. src/utils.py:3         LOW       Variable name 'x' is not descriptive.
+3. src/db.py:40           HIGH      Possible SQL injection. (Genuine bug)
+
+Why it fails in production:
+- 2 out of 3 comments are useless noise.
+- Developers suffer alert fatigue and click "Dismiss all", causing the real SQL injection to slip into production.
 ```
-Output now:
+
+### ✅ Valid Example (Production Pattern: Explicit Criteria, Negative Boundaries & Severity Rules)
 ```text
-src/db.py:40  HIGH  user input in SQL string  evidence: execute(f"SELECT ... {uid}")
+# CORRECT: Categorical criteria, explicit negative skip boundaries, and code-level definitions
+System Prompt:
+Report ONLY:
+- Bugs that change runtime behavior (null dereference, wrong comparison, swallowed exception)
+- Security vulnerabilities (live production secrets, SQL or command injection)
+
+Do NOT report (Negative Boundaries):
+- Stylistic preferences (naming conventions, line length, import order)
+- CLI or debugging patterns the team uses on purpose (print() statements in scripts)
+- Mock secrets in test files or fixtures (anything with mock_, test_, or dummy_ prefixes)
+
+Severity Tiers (use exactly these definitions):
+- CRITICAL: Live leaked credentials or remote code execution. (Example: API_KEY = "sk-ant-live...")
+- HIGH: Untrusted user input reaches SQL or shell without escaping. (Example: cursor.execute(f"SELECT ... {uid}"))
+- MEDIUM: Unhandled edge case that crashes on unexpected input. (Example: return user.orders without null check)
+- LOW: Informational; never blocks a merge.
+
+For each finding, provide: location, evidence_quote, rationale, severity.
+
+Output on the same PR:
+src/db.py:40  HIGH  User input directly concatenated into SQL  evidence: execute(f"SELECT ... {uid}")
 ```
 
 The code in [main.py](main.py) has this prompt as `build_explicit_prompt()` and a small rule engine that behaves the same way.
@@ -88,11 +96,11 @@ The code in [main.py](main.py) has this prompt as `build_explicit_prompt()` and 
 
 ## 🔑 Key Terms
 
-- **Explicit criteria**: objective rules that say when something belongs in a category.
-- **Negative boundary**: a rule that says what *not* to flag.
-- **Alert fatigue**: people ignore alerts because too many are wrong.
-- **Severity rubric**: one rule plus one code example per severity.
-- **`detected_pattern`**: a field recording which construct triggered a finding, so dismissals can be analysed.
+- **Explicit Criteria**: Concrete, unambiguous technical rules that specify exactly which functional defects or security risks belong in a report category.
+- **Negative Boundary**: An explicit exclusion rule that instructs the model what code patterns to deliberately ignore (such as mock keys in test files or print statements in CLI scripts).
+- **Alert Fatigue**: The cognitive burnout that occurs when developers are bombarded with noisy, false-alarm notifications, leading them to dismiss all alerts including real critical bugs.
+- **Severity Rubric**: An objective classification system pairing each severity level (Critical, High, Medium, Low) with a concrete code snippet demonstrating what constitutes that violation.
+- **Pattern Telemetry (`detected_pattern`)**: A machine-readable tag attached to every finding that allows engineering teams to track dismissal rates and pinpoint which prompt rules produce false positives.
 
 ---
 
@@ -220,3 +228,10 @@ In [`ts_4_1_explicit_criteria_classification.ipynb`](ts_4_1_explicit_criteria_cl
 4. **Step 4: Verification**: asserts zero false positives on fixtures, one CRITICAL finding in production, and that a disabled category stays silent.
 
 Everything runs offline. Run the exercise file by hand with `uv run domain4/ts_4_1_explicit_criteria_classification/main.py` (no API calls).
+
+---
+
+## 🧭 Navigation & Study Links
+- 📋 **Domain Overview**: [Domain 4: Prompt Engineering & Structured Output](../README.md)
+- ➡️ **Next Topic**: [TS 4.2: Few-Shot Prompting for Consistent Output](../ts_4_2_few_shot_and_multi_instance/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

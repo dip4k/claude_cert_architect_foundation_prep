@@ -27,7 +27,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### Why it matters
 If a shared `/review` command sits in your home folder, teammates cannot use it. If a noisy audit runs in the main conversation, it floods the context and crowds out your real work.
@@ -57,18 +57,18 @@ If a shared `/review` command sits in your home folder, teammates cannot use it.
 
 ---
 
-## Key Terms
+## 🔑 Key Terms
 
-- **Project-scoped command**: a `.claude/commands/` file in the repo, shared with the team.
-- **User-scoped command**: a `~/.claude/commands/` file, personal.
-- **Skill**: a `SKILL.md` workflow loaded on demand.
-- **`context: fork`**: isolates a skill's context from the main conversation.
-- **`allowed-tools`**: the tools a skill pre-approves (a permission allow-list for the skill's turn).
-- **`argument-hint`**: guidance about what argument the skill expects.
+- **Project-scoped command (`.claude/commands/<name>.md`)**: A custom slash command stored in the repo and committed to git so every team member can execute standardized prompts.
+- **User-scoped command (`~/.claude/commands/<name>.md`)**: A personal slash command kept in the developer's home directory for private prototyping without altering shared repository configs.
+- **Agent skill (`.claude/skills/<name>/SKILL.md`)**: A specialized, on-demand procedure equipped with YAML frontmatter metadata, detailed instructions, and scoped tool permissions.
+- **`context: fork`**: A critical YAML frontmatter flag that launches the skill in an ephemeral sub-agent context, returning only its synthesized final output to keep the main chat clean.
+- **`allowed-tools`**: A frontmatter permission whitelist designating which specific tools the skill can invoke without prompting the user for approval.
+- **`argument-hint`**: A frontmatter string displaying placeholder text to guide the developer on what input parameters the slash command or skill expects.
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 ---
@@ -84,36 +84,55 @@ flowchart TD
 
 ---
 
-## Worked Example
+## 🧪 Worked Example
 
-```text
-my-repo/
-  .claude/
-    commands/review.md              <- project-scoped: everyone gets /review
-    skills/architect-eval/SKILL.md  <- project skill
-~/.claude/
-  commands/my-notes.md              <- user-scoped: only you
-  skills/architect-eval-mine/SKILL.md   <- personal variant, different name
-```
-
-A real skill from this repo (`.claude/skills/architect-eval/SKILL.md`), frontmatter only:
-
+### ❌ Invalid Example (Anti-Pattern: Running Noisy Exploration Skills in Main Session)
 ```yaml
+# BROKEN: Custom skill defined without context: fork and unrestricted tools
+---
+name: scan-secrets
+description: Scans 200 project files for potential hardcoded secrets
+# Anti-pattern 1: Omitting 'context: fork' causes all 200 file contents to dump into main chat!
+# Anti-pattern 2: Omitting 'allowed-tools' allows read-only skill to invoke Bash and Edit
+---
+Scan every source file in the repository for API keys.
+```
+What happens in production:
+1. Context pollution: 200 file reads consume 80,000 tokens of the developer's main conversational memory.
+2. Attention dilution: Subsequent coding turns suffer degraded performance and forget prior user instructions.
+3. No safety restriction: The skill has permission to execute arbitrary shell commands.
+
+### ✅ Valid Example (Production Pattern: Scoped Skills with `context: fork` & `allowed-tools`)
+```yaml
+# CORRECT: Isolated execution via context: fork and least-privilege tool whitelist
 ---
 name: architect-eval
-description: Evaluates an agent or tool implementation against the exam criteria
-context: fork
-allowed-tools:
+description: Evaluates an agent or tool implementation against CCAR-F certification criteria
+context: fork          # Runs in an isolated subagent buffer; returns only concise summary to main chat
+allowed-tools:        # Read-only exploration whitelist; blocks Bash, Edit, and Write
   - Read
   - Grep
   - Glob
 argument-hint: "<domain_or_filepath>"
 ---
+Evaluate the specified task statement implementation against official blueprint rules.
+Emit a markdown summary table of findings. Do not output raw file text.
 ```
 
-When you run it: Claude forks a context, uses only `Read`, `Grep` and `Glob`, and returns a short evaluation. The main chat does not receive every file read.
+Directory layout:
+```text
+my-repo/
+  .claude/
+    commands/review.md              <- project-scoped: everyone gets /review
+    skills/architect-eval/SKILL.md  <- project skill (context: fork, allowed-tools)
+~/.claude/
+  commands/my-notes.md              <- user-scoped: personal shortcuts
+  skills/architect-eval-mine/SKILL.md <- personal variant (distinct name avoids collisions)
+```
 
-The `main.py` here parses these real files (`load_skills_from_dir`) and classifies commands as project-scoped or user-scoped (`classify_command_path`). The fork itself is **simulated**.
+When you run it: Claude forks an isolated context, uses only `Read`, `Grep`, and `Glob`, and returns a short evaluation. The main session receives only the final table, preserving precious context tokens.
+
+The `main.py` here parses these real files (`load_skills_from_dir`) and classifies commands as project-scoped or user-scoped (`classify_command_path`).
 
 ---
 
@@ -203,7 +222,7 @@ An "always" rule in a skill is a trap: the skill might never be invoked. A rare 
 
 ---
 
-## Self-Check Checklist
+## ✅ Self-Check Checklist
 
 - [ ] I can say where project-scoped and user-scoped commands live.
 - [ ] I can write a `SKILL.md` frontmatter with `context`, `allowed-tools`, `argument-hint`.
@@ -215,7 +234,7 @@ An "always" rule in a skill is a trap: the skill might never be invoked. A rare 
 
 ---
 
-## Hands-on Workbook Guide
+## 🛠️ Hands-on Workbook Guide
 
 Open [`ts_3_2_slash_commands_and_skills.ipynb`](ts_3_2_slash_commands_and_skills.ipynb) (offline). It uses [main.py](main.py):
 
@@ -224,4 +243,10 @@ Open [`ts_3_2_slash_commands_and_skills.ipynb`](ts_3_2_slash_commands_and_skills
 3. Expand a command template and simulate fork vs inline.
 4. Assertions on parsed `context`, `allowed-tools`, `argument-hint`.
 
-Previous: [TS 3.1](../ts_3_1_claude_code_workflows/README.md). Next: [TS 3.3](../ts_3_3_path_specific_rules/README.md).
+---
+
+## 🧭 Navigation & Study Links
+- ⬅️ **Previous Topic**: [TS 3.1: Claude Code CLI Configuration & Architecture](../ts_3_1_claude_code_workflows/README.md)
+- 📋 **Domain Overview**: [Domain 3: Claude Code & Developer Workflows](../README.md)
+- ➡️ **Next Topic**: [TS 3.3: Path-Specific Rules & Directory Scoping](../ts_3_3_path_specific_rules/README.md)
+- 🎯 **Scenario Practice**: [Master Scenario Practice](../../scenarios/MASTER_SCENARIO_PRACTICE.md)

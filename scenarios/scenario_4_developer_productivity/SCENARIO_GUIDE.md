@@ -111,7 +111,7 @@ flowchart TD
          return 0.05"""
      replacement = """def get_default_tax_rate():
          return 0.06"""
-```
+     ```
    * The edit succeeds cleanly with zero ambiguity.
 6. **Verification & Note Capture**: The agent executes tests via `Bash(command="pytest tests/test_billing.py")`. Tests pass. The agent writes a summary note to `scratchpad.md` documenting the dependency chain between `calc.py` and `invoice.py`.
 
