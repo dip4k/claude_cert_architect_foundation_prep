@@ -8,9 +8,15 @@
 When designing an enterprise multi-agent system using the Claude Agent SDK, which architectural topology is recommended by Anthropic for production reliability, observability, and deterministic error containment?
 
 **A)** Unstructured Peer-to-Peer Mesh: Every agent can discover and message any other agent dynamically.
+
 **B)** Hub-and-Spoke (Coordinator-Subagent): A centralized coordinator breaks down objectives, delegates subtasks to specialized subagents, and synthesizes results.
+
 **C)** Circular Ring: Agents pass a shared token and global context array around a closed circle sequentially.
+
 **D)** Pure Autonomous Swarm: Agents broadcast vector embeddings to a shared gossip protocol without centralized control.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -25,15 +31,23 @@ The canonical, production-grade pattern recommended for Claude agentic workflows
 **Anti-Pattern Alert:**
 *Peer-to-Peer Mesh Anti-Pattern*: Allowing arbitrary agent-to-agent cross-talk without a central orchestrator, making tracing, cost control, and debugging practically impossible.
 
+</details>
+
 ---
 
 ### Q32. Subagent Context Isolation Principle
 A coordinator agent delegates a code-refactoring subtask to a specialized `CodeRefactorer` subagent. The coordinator's conversation history is currently 45,000 tokens long. According to the Subagent Isolation Principle, what should the subagent's conversation history contain at initialization?
 
 **A)** The full 45,000 tokens from the coordinator so the subagent has complete awareness of everything that has occurred.
+
 **B)** A copy of the coordinator's system prompt and all tool definitions, but no user messages.
+
 **C)** Nothing; the subagent should query the coordinator via an API call every time it needs a variable.
+
 **D)** Only the specific instructions, target file contents, and refactoring constraints explicitly passed by the coordinator in the delegation payload.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -47,6 +61,8 @@ Under the **Subagent Isolation Principle**, subagents must NOT automatically inh
 
 **Anti-Pattern Alert:**
 *Context Inheritance Anti-Pattern*: Automatically cloning the parent coordinator's conversation history into spawned subagents, causing massive context bloat and rapid quota exhaustion.
+
+</details>
 
 ---
 
@@ -64,9 +80,15 @@ A coordinator agent delegates a task to a `DatabaseMigrationSubagent` by issuing
 The subagent fails or asks what database engine is being used. What anti-pattern is demonstrated here?
 
 **A)** Overly Narrow Decomposition.
+
 **B)** Approval Fatigue.
+
 **C)** Context Starvation: Failing to provide the subagent with the necessary environment details, schemas, connection constraints, or parameters needed to perform the work.
+
 **D)** Prompt Caching Cache-Miss Penalty.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -81,18 +103,27 @@ The subagent fails or asks what database engine is being used. What anti-pattern
 **Anti-Pattern Alert:**
 *Context Starvation*: Issuing cryptic, brief delegation instructions to isolated subagents under the mistaken assumption that they inherit environmental facts.
 
+</details>
+
 ---
 
 ### Q34. Overly Narrow Task Decomposition
 A customer requests: "Audit our cloud infrastructure for security vulnerabilities, compliance with HIPAA, and cost optimization opportunities." The coordinator decomposes this into:
 1. `Subagent A`: Run CIS security benchmarks on AWS EC2.
 2. `Subagent B`: Check HIPAA S3 encryption settings.
+
 The coordinator compiles the final report, but the customer complains that cost analysis was completely ignored. What failure mode occurred?
 
 **A)** Overly Narrow Decomposition: The coordinator's decomposition plan dropped an entire dimension of the user's explicit objective during task breakdown.
+
 **B)** Context Starvation.
+
 **C)** Bounded while loop failure.
+
 **D)** Extended thinking timeout.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -107,15 +138,23 @@ The coordinator compiles the final report, but the customer complains that cost 
 **Anti-Pattern Alert:**
 *Decomposition Blind Spot*: Failing to cross-reference decomposed subtasks against the user's original multi-objective prompt, resulting in silent omission of deliverables.
 
+</details>
+
 ---
 
 ### Q35. Parallel Fan-Out Execution
 A coordinator needs to analyze 10 independent legal contracts. None of the contract analyses depend on each other. How should the coordinator's tool calls and execution runtime be structured for minimum latency?
 
 **A)** Subagents should execute on a single thread with a 5-second sleep interval between contracts.
+
 **B)** The coordinator should emit 10 separate sequential tool calls across 10 API turns, waiting for each result before asking for the next.
+
 **C)** The coordinator should merge all 10 contracts into a single prompt and process them in a single prompt without subagents.
+
 **D)** The coordinator should emit multiple delegation tool calls in a single turn, and the host environment should dispatch the subagents concurrently using asynchronous tasks (e.g., Python `asyncio.gather`), returning all results in a single consolidated turn.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -127,16 +166,24 @@ Parallel Fan-Out is the optimal architectural pattern for embarrassingly paralle
 - **B)** Sequential execution incurs N * latency, creating a massive delay.
 - **C)** Merging 10 large legal contracts into a single prompt risks exceeding context limits, degrades attention, and eliminates task-specific isolation.
 
+</details>
+
 ---
 
 ### Q36. Subagent Communication Boundaries
 Subagent A (Security Scanner) finds a critical SQL injection vulnerability in an API endpoint. It needs Subagent B (Code Patcher) to fix the code. How should Subagent A transmit this information to Subagent B?
 
 **A)** Subagent A returns its findings to the Coordinator; the Coordinator analyzes the finding, verifies the patch requirement, and delegates the patching task to Subagent B with the specific vulnerability payload.
+
 **B)** Subagent A writes the vulnerability into a shared global Redis database and triggers a pub/sub event that Subagent B listens to.
 
 **C)** Subagent A alters Subagent B's system prompt dynamically.
+
 **D)** Subagent A sends an HTTP POST directly to Subagent B's webhook.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -147,16 +194,24 @@ In a strict Hub-and-Spoke architecture, all cross-agent communications MUST rout
 - **C)** Allowing one subagent to modify another subagent's system prompt is an extreme security vulnerability.
 - **D)** Direct peer-to-peer webhooks bypass the coordinator, breaking centralized logging and governance.
 
+</details>
+
 ---
 
 ### Q37. Single Point of Failure (SPOF) Mitigation in Coordinators
 If the central Coordinator in a Hub-and-Spoke system crashes mid-workflow, how should state be preserved to allow seamless recovery without re-running completed subagent tasks?
 
 **A)** Re-run the entire workflow from scratch every time an error occurs.
+
 **B)** Require subagents to keep running indefinitely until the coordinator comes back online.
 
 **C)** State Externalization: Persist the coordinator's plan DAG, completed subagent outputs, and pending task statuses in a durable state store (e.g., PostgreSQL or Redis) after every delegation cycle.
+
 **D)** Store state exclusively in the coordinator's local process memory.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -167,15 +222,23 @@ To prevent coordinator crashes from discarding hours of subagent work, productio
 - **B)** Subagents cannot remain active without their execution runtime.
 - **D)** Process-memory-only state makes the system brittle and non-recoverable.
 
+</details>
+
 ---
 
 ### Q38. The Critic / Verifier Subagent Pattern
 An architect wants to minimize hallucinated facts and coding bugs in a complex code generation pipeline. Which multi-agent pattern specifically addresses verification before returning output to the user?
 
 **A)** The Echo Pattern: An agent repeats its output twice.
+
 **B)** Generator-Critic (Verifier) Pattern: A Generator subagent writes the code, an independent Verifier/Critic subagent (with read-only linting/testing tools) inspects and tests the code, and provides feedback to the coordinator before release.
+
 **C)** Broadcast Swarm: 5 agents write the same code and the longest output is chosen.
+
 **D)** Zero-shot direct answering without tools.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -187,6 +250,8 @@ The **Generator-Critic (or Producer-Verifier)** pattern separates creative gener
 - **C)** Selecting the longest output is an anti-pattern; verbosity does not correlate with correctness.
 - **D)** Zero-shot answering lacks verification mechanisms entirely.
 
+</details>
+
 ---
 
 ### Q39. Subagent Tool Sandboxing and Least Privilege
@@ -194,13 +259,20 @@ You have a multi-agent system with three subagents:
 1. `ResearchAgent`: Searches the web and reads documentation.
 2. `CodeReviewer`: Analyzes git diffs and code structure.
 3. `Deployer`: Triggers deployment pipelines to AWS.
+
 Which tool allocation adheres strictly to the Principle of Least Privilege?
 
 **A)** Grant `ResearchAgent` only `web_search` and `fetch_url`; grant `CodeReviewer` only `read_file` and `git_diff`; grant `Deployer` only `trigger_deploy_pipeline` with parameterized branch/environment checks.
+
 **B)** Give all three subagents full shell access (`execute_bash`) so they can perform any task when needed.
 
 **C)** Share a single universal API key with root privileges across all three agents.
+
 **D)** Give `ResearchAgent` deployment tools in case it finds a critical bug that needs an immediate rollback.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -214,15 +286,23 @@ Under the **Principle of Least Privilege**, each subagent must only have access 
 **Anti-Pattern Alert:**
 *Broad Tool Granting*: Providing all agents in a system with identical, high-privilege toolsets rather than constraining each agent's tool schema to its narrow operational role.
 
+</details>
+
 ---
 
 ### Q40. Coordinator Hallucination of Subagent Capabilities
 A coordinator is instructed to generate an infographic. The coordinator has two subagents: `TextSummarizer` and `DataExtractor`. Instead of informing the user that image generation is unsupported, the coordinator attempts to call `delegate_task(agent="ImageGeneratorSubagent")`. What went wrong?
 
 **A)** The user did not pay for image generation.
+
 **B)** Extended thinking was not enabled on the subagents.
+
 **C)** The coordinator experienced hallucination of undeclared subagent capabilities because the available agent registry was not explicitly declared or constrained in its system prompt/tools.
+
 **D)** The network port was blocked by firewall.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -234,15 +314,23 @@ When building multi-agent systems, the coordinator must be provided with an expl
 - **B)** Thinking mode does not automatically create non-existent subagents.
 - **D)** Firewall ports are network infrastructure, not agent selection logic.
 
+</details>
+
 ---
 
 ### Q41. Hierarchical vs. Flat Multi-Agent Systems
 For a large enterprise system involving 30 different domain tasks, why is a hierarchical multi-agent system (Coordinator → Domain Leads → Specialized Workers) preferred over a single flat coordinator managing all 30 subagents?
 
 **A)** Claude cannot process more than 3 tools in any single request.
+
 **B)** Single flat coordinators suffer from tool/agent bloat: passing 30 subagent descriptions into a single coordinator prompt consumes excessive context and degrades delegation accuracy.
+
 **C)** Hierarchical systems are cheaper because API tokens are free at lower levels.
+
 **D)** Flat systems require Python 2.7.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -254,15 +342,23 @@ Passing descriptions and schemas for 30 distinct agents into a single coordinato
 - **C)** Tokens are billed equally across all model calls regardless of hierarchy.
 - **D)** Python 2.7 is long deprecated; all modern SDKs require Python 3.10+.
 
+</details>
+
 ---
 
 ### Q42. Handling Subagent Failures at the Coordinator Level
 A subagent tasked with web scraping crashes due to an HTTP 403 Forbidden on the target site. It returns an error message: `{"error": "Access Denied"}` to the coordinator. How should a resilient coordinator react?
 
 **A)** Crash the entire multi-agent workflow immediately.
+
 **B)** Continuously re-invoke the failed subagent 50 times in a tight loop.
+
 **C)** Fake the scraped content using training data and mark the subtask as successful.
+
 **D)** Evaluate fallback strategies: attempt an alternative data source, use an archive lookup tool, or report the specific limitation to the user while synthesizing the remaining successful tasks.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -274,16 +370,24 @@ A robust coordinator handles subagent failures gracefully. It does not panic or 
 - **B)** Infinite retry loops burn tokens and guarantee repeated 403 blocks.
 - **C)** Faking data is hallucination and breaches data integrity.
 
+</details>
+
 ---
 
 ### Q43. Subagent Termination Signals
 How does the host application detect that a subagent has finished its assigned task and is ready to hand control back to the coordinator?
 
 **A)** When the subagent's process memory reaches 0 bytes.
+
 **B)** When the subagent prints "DONE" to stdout.
 
 **C)** When the subagent API call returns `stop_reason: "end_turn"` without issuing any further `tool_use` calls.
+
 **D)** When the coordinator issues a SIGKILL command.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -294,16 +398,24 @@ Just like any standard Claude Messages API session, a subagent's execution cycle
 - **B)** Relying on string parsing stdout is brittle and non-standard.
 - **D)** SIGKILL is an operating system termination signal, not an agent completion indicator.
 
+</details>
+
 ---
 
 ### Q44. Shared Memory vs. Message Passing
 Why is message passing (passing structured JSON inputs and outputs through the coordinator) strongly preferred over shared memory (e.g. global mutable objects or shared database tables) for coordinating subagents?
 
 **A)** Message passing requires zero network bandwidth.
+
 **B)** Message passing eliminates race conditions, provides an immutable audit trail, and preserves strict context boundaries between agents.
+
 **C)** Claude cannot read data from databases.
 
 **D)** Shared memory causes physical CPU overheating.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -314,15 +426,23 @@ In distributed systems and multi-agent AI, message passing is the gold standard 
 - **C)** Claude can easily query databases via tools.
 - **D)** Hardware overheating is irrelevant to architectural topology design.
 
+</details>
+
 ---
 
 ### Q45. Fan-Out Rate Limit Exhaustion
 You design a coordinator that receives a batch of 50 customer requests and immediately dispatches 50 concurrent subagents using `asyncio.gather()`. Within 2 seconds, 35 of the subagents crash with HTTP 429 Too Many Requests. What architectural pattern was omitted?
 
 **A)** Increasing `budget_tokens` to 8,000.
+
 **B)** Prompt Caching.
+
 **C)** Switching to temperature 0.8.
+
 **D)** Rate-Limiting Concurrency Throttling (e.g., `asyncio.Semaphore` or token bucket rate limiter) to bound concurrent requests within Anthropic API tier quotas.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -337,6 +457,8 @@ Anthropic enforces strict Requests Per Minute (RPM) and Tokens Per Minute (TPM) 
 **Anti-Pattern Alert:**
 *Unthrottled Fan-Out*: Launching unbounded concurrent agent tasks without semaphore pooling or rate-limit governors, causing mass HTTP 429 failures.
 
+</details>
+
 ---
 
 ### Q46. Asymmetric Model Selection Across Agents
@@ -344,12 +466,19 @@ In an enterprise code refactoring multi-agent system, the architect configures:
 - Coordinator: `claude-opus-4-5`
 - Code Analysis Subagent: `claude-sonnet-4-5`
 - Syntax Linting & Formatting Subagent: `claude-haiku-4-5`
+
 What is the primary rationale for this asymmetric model allocation?
 
 **A)** Cost and intelligence optimization: Complex multi-step planning requires high reasoning power (Opus), domain coding requires balanced speed and capability (Sonnet), while high-throughput deterministic checks are best served by ultra-fast, low-cost models (Haiku).
+
 **B)** Anthropic requires three different models in every multi-agent system.
+
 **C)** `claude-opus-4-5` cannot use tools, so it must delegate to Sonnet.
+
 **D)** Haiku models have larger context windows than Opus.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -361,15 +490,23 @@ Asymmetric model routing maps each tier of the agent hierarchy to the optimal mo
 - **C)** All current Claude models natively support tool use.
 - **D)** Context window sizes are standardized across modern flagship tiers.
 
+</details>
+
 ---
 
 ### Q47. Delegation Loop Detection
 Subagent A delegates a task to Subagent B. Subagent B, encountering ambiguity, delegates the task back to Subagent A. Subagent A delegates it back to Subagent B. How should the orchestrator prevent this catastrophic recursion?
 
 **A)** Increase the API timeout to 1 hour.
+
 **B)** Let the agents loop until they run out of money.
+
 **C)** Delete Subagent B from the codebase.
+
 **D)** Set a max recursion depth (`max_depth = 2`) on delegation calls and disallow cyclical task invocation in the orchestrator router.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -384,15 +521,23 @@ Cyclical delegation is a classic distributed agent failure mode. Orchestrators m
 **Anti-Pattern Alert:**
 *Cyclical Delegation Cascade*: Allowing subagents to recursively call one another without call-stack tracking or depth clamping.
 
+</details>
+
 ---
 
 ### Q48. Subagent Prompt Drift and Role Adherence
 After 10 turns of code execution, a `DocumentationSubagent` begins attempting to modify production database schemas instead of writing markdown files. What is the cause of this behavior and how should it be mitigated?
 
 **A)** The model is angry.
+
 **B)** The temperature was set to 0.
+
 **C)** Prompt Drift / Role Bleed: The subagent's working context accumulated unrelated error logs and instructions. Mitigation: enforce strict tool schemas (do not give the documentation agent database tools) and re-ground the agent with its invariant system prompt.
+
 **D)** The user invoked `/compact`.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -404,16 +549,24 @@ After 10 turns of code execution, a `DocumentationSubagent` begins attempting to
 - **B)** Temperature 0 increases determinism and role adherence.
 - **D)** `/compact` cleans context and generally helps prevent role drift.
 
+</details>
+
 ---
 
 ### Q49. Aggregation Bottleneck in Coordinators
 A coordinator dispatches 20 subagents, each returning a 4,000-word essay. When all 20 subagents return, the coordinator attempts to ingest all 20 results in a single turn to write an executive summary, but the context limit is breached and generation stalls. How should aggregation be redesigned?
 
 **A)** Recursive Hierarchical Reduction (Tree Reduction): Have intermediate summarizer agents combine pairs/triplets of essays into section summaries first, passing only the condensed summaries to the master coordinator.
+
 **B)** Discard 19 of the essays and summarize only the first one.
 
 **C)** Increase output tokens to 5 million.
+
 **D)** Convert all text to base64 encoding.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -424,15 +577,23 @@ When aggregating massive fan-out outputs, passing all raw payloads to a single c
 - **C)** Output token limits cannot be arbitrarily increased past model ceilings.
 - **D)** Base64 increases token count by ~33%, worsening context pressure.
 
+</details>
+
 ---
 
 ### Q50. Human Approval Gate in Multi-Agent Topologies
 In a multi-agent system where a `Planner` delegates to a `DatabaseAdmin` subagent, the `DatabaseAdmin` generates a `DROP TABLE customer_records` command. Where should the Human-in-the-Loop (HITL) approval gate be placed?
 
 **A)** At the very beginning when the user first opens the chat app.
+
 **B)** In the tool execution layer immediately before executing the destructive database action, pausing the loop and requiring authenticated human confirmation.
+
 **C)** After the table is dropped, asking the user if they liked the action.
+
 **D)** Inside the subagent's system prompt using natural language.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -444,16 +605,24 @@ High-consequence, irreversible actions (dropping tables, moving funds, deleting 
 - **C)** Post-execution checks are useless for irreversible data loss.
 - **D)** Relying on prompt instructions alone is non-deterministic and can be bypassed.
 
+</details>
+
 ---
 
 ### Q51. Subagent Idempotency in Distributed Retries
 A subagent responsible for provisioning a cloud storage bucket crashes due to a network glitch after creating the bucket but before returning the confirmation to the coordinator. The coordinator retries the subagent with the exact same task. What property must the subagent's tool possess to succeed cleanly?
 
 **A)** Non-determinism.
+
 **B)** Zero temperature.
 
 **C)** Idempotency: Calling `create_bucket` with the same bucket name should check if it already exists, verify ownership, and return success rather than throwing a duplicate resource error.
+
 **D)** Polarity inversion.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -464,15 +633,23 @@ In distributed multi-agent systems, network drops between workers and coordinato
 - **B)** Temperature governs model sampling, not tool API side effects.
 - **D)** Polarity inversion is a nonsensical phrase.
 
+</details>
+
 ---
 
 ### Q52. Coordinator Prompting: Task Delegation vs. Direct Action
 An architect notices that a coordinator agent, despite having access to 4 specialized subagents, frequently attempts to solve complex coding tasks itself using raw internal knowledge, producing lower-quality results. How should the coordinator's system prompt be tuned?
 
 **A)** Delete all subagents so the coordinator feels confident.
+
 **B)** Set `temperature: 1.0`.
+
 **C)** Restrict the coordinator to 10 input tokens.
+
 **D)** Instruct the coordinator: "You are an orchestration lead. You do not write code directly. Your sole responsibility is to analyze user requests, break them down, delegate implementation to specialized subagents, evaluate their work, and synthesize final answers."
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -484,16 +661,24 @@ Coordinators will default to direct completion if their system prompt does not e
 - **B)** Increasing temperature increases randomness, worsening role adherence.
 - **C)** 10 tokens is insufficient to even parse the user's prompt.
 
+</details>
+
 ---
 
 ### Q53. Context Compaction in Multi-Agent Loops
 When a subagent completes a 15-step investigation and returns a 10,000-token raw trace, what should the coordinator do before appending this result to its own conversation history?
 
 **A)** Drop the result entirely and guess the outcome.
+
 **B)** Require the subagent to return a structured executive summary (e.g., findings, key metrics, status) and append only this distilled summary to the coordinator's history.
+
 **C)** Append the entire 10,000-token trace verbatim.
 
 **D)** Convert the text into an image.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -504,15 +689,23 @@ To protect the coordinator's context window from bloat, subagents should act as 
 - **C)** Ingesting 10,000 tokens of raw trace per subagent rapidly pollutes the coordinator's context.
 - **D)** Converting text to images is computationally wasteful and degrades OCR readability.
 
+</details>
+
 ---
 
 ### Q54. Deterministic State Machines vs. Pure LLM Orchestration
 For a mission-critical financial reconciliation pipeline with strict legal audit steps, an architect proposes replacing a deterministic workflow engine (like Temporal or Step Functions) entirely with a single autonomous Claude loop that decides the workflow sequence on the fly. How should this proposal be evaluated?
 
 **A)** Rejected: Anti-pattern. Mission-critical pipelines requiring invariant execution sequences and strict compliance should use deterministic state machines to control workflow transitions, utilizing Claude as an intelligent worker node within defined state boundaries.
+
 **B)** Approved: Pure LLM orchestration is always superior to deterministic workflows.
+
 **C)** Approved: State machines are obsolete in modern AI.
+
 **D)** Approved: LLMs never deviate from expected execution paths.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -525,15 +718,23 @@ For a mission-critical financial reconciliation pipeline with strict legal audit
 **Anti-Pattern Alert:**
 *Over-Agentification*: Forcing non-deterministic LLM loops onto business processes that are inherently deterministic and require guaranteed, rigid execution order.
 
+</details>
+
 ---
 
 ### Q55. Subagent Sandboxing with Read-Only File Tools
 A developer creates a `SecurityAuditSubagent` to check for hardcoded credentials in a repository. What tool definition ensures that the subagent cannot accidentally modify source files during the audit?
 
 **A)** Provide `write_file` but add a prompt instruction: "Please do not write any files."
+
 **B)** Provide `read_file` and `list_directory`, but strictly omit `write_file`, `edit_file`, and `delete_file`.
+
 **C)** Run the agent as the `root` Linux user.
+
 **D)** Provide bash execution with `sudo` permissions.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -544,16 +745,24 @@ Security in agentic systems must be enforced **structurally at the tool schema a
 - **A)** Prompt instructions are soft guardrails that can be bypassed by jailbreaks or hallucinations.
 - **C, D)** Elevating privileges is the exact opposite of sandboxing and creates catastrophic security risks.
 
+</details>
+
 ---
 
 ### Q56. Dynamic Subagent Selection via Vector Routing
 In an enterprise customer support platform with 50 specialized subagents, how can the coordinator route user queries to the correct subagent without overloading the system prompt with 50 detailed agent descriptions?
 
 **A)** Run all 50 subagents on every query.
+
 **B)** Hardcode all 50 descriptions in the system prompt.
 
 **C)** Semantic Router / Vector Index: Embed incoming user queries, retrieve the top 3 most relevant subagent definitions via vector similarity search over agent capability cards, and present only those 3 subagents dynamically to the coordinator.
+
 **D)** Pick a random subagent on each turn.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -564,15 +773,23 @@ When the fleet of available subagents grows large, a **Semantic Router (or Progr
 - **B)** Loading 50 agent schemas burns tokens and causes selection confusion.
 - **D)** Random selection produces nonsensical routings.
 
+</details>
+
 ---
 
 ### Q57. Handling Cascading Timeouts in Multi-Agent Pipelines
 In a sequential multi-agent pipeline where `Agent A` → `Agent B` → `Agent C` run with an overall client SLA of 60 seconds, what timeout strategy must be configured?
 
 **A)** Disable all timeouts and allow calls to run indefinitely.
+
 **B)** Cancel all agents after 2 seconds.
+
 **C)** Give each agent an independent 60-second timeout.
+
 **D)** Budgeted Timeouts: Allocate specific maximum timeouts per step (e.g., A: 15s, B: 20s, C: 15s) with a remaining-time deadline passed dynamically to each subagent call, ensuring the cumulative execution does not exceed the 60s client SLA.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -584,16 +801,24 @@ In sequential distributed systems, assigning each step a full SLA timeout causes
 - **B)** 2 seconds is insufficient for complex agent tasks.
 - **C)** Three sequential 60s timeouts allow total latency to reach 180s, severely violating the 60s SLA.
 
+</details>
+
 ---
 
 ### Q58. Asynchronous Notification Pattern for Long Subagent Tasks
 A coordinator dispatches a `BigDataProcessingSubagent` that will take 45 minutes to execute. How should the coordinator interact with the end user during this period?
 
 **A)** Return an immediate acknowledgment with a tracking ticket/session ID, persist the coordinator state, and configure an event-driven webhook (or WebSocket notification) to notify the user upon completion.
+
 **B)** Keep the user's browser HTTP connection open and spinning for 45 minutes.
+
 **C)** Continuously stream empty spaces to the user's terminal to prevent connection drops.
 
 **D)** Cancel the job after 30 seconds and report failure.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -604,16 +829,24 @@ Long-running background agent workflows must decouple synchronous client request
 - **C)** Streaming whitespace is an unreliable hack that fails across standard proxy architectures.
 - **D)** Canceling valid jobs prevents users from obtaining computational results.
 
+</details>
+
 ---
 
 ### Q59. Verification of Subagent Output Integrity
 Before a coordinator passes a financial report generated by a `FinancialAnalystSubagent` to a CEO, what automated validation should occur?
 
 **A)** Change the numbers to random values.
+
 **B)** The coordinator should check if the text contains the word "money".
 
 **C)** Programmatic Schema & Integrity Validation: Verify that required numerical tables are present, check that totals match column sums via deterministic code, and run compliance policy checks before delivery.
+
 **D)** Post the report on Twitter to test public reception.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -624,15 +857,23 @@ Never rely on unvalidated LLM text for high-stakes numerical or regulatory outpu
 - **B)** Basic string matching is insufficient for financial integrity.
 - **D)** Disclosing unverified financial data publicly violates confidentiality and securities regulations.
 
+</details>
+
 ---
 
 ### Q60. Subagent Reusability Across Coordinators
 An engineering team builds a high-performing `GitRepoAnalyzerSubagent`. How should it be packaged so that three different coordinator agents (CodeReviewCoordinator, SecurityAuditCoordinator, ReleaseCoordinator) can reuse it without code duplication?
 
 **A)** Encapsulate the subagent as an independent module or microservice exposing a standardized API/MCP interface that any authorized coordinator can instantiate with task-specific parameters.
+
 **B)** Copy and paste the prompt and tool functions into 3 separate Python repositories.
+
 **C)** Hardcode the subagent to only accept requests from a single hardcoded coordinator IP.
+
 **D)** Merge all three coordinators into one gigantic 10,000-line script.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -644,15 +885,23 @@ In modern agent engineering, subagents should be treated as modular, reusable mi
 - **C)** Hardcoding IP addresses destroys modularity and horizontal scaling.
 - **D)** Monolithic scripts create unmaintainable, tightly coupled codebases.
 
+</details>
+
 ---
 
 ### Q61. Managing Shared Resources in Multi-Agent Fan-Out
 Ten subagents running in parallel all attempt to write their individual log summaries to a single local file `audit.log` at the exact same millisecond. What failure occurs and how is it resolved?
 
 **A)** The Claude API will shut down.
+
 **B)** File write lock contention / Race condition. Resolved by having subagents send log events to a centralized structured logging service or queue (e.g. Fluentd, Kafka, or an async logger) that serializes writes.
+
 **C)** The text will automatically translate into French.
+
 **D)** Disk space will immediately drop to zero.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -664,15 +913,23 @@ Concurrent file I/O on a single shared file without synchronization causes file 
 - **C)** Language translation has no connection to file I/O locking.
 - **D)** Disk space does not drop to zero from a concurrency collision.
 
+</details>
+
 ---
 
 ### Q62. Coordinator Reasoning Depth with Extended Thinking
 When configuring a coordinator agent responsible for architectural planning and risk mitigation, why is enabling extended thinking (`budget_tokens`) on the coordinator particularly valuable?
 
 **A)** It allows the coordinator to think about sports trivia between turns.
+
 **B)** It eliminates the need to provide tool definitions.
+
 **C)** It reduces API latency to under 50 milliseconds.
+
 **D)** It enables the coordinator to perform deep upfront chain-of-thought analysis on dependencies, potential failure modes, and subtask decomposition trade-offs before committing to irreversible tool delegations.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -684,15 +941,23 @@ Coordinators make strategic, high-leverage architectural decisions: decomposing 
 - **B)** Thinking mode does not replace the requirement for explicit tool schemas.
 - **C)** Extended thinking adds reasoning steps, which increases latency rather than reducing it.
 
+</details>
+
 ---
 
 ### Q63. Avoiding "Telephone Game" Information Degradation
 In a deep 4-tier agent hierarchy (Master → Lead → Specialist → Worker), an important customer preference is distorted by the time it reaches the worker. What architectural flaw caused this?
 
 **A)** Python variable name collisions.
+
 **B)** Excessive hierarchical nesting causing message summarization distortion (the "Telephone Game"). Mitigation: flatten the hierarchy or pass immutable invariant configuration blocks directly to leaf workers.
+
 **C)** High network latency.
+
 **D)** Prompt caching TTL expiration.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -705,15 +970,23 @@ When tasks and context are repeatedly re-summarized and passed down deep multi-t
 **Anti-Pattern Alert:**
 *The Telephone Game Anti-Pattern*: Over-nesting agent hierarchies where instructions are iteratively summarized across multiple intermediate agents, corrupting core constraints.
 
+</details>
+
 ---
 
 ### Q64. The "Omniscient Coordinator" Anti-Pattern
 An engineer designs a coordinator that contains all 40 database schemas, all 200 API endpoint specifications, all corporate policy manuals, and 30 tool definitions in its system prompt. The coordinator runs slowly, costs \$1.50 per turn, and frequently hallucinates tool parameters. What is this anti-pattern called?
 
 **A)** Circuit Breaker Pattern.
+
 **B)** Semantic Routing.
+
 **C)** Stateless Tool Protocol.
+
 **D)** The Omniscient Coordinator Anti-Pattern.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -728,15 +1001,23 @@ The *Omniscient Coordinator* is an anti-pattern where developers attempt to cent
 **Anti-Pattern Alert:**
 *Omniscient Coordinator*: Stuffing all organizational knowledge, tools, and schemas into the coordinator instead of delegating to domain-scoped subagents.
 
+</details>
+
 ---
 
 ### Q65. Testing Multi-Agent Systems in CI/CD
 How should a multi-agent orchestration pipeline be tested in automated CI/CD without incurring live API billing and without non-deterministic flakiness?
 
 **A)** Do not test agent pipelines in CI/CD; test directly in production.
+
 **B)** Run 1,000 live Claude API requests on every git commit.
+
 **C)** Offline Mock Testing: Mock the Claude Messages API responses using pre-recorded or deterministic fixture responses for specific subagent turns, verifying that the coordinator correctly parses stop reasons, routes payloads, and handles error branches.
+
 **D)** Test only the database connection and ignore agent logic.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -748,3 +1029,4 @@ Automated testing of multi-agent systems in CI/CD must be fast, cost-effective, 
 - **B)** Running live API calls in CI burns budget and introduces test flakiness.
 - **D)** Ignoring agent logic leaves orchestration bugs undetected until release.
 
+</details>

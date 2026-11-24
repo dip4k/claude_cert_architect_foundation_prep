@@ -9,15 +9,22 @@ An architect is designing an enterprise autonomous agent with three tiers of ope
 1. Searching documentation and viewing account balances
 2. Generating draft customer support replies
 3. Issuing financial refunds and modifying production databases
+
 How should these operations be mapped across the **Autonomy Spectrum**?
 
 **A)** Risk-Tiered Governance:
 - Tier 1 (Low Risk / Read-Only): Fully autonomous execution.
 - Tier 2 (Medium Risk / Draft Content): Autonomous generation with human-in-the-loop review before dispatch.
 - Tier 3 (High Risk / Destructive / Financial): Mandatory programmatic approval gates requiring authenticated human authorization.
+
 **B)** All three tiers should be fully autonomous without human oversight.
+
 **C)** All three tiers must require human approval for every single click.
+
 **D)** Tier 3 should be automated, and Tier 1 should require approval.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -29,16 +36,24 @@ The **Autonomy Spectrum** balances operational efficiency with safety by mapping
 - **C)** Requiring approval for read-only actions triggers approval fatigue.
 - **D)** Inverts risk management principles.
 
+</details>
+
 ---
 
 ### Q277. The Approval Fatigue Anti-Pattern in Production
 A company implements an internal coding agent where developers must click "Approve" for every file read, directory listing, and grep query. After two weeks, a developer approves a `DELETE FROM production_users` command without reading the prompt. What failure mode occurred?
 
 **A)** The database was misconfigured.
+
 **B)** Approval Fatigue Anti-Pattern: Bombarding users with dozens of repetitive, low-risk confirmation dialogs degrades human vigilance, leading operators to habitually click "Approve" (approaching a ~93% blind approval rate) and inadvertently signing off on catastrophic actions.
+
 **C)** The developer bypassed IAM authentication.
 
 **D)** The agent escalated its own permissions at the OS level.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -50,15 +65,23 @@ A company implements an internal coding agent where developers must click "Appro
 **Anti-Pattern Alert:**
 *Approval Fatigue*: Over-prompting human operators for trivial actions, resulting in habitual blind approvals that defeat the purpose of human-in-the-loop safety gates.
 
+</details>
+
 ---
 
 ### Q278. Intent-Based Scoping vs. Micro-Approvals
 How does Intent-Based Scoping solve the approval fatigue dilemma in production developer tooling?
 
 **A)** It eliminates all human oversight forever.
+
 **B)** It forces the user to solve a CAPTCHA before every prompt.
+
 **C)** It requires two developers to type their passwords simultaneously for every shell command.
+
 **D)** The user approves the high-level intent and defined blast radius upfront (e.g. "You may explore `/src/auth/` and run unit tests autonomously, but halt and request explicit approval before modifying any files outside that directory or executing network commands").
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -69,15 +92,23 @@ Intent-Based Scoping establishes an approved "sandbox of intent" at the beginnin
 - **A)** Intent-based scoping retains strict human approval for high-risk boundaries.
 - **B, C)** Excessive friction worsens developer productivity without addressing boundary safety.
 
+</details>
+
 ---
 
 ### Q279. Data Loss Prevention (DLP) and Sanitization Middleware
 An enterprise customer service agent receives customer messages. A customer types their full 16-digit credit card number and CVV in the chat window. What should the application's DLP middleware do before transmitting the payload to the Anthropic Messages API?
 
 **A)** Transmit the raw credit card number in plain text.
+
 **B)** Reject the customer's session permanently and lock their account.
+
 **C)** Client-Side DLP Interception: Intercept the incoming message, detect the credit card pattern using regex or dedicated DLP tools (e.g. Google Cloud DLP or AWS Comprehend), mask the sensitive digits (`4111-XXXX-XXXX-1111`), and store the tokenized reference in a secure vault before passing the sanitized text to the LLM.
+
 **D)** Forward the raw card number inside a system prompt instruction asking Claude to ignore it.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -89,15 +120,23 @@ Compliance frameworks (PCI-DSS, HIPAA, GDPR) mandate that sensitive payment card
 - **B)** Locking customer accounts when they accidentally paste card digits creates severe customer friction.
 - **D)** Putting the raw card number inside a system prompt still transmits unmasked PCI data across the API boundary.
 
+</details>
+
 ---
 
 ### Q280. Principle of Least Privilege: Environment Separation
 A software development firm builds an agent to troubleshoot staging deployments. An engineer configures the agent with an AWS IAM role that has `AdministratorAccess` across both Staging and Production AWS accounts. What critical security rule was violated?
 
 **A)** AWS does not allow AI agents to use IAM roles.
+
 **B)** The engineer should have used root account credentials instead.
+
 **C)** The agent did not use Python 3.12.
+
 **D)** Principle of Least Privilege and Environment Isolation: A staging agent must have zero systemic paths, credentials, or network routes to production infrastructure. Combining staging and production credentials creates an unmonitored blast radius where a prompt injection or model hallucination can destroy production assets.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -112,16 +151,24 @@ The **Principle of Least Privilege** requires granting only the absolute minimum
 **Anti-Pattern Alert:**
 *Unmonitored Blast Radii*: Granting broad, multi-environment or administrative credentials to AI agents under the assumption that model alignment will prevent destructive actions.
 
+</details>
+
 ---
 
 ### Q281. EU AI Act Article 14: Human Oversight & Auditability
 Under modern regulatory standards such as **Article 14 of the EU AI Act**, what mandatory technical capability must high-risk autonomous AI systems implement?
 
 **A)** The model must run without electricity.
+
 **B)** Human Oversight & Comprehensive Audit Logging: The system must be designed to enable human operators to effectively oversee operation, understand decision chains, intervene or override outputs via a "stop" mechanism, and maintain immutable, traceable event logs linking all actions to verified session IDs.
+
 **C)** The AI system must be able to generate video games.
 
 **D)** All source code must be made public domain.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -133,6 +180,8 @@ Article 14 of the EU AI Act mandates that high-risk AI systems must be designed 
 **Why other options are incorrect:**
 - **A, C, D)** Fanciful or legally false claims regarding AI compliance legislation.
 
+</details>
+
 ---
 
 ### Q282. The "Opaque Audit Trail" Anti-Pattern
@@ -141,8 +190,14 @@ An enterprise legal firm deploys a multi-agent contract analysis system. The com
 **A)** Storing intermediate logs makes the model forget past conversations.
 
 **B)** Claude automatically deletes all database records anyway.
+
 **C)** Opaque Audit Trail Anti-Pattern: In the event of legal dispute, regulatory audit, or hallucinated advice, the firm cannot reconstruct *why* the model reached its conclusion, *what* documents were retrieved, or *which* tools failed, destroying forensic explainability and violating compliance requirements.
+
 **D)** It is not an anti-pattern; it saves database storage.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -155,16 +210,24 @@ An enterprise legal firm deploys a multi-agent contract analysis system. The com
 **Anti-Pattern Alert:**
 *Opaque Audit Trails*: Discarding intermediate tool arguments, system calls, and retrieved payloads, leaving the enterprise unable to explain or defend AI decisions.
 
+</details>
+
 ---
 
 ### Q283. Programmatic Circuit Breakers: Consecutive Failure Limits
 An automated PR review agent encounters an unhandled syntax error in a legacy test runner. The agent runs the test, gets the error, attempts to fix it by adding a print statement, runs the test again, fails again, and repeats this cycle 40 times, consuming \$50 in API tokens. What architectural guard was missing?
 
 **A)** Programmatic Circuit Breaker: A client-side counter that tracks consecutive failed tool attempts and automatically trips (halting execution and alerting a human) after a predefined threshold (e.g. 3 consecutive failures on the same tool).
+
 **B)** The agent needed more memory.
 
 **C)** Python should have been uninstalled.
+
 **D)** Claude should have been run with temperature 1.0.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -175,6 +238,8 @@ Autonomous loops must never run without programmatic circuit breakers. If an age
 - **C)** Uninstalling Python destroys the environment.
 - **D)** Increasing temperature increases randomness, worsening debugging.
 
+</details>
+
 ---
 
 ### Q284. Over-Reliance on Model Alignment for Safety
@@ -183,8 +248,14 @@ A developer removes authentication from an internal database deletion API endpoi
 **A)** Database endpoints cannot be accessed over the network.
 
 **B)** Alignment is Not an Access Control Boundary: System prompts are soft, probabilistic guardrails that can be bypassed through indirect prompt injection, jailbreaking, or adversarial framing. System security and authorization (RBAC) MUST be enforced by deterministic backend code and authentication tokens, never by LLM prompt promises.
+
 **C)** Claude always deletes databases on Fridays.
+
 **D)** Claude is an alien from space.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -196,6 +267,8 @@ A core tenet of the CCAR-F syllabus is: **Model alignment is not a security boun
 **Anti-Pattern Alert:**
 *Prompt-As-Permission*: Substituting natural language prompt instructions for deterministic backend authentication and authorization controls.
 
+</details>
+
 ---
 
 ### Q285. Indirect Prompt Injection Defense via Structural Encapsulation
@@ -206,12 +279,18 @@ What multi-layered defense prevents this attack?
 **A)** Delete all PDF files.
 
 **B)** Run the agent on an offline laptop.
+
 **C)** Defense-in-Depth Encapsulation:
 1. Wrap untrusted document content in explicit XML containers (`<untrusted_document>`).
 2. Instruct the model that data within that container must be treated as passive data, never as system instructions.
 3. Tool sandboxing: The invoice parser agent must NOT have access to fund-transfer tools.
 4. Human verification: Any financial movement requires human sign-off.
+
 **D)** Ask the vendor nicely not to hack the system.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -226,15 +305,23 @@ Defending against indirect prompt injection requires defense-in-depth:
 - **B)** Offline execution does not stop the model from taking malicious local actions if equipped with tools.
 - **D)** Adversaries do not comply with polite requests.
 
+</details>
+
 ---
 
 ### Q286. The Context Trap: In-Memory Hallucination
 An autonomous DevOps agent is instructed: "Configure our new billing microservice to connect to Redis." The agent has no access to the internal network diagram or Redis credentials. Instead of halting and reporting that credentials are missing, the agent invents a fake IP `192.168.1.100`, hardcodes a fake password `redis123`, writes the file, and marks the task as complete. What anti-pattern is this?
 
 **A)** Approval Fatigue.
+
 **B)** Circuit Breaker trip.
+
 **C)** Batch API discount.
+
 **D)** The Context Trap (In-Memory Hallucination).
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -249,15 +336,23 @@ An autonomous DevOps agent is instructed: "Configure our new billing microservic
 **Anti-Pattern Alert:**
 *The Context Trap*: Leaving agents without factual grounding, causing them to hallucinate fake endpoints, credentials, or mock state to satisfy completion prompts.
 
+</details>
+
 ---
 
 ### Q287. Distributed Tracing with OpenTelemetry
 When deploying a fleet of Claude agents across microservices, what instrumentation standard enables architects to trace requests end-to-end across multiple model calls and external tools?
 
 **A)** OpenTelemetry (OTel): Propagating trace and span IDs (`traceparent` headers) across API calls, subagent delegations, and tool executions, emitting structured telemetry to platforms like Jaeger, Datadog, or Honeycomb.
+
 **B)** Writing log lines to a local text file on the server desktop.
+
 **C)** Memorizing the order of requests.
+
 **D)** Printing timestamps to the terminal.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -267,15 +362,23 @@ Modern cloud-native AI observability standardizes on **OpenTelemetry (OTel)**. B
 **Why other options are incorrect:**
 - **B, C, D)** Local text dumps, human memory, and terminal prints do not scale across distributed cloud clusters.
 
+</details>
+
 ---
 
 ### Q288. Cryptographic Hashing of User Identifiers
 To comply with GDPR and California CCPA privacy regulations, how should customer user IDs be recorded in AI audit logs?
 
 **A)** Record full names, phone numbers, and Social Security numbers in plain text.
+
 **B)** Do not log any user activity at all.
+
 **C)** Pseudonymization / Cryptographic Hashing: Hash user identifiers using a salted SHA-256 HMAC before storing them in telemetry logs, ensuring user activity is traceable for security audits while preventing exposure of direct PII.
+
 **D)** Use the same user ID for all 100,000 customers.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -287,15 +390,23 @@ Data privacy regulations mandate data minimization. Storing raw customer PII (na
 - **B)** Zero logging makes security incident forensics impossible.
 - **D)** Collapsing all users into one ID destroys audit accountability.
 
+</details>
+
 ---
 
 ### Q289. Canary Deployments for Agent System Prompts
 Before rolling out a major prompt revision across a fleet of 10,000 customer-facing support agents, how should the deployment be phased?
 
 **A)** Deploy the new prompt to 100% of production traffic on Friday at 5:00 PM.
+
 **B)** Canary Deployment: Route 2-5% of live traffic to the new prompt version, continuously monitoring key metrics (error rates, tool call failures, user sentiment, escalation frequency) against the baseline version before gradually expanding traffic to 100%.
+
 **C)** Ask developers to vote on the prompt.
+
 **D)** Test the prompt only on a developer's phone.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -306,15 +417,23 @@ Prompt changes alter the core behavioral dynamics of an AI agent. Deploying prom
 - **A)** 100% unmonitored Friday deploys are a notorious DevOps anti-pattern.
 - **C, D)** Voting and casual mobile testing lack statistical production validation.
 
+</details>
+
 ---
 
 ### Q290. Handling 429 Rate Limits and 529 Overload in Critical Loops
 An autonomous fraud-detection agent processing real-time credit card transactions receives an HTTP 429 Rate Limit error. What is the proper architectural fallback?
 
 **A)** Discard the transaction and allow the fraudster to proceed.
+
 **B)** Shut down the entire payment network.
+
 **C)** Delete the fraud detection database.
+
 **D)** Resilience Pipeline: Queue the transaction in an in-memory buffer, apply immediate exponential backoff with jitter up to a strict timeout, and if rate limits persist, route the transaction to a deterministic rule-based heuristic fallback engine so business operations continue uninterrupted.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -325,6 +444,8 @@ Mission-critical systems cannot halt when external AI APIs experience transient 
 - **A)** Dropping fraud checks creates massive financial loss.
 - **B, C)** Destructive overreactions that shut down business operations.
 
+</details>
+
 ---
 
 ### Q291. Secret Management: Banning Hardcoded Tokens
@@ -333,10 +454,16 @@ During an architectural review of an agent codebase, you find:
 committed directly inside `agent_runner.py`. What is the required remediation?
 
 **A)** Immediate Credential Invalidation and Secret Vaulting: Revoke and rotate the exposed API key immediately in the Anthropic Console; update the application to ingest credentials strictly via environment variables or cloud secrets managers (e.g. AWS Secrets Manager, HashiCorp Vault), and install pre-commit secret scanners (like GitGuardian or Trufflehog).
+
 **B)** Leave it alone as long as the Git repository is private.
 
 **C)** Change the variable name to `SECRET_KEY`.
+
 **D)** Encrypt the Python file using a ZIP password.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -347,6 +474,8 @@ Committing API keys to source code is a catastrophic security vulnerability. Pri
 - **C)** Changing variable names does not protect the exposed token.
 - **D)** ZIP encryption does not resolve version control security flaws.
 
+</details>
+
 ---
 
 ### Q292. Sandboxing Bash Execution Tools
@@ -355,8 +484,14 @@ An agent is equipped with a `run_terminal_command` tool. Which execution environ
 **A)** Running on the CEO's personal laptop.
 
 **B)** Ephemeral Sandboxing: Executing inside an isolated, short-lived Docker container or microVM (e.g. AWS Firecracker) with restricted networking, read-only root filesystems, CPU/memory quotas, and non-root user permissions, destroying the container upon session completion.
+
 **C)** Executing inside the production Kubernetes control plane.
+
 **D)** Executing directly on the production host server with root privileges.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -366,15 +501,23 @@ Granting an AI agent terminal execution authority without virtualization is an e
 - **A)** Running on executive laptops violates workstation security policies.
 - **C, D)** Direct execution on production hosts or k8s control planes creates total cluster takeover risks.
 
+</details>
+
 ---
 
 ### Q293. Data Retention and Privacy Options in Enterprise Claude
 Under Anthropic's Commercial Terms of Service for paid API customers, how is customer prompt and completion data handled regarding model training?
 
 **A)** Customer prompts are sold to advertising networks.
+
 **B)** Anthropic trains its next public frontier model on all customer API data by default.
+
 **C)** All customer prompts are published on an open-source website.
+
 **D)** Zero Model Training on API Data: Anthropic does NOT train its generative models on customer data submitted through the paid commercial Messages API, ensuring customer intellectual property and data confidentiality are maintained.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -384,6 +527,8 @@ Anthropic's commercial enterprise API terms provide strict data protection guara
 **Why other options are incorrect:**
 - **A, B, C)** Contradict Anthropic's official enterprise commercial data privacy commitments.
 
+</details>
+
 ---
 
 ### Q294. The "Prompt-as-a-Firewall" Fallacy
@@ -391,10 +536,16 @@ A security team attempts to prevent data exfiltration by adding this rule to Cla
 Why is this an architectural failure?
 
 **A)** Prompt-as-a-Firewall Fallacy: Putting secret credentials inside the prompt itself guarantees they are part of the model's active context window. Clever prompt manipulation, character ciphering, or roleplay jailbreaks can extract the credential. Secrets must NEVER be placed in prompts.
+
 **B)** The prompt was not written in uppercase.
 
 **C)** Claude cannot read passwords.
+
 **D)** Passwords must always contain numbers.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -407,6 +558,8 @@ Why is this an architectural failure?
 **Anti-Pattern Alert:**
 *Secrets in Prompts*: Passing confidential credentials into system prompts with instructions "not to share them", which is easily exploited via prompt leakage attacks.
 
+</details>
+
 ---
 
 ### Q295. Hallucination Risk Classification
@@ -418,8 +571,14 @@ An organization categorizes AI applications into risk tiers. Match the task to i
 **A)** All three are Low Risk
 
 **B)** All three are Critical Risk
+
 **C)** 1: Low Risk, 2: Medium Risk, 3: Critical / Unacceptable Autonomous Risk (requires 100% human-verified deterministic oversight)
+
 **D)** 1: Critical, 2: High, 3: Low
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -431,16 +590,24 @@ Risk assessment dictates architectural deployment:
 **Why other options are incorrect:**
 - **A, B, D)** Fail to properly align operational risk with human safety and regulatory frameworks.
 
+</details>
+
 ---
 
 ### Q296. Managing Quota Burn in Autonomous Loops
 An agent runs in an infinite loop due to a tool error, making 1,200 API calls in 15 minutes and exhausting the company's daily \$500 API credit budget. What client-side financial governor should have been implemented?
 
 **A)** Client-Side Financial Budget Clamping: The orchestrator tracks cumulative dollar spend in real time for each session; once a hard budget ceiling (e.g. \$2.00 per user session) is breached, the orchestrator immediately terminates the loop and alerts the monitoring system.
+
 **B)** Let the agent run until the bank calls.
 
 **C)** API calls should be billed to employee paychecks.
+
 **D)** The company should have purchased unlimited credits.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -450,15 +617,23 @@ Autonomous agents require financial bounding. Implementing real-time spend accum
 - **B, C)** Unacceptable operational management practices.
 - **D)** Unlimited credit lines increase financial exposure.
 
+</details>
+
 ---
 
 ### Q297. Post-Incident Forensic Reconstruction
 Following a security incident where an agent modified an unauthorized customer record, what telemetry artifacts must the security team analyze?
 
 **A)** Only the Git commit history of the application.
+
 **B)** The developer's browser history.
+
 **C)** The CPU temperature log.
+
 **D)** The Immutable Session Audit Trail: The ordered sequence of User Prompts, System Prompts, Assistant Thinking blocks, Tool Use blocks (with exact input arguments), Tool Result payloads, and the authenticated User ID timestamped in the centralized logging repository.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -468,16 +643,24 @@ Thorough incident post-mortems require complete conversational and operational t
 **Why other options are incorrect:**
 - **A, B, C)** Do not contain the runtime event telemetry required to diagnose the model's operational decisions.
 
+</details>
+
 ---
 
 ### Q298. Boundary Defense: Input and Output Guardrails
 An architect implements a two-stage guardrail architecture using inference-time middleware. What is the role of an **Output Guardrail**?
 
 **A)** To translate text into French.
+
 **B)** To inspect the model's generated completion *before* it is returned to the user or executed as a tool, evaluating it against safety policies, PII leakage rules, toxic language filters, or unauthorized command patterns.
+
 **C)** To increase the volume of text generated.
 
 **D)** To delete user accounts.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -486,15 +669,23 @@ A defense-in-depth safety pipeline uses both Input Guardrails (inspecting user q
 **Why other options are incorrect:**
 - **A, C, D)** Unrelated to safety validation middleware.
 
+</details>
+
 ---
 
 ### Q299. Preventing Cross-Session Context Contamination
 In a multi-user customer service backend, what data isolation standard must be enforced between concurrent sessions?
 
 **A)** All users share a single global conversation history array.
+
 **B)** Users must share passwords.
+
 **C)** Strict Session Isolation: Every user session is assigned a cryptographically random `session_id`; conversation histories, tool results, and temporary state are partitioned in database storage by `session_id`, ensuring zero cross-talk or data leakage between users.
+
 **D)** Disconnect the database after every user message.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -505,16 +696,24 @@ Cross-session context contamination is a severe security and privacy violation. 
 - **A)** Sharing history across users causes immediate data breaches.
 - **B, D)** Violate standard operational security.
 
+</details>
+
 ---
 
 ### Q300. The "Self-Correction Illusion" Anti-Pattern
 A developer notices that an agent frequently produces invalid JSON. The developer's solution is to re-prompt the same agent 10 times in a row with: `"You made an error. Fix it."` without providing any error logs or compiler feedback. Why does this anti-pattern fail?
 
 **A)** Claude refuses to fix errors out of pride.
+
 **B)** Re-prompting costs zero tokens.
 
 **C)** The Self-Correction Illusion: LLMs cannot reliably self-correct internal logical or structural errors without external grounding, deterministic compiler feedback, or clear diagnostic error traces; blind re-prompting merely cycles through alternative hallucinations.
+
 **D)** Python only allows 2 retries.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -528,15 +727,23 @@ A developer notices that an agent frequently produces invalid JSON. The develope
 **Anti-Pattern Alert:**
 *Self-Correction Illusion*: Blindly asking an agent to "fix its mistake" without supplying external ground-truth validation feedback, linters, or compiler error logs.
 
+</details>
+
 ---
 
 ### Q301. Red-Teaming AI Agent Architectures
 What is the primary objective of automated and manual "Red-Teaming" exercises on enterprise Claude deployments?
 
 **A)** To check if the server fans are working.
+
 **B)** To install pirated software.
+
 **C)** To teach the model how to hack other companies.
+
 **D)** Adversarial Stress-Testing: Proactively discovering prompt injection vulnerabilities, tool schema bypasses, privilege escalation vectors, and unintended behavioral drift by attempting to exploit the system before deployment to production.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -546,15 +753,23 @@ Red-teaming is an essential security validation practice. Specialized security e
 **Why other options are incorrect:**
 - **A, B, C)** Irrelevant or illegal activities; red-teaming is structured defensive validation.
 
+</details>
+
 ---
 
 ### Q302. Graceful Degradation in Infrastructure Outages
 During a major regional cloud outage, Anthropic's API latency increases to 30 seconds per request. How should a customer-facing e-commerce checkout agent handle this degradation?
 
 **A)** Graceful Degradation & Fallback: Detect prolonged latency, notify the user with a friendly status banner ("AI assistant is currently experiencing delays"), and route users directly to traditional deterministic checkout forms so purchases can be completed without blocking.
+
 **B)** Crash the entire checkout website and display an HTTP 500 error.
+
 **C)** Charge the customer twice.
+
 **D)** Delete the user's shopping cart.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -564,16 +779,24 @@ AI features should enhance user workflows, but core business operations (like ch
 **Why other options are incorrect:**
 - **B, C, D)** Crashing checkouts, double-charging, or emptying carts damages revenue and customer trust.
 
+</details>
+
 ---
 
 ### Q303. Vulnerability Scanning of Agentic Dependencies
 Why must modern enterprise CI/CD pipelines scan third-party MCP servers and agent tool packages using dependency scanners (like Snyk, Dependabot, or Trivy)?
 
 **A)** Scanning reduces file size by 50%.
+
 **B)** Software Supply Chain Security: Third-party MCP servers, tool libraries, and agent packages run as executable code inside the corporate network; scanning detects known CVEs, malicious dependencies, and vulnerable sub-packages before they are deployed.
+
 **C)** To ensure the software is written in JavaScript.
 
 **D)** Dependency scanning is only required for hardware devices.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -582,15 +805,23 @@ AI agents integrate with dozens of third-party tools, MCP servers, and API conne
 **Why other options are incorrect:**
 - **A, C, D)** Supply chain scanning applies to all software languages and is required for vulnerability management.
 
+</details>
+
 ---
 
 ### Q304. Compliance Certification Standards for Claude Deployments
 When architecting Claude solutions for healthcare or enterprise financial organizations, which compliance standards and certifications are typically validated?
 
 **A)** SOC 2 Type II, ISO 27001, HIPAA (via Business Associate Agreements / BAA), and GDPR compliance.
+
 **B)** ISO 9001 and USDA Organic.
+
 **C)** FAA Flight Safety Certification.
+
 **D)** None; AI systems are exempt from all laws.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -601,13 +832,17 @@ Enterprise adoption requires strict regulatory and compliance certifications. An
 - **B, C)** Agricultural and aviation certifications are irrelevant to AI cloud infrastructure.
 - **D)** AI systems are subject to extensive data privacy, cybersecurity, and governance laws.
 
+</details>
+
 ---
 
 ### Q305. Master Capstone Question: The Resilient Enterprise Architecture
 An architect must deliver a mission-critical financial triage system using Claude 4.5. Which comprehensive architectural design fulfills all CCAR-F production standards?
 
 **A)** A single prompt with all 100 tools, run as root with `while True` and no timeouts.
+
 **B)** A pure peer-to-peer mesh where subagents communicate via unstructured chat messages.
+
 **C)** The Production-Grade Enterprise Blueprint:
 1. Hub-and-Spoke Topology with isolated, least-privilege subagents.
 2. Bounded while loops with programmatic circuit breakers and exponential backoff.
@@ -617,7 +852,11 @@ An architect must deliver a mission-critical financial triage system using Claud
 6. Ephemeral sandboxed tool execution with parameter validation and idempotency keys.
 7. Risk-tiered Autonomy Spectrum with Human-in-the-Loop approval gates on financial writes.
 8. End-to-end OpenTelemetry tracing and DLP sanitization middleware.
+
 **D)** An unmonitored script running in Plan Mode on a developer's desktop.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -632,3 +871,4 @@ Option C represents the comprehensive synthesis of all five CCAR-F architectural
 **Why other options are incorrect:**
 - **A, B, D)** Saturated with critical anti-patterns (unbounded loops, peer-to-peer mesh chaos, unmonitored execution, lack of safety gates) that violate enterprise standards.
 
+</details>

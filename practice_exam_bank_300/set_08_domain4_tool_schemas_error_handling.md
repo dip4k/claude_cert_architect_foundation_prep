@@ -8,10 +8,16 @@
 An architect designs a tool named `fetch_user_data`. Claude frequently fails to invoke it when users ask: "Has Alice paid her latest bill?" What is the most effective fix in the tool schema?
 
 **A)** Improve the `description` field in the JSON Schema: Explicitly state what data the tool returns and when it should be used (e.g., `"description": "Retrieves comprehensive customer account details, including billing status, open invoices, active subscriptions, and payment history by customer name or ID. Invoke this tool whenever answering billing, invoice, or account status questions."`).
+
 **B)** Delete all other tools.
 
 **C)** Force `tool_choice: "any"` on every turn.
+
 **D)** Rename the tool to `TOOL_1`.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -25,6 +31,8 @@ The model relies heavily on the tool's `description` field to decide whether and
 **Anti-Pattern Alert:**
 *Cryptic Tool Descriptions*: Providing terse or empty tool descriptions, leaving the LLM to guess what data the tool returns or when it should be invoked.
 
+</details>
+
 ---
 
 ### Q217. Parameter Descriptions in JSON Schemas
@@ -34,10 +42,12 @@ In a tool schema for `transfer_money`, which parameter definition provides the h
 ```json
 "amount": {"type": "number"}
 ```
+
 **B)**
 ```json
 "amount": {"type": "string", "description": "any money"}
 ```
+
 **C)**
 ```json
 "amount": {}
@@ -50,6 +60,10 @@ In a tool schema for `transfer_money`, which parameter definition provides the h
   "description": "The exact positive numerical amount in USD to transfer (e.g. 150.50). Do not include currency symbols ($) or commas."
 }
 ```
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** D
 
 **Explanation:**
@@ -59,6 +73,8 @@ Providing explicit parameter `description`s that include concrete formatting exa
 - **A)** Lacks formatting guidelines, causing models to emit strings with dollar signs (`"$150.50"`), breaking float parsers.
 - **B, C)** Unconstrained or vague schemas invite type errors and invalid formatting.
 
+</details>
+
 ---
 
 ### Q218. The Purpose of the `tool_choice` Parameter
@@ -67,8 +83,14 @@ What is the default value of the `tool_choice` parameter in the Anthropic Messag
 **A)** `tool_choice: {"type": "tool", "name": "default"}`: forces the default tool.
 
 **B)** `tool_choice: {"type": "any"}`: forces the model to use all tools simultaneously.
+
 **C)** `tool_choice: {"type": "auto"}`: allows Claude to autonomously decide whether to respond with text, invoke one or more tools, or ask for clarification based on conversation context.
+
 **D)** `tool_choice: {"type": "none"}`: permanently deletes all tools.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -77,15 +99,23 @@ By default, the Messages API uses `tool_choice: {"type": "auto"}`. In auto mode,
 **Why other options are incorrect:**
 - **A, B, D)** Falsely describe default parameters and non-standard behaviors.
 
+</details>
+
 ---
 
 ### Q219. When to Use `tool_choice: {"type": "any"}`
 In which scenario is setting `tool_choice: {"type": "any"}` architecturally appropriate?
 
 **A)** In a conversational chatbot discussing general philosophy.
+
 **B)** In a specialized extraction or triage pipeline where the model's SOLE purpose is to select and execute one of several operational tools (e.g., `route_to_billing`, `route_to_tech_support`, `escalate_to_manager`) and conversational text responses are strictly disallowed.
+
 **C)** When extended thinking is enabled with a 4,000 token budget.
+
 **D)** When no tools are provided in the `tools` array.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -97,16 +127,24 @@ In which scenario is setting `tool_choice: {"type": "any"}` architecturally appr
 - **C)** Forced tool choice (`any`) is rejected with an HTTP 400 when manual extended thinking is active.
 - **D)** Requiring a tool when zero tools are registered causes a schema validation error.
 
+</details>
+
 ---
 
 ### Q220. Forcing a Specific Tool via `tool_choice`
 A developer wants Claude to evaluate an incoming support ticket and extract entities into a predefined schema using a tool named `record_ticket_entities`. How should the request enforce this exact tool call?
 
 **A)** Set `tool_choice: {"type": "tool", "name": "record_ticket_entities"}` in the API request parameters.
+
 **B)** Set `temperature: 0`.
 
 **C)** Pass `tool_choice: {"type": "auto"}` and add `"urgent": true` to the schema.
+
 **D)** Write: "PLEASE CALL record_ticket_entities!" in the prompt.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -116,6 +154,8 @@ Setting `tool_choice: {"type": "tool", "name": "<tool_name>"}` explicitly forces
 - **B)** Low temperature does not guarantee tool selection if the model prefers direct text.
 - **C)** `auto` still allows the model to respond with plain text, and arbitrary schema keys do not force invocation.
 - **D)** Natural language begging is probabilistic and unreliable.
+
+</details>
 
 ---
 
@@ -130,9 +170,15 @@ A developer configures an API request with:
 Why does the Anthropic API reject this request with an HTTP 400 error?
 
 **A)** Extended thinking requires at least 10 tools to be present.
+
 **B)** Extended thinking only works with SQLite databases.
+
 **C)** Architectural Invariant: Manual extended thinking requires the model to have cognitive autonomy to reason freely about whether a tool is required or whether direct explanation is appropriate. Forcing tool use (`any` or specific `tool`) restricts reasoning dynamics and is strictly disallowed by the API.
+
 **D)** The developer must pay an extra licensing fee.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -144,6 +190,8 @@ When manual extended thinking (`budget_tokens`) is active, the Anthropic API enf
 
 **Anti-Pattern Alert:**
 *Forced Tool Reasoning Collision*: Attempting to combine forced tool choices (`any` or specific `tool`) with manual extended thinking budgets, crashing production requests.
+
+</details>
 
 ---
 
@@ -157,6 +205,7 @@ When an external tool execution encounters a database connection timeout, how sh
   "message": "fail"
 }
 ```
+
 **B)**
 ```json
 {
@@ -166,9 +215,14 @@ When an external tool execution encounters a database connection timeout, how sh
   "content": "DatabaseConnectionTimeout: PostgreSQL host at 10.0.1.5 did not respond within 5000ms. Please check database cluster health or retry with fallback replica."
 }
 ```
+
 **C)** Return an empty string with status 200.
 
 **D)** Raise an unhandled Python exception and crash the server.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -179,18 +233,27 @@ Anthropic's tool design explicitly includes the `is_error: true` boolean attribu
 - **C)** Empty strings leave the model blind to the failure.
 - **D)** Crashing the server prevents graceful recovery and degrades user experience.
 
+</details>
+
 ---
 
 ### Q223. Actionable vs. Opaque Tool Error Messages
 Compare two tool error messages returned to Claude after an invalid SQL query:
 - Error 1: `"Internal Error -1"`
 - Error 2: `"SyntaxError: Unexpected token 'WHER' at line 1, column 14. Did you mean 'WHERE'?"`
+
 Why does Error 2 lead to significantly higher agentic recovery rates?
 
 **A)** Claude is legally required to fix SQL syntax.
+
 **B)** Error 1 costs more tokens.
+
 **C)** Error 2 executes faster in PostgreSQL.
+
 **D)** Actionable Feedback: Error 2 provides precise diagnostic location and corrective context, enabling Claude's multi-turn reasoning engine to identify its typographical mistake, rewrite the SQL query correctly, and re-execute the tool successfully on the next turn.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -201,15 +264,23 @@ LLMs are error-correcting reasoners. When an error message is opaque ("Internal 
 - **A)** Legal mandates do not govern SQL syntax fixing.
 - **B, C)** Token costs and database execution speeds are secondary to diagnostic recoverability.
 
+</details>
+
 ---
 
 ### Q224. Idempotent Tool Design in Financial Workflows
 An agent calls `submit_payment(account_id="acc_99", amount=500)`. The network connection between the agent and the bank gateway drops before the acknowledgment arrives. If the agent retries the call, how does an `idempotency_key` prevent charging the customer \$1,000?
 
 **A)** The idempotency key sets the customer's balance to 0.
+
 **B)** The bank's API checks if the unique `idempotency_key` has already been processed within the last 24 hours; if found, it returns the existing transaction receipt without executing a second debit.
+
 **C)** Claude calculates the transaction in reverse.
+
 **D)** Idempotency keys automatically refund all money.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -219,6 +290,8 @@ Idempotency ensures that performing an operation multiple times produces the exa
 **Why other options are incorrect:**
 - **A, C, D)** Idempotency does not zero balances, invert math, or force refunds; it guarantees single execution of state-altering operations.
 
+</details>
+
 ---
 
 ### Q225. Granular vs. Consolidated Tool Design
@@ -227,10 +300,16 @@ An architect is designing an agent to manage AWS infrastructure. Which tool desi
 - Design Y: 5 domain-scoped, consolidated tools with clear sub-actions (`manage_network(action="create_vpc" | "create_subnet" | ..., parameters={...})`)
 
 **A)** Tools should only accept raw Python code.
+
 **B)** Design X is always superior because models prefer more tools.
 
 **C)** Design Y: Consolidated tools prevent "Tool Bloat", conserve prompt tokens, simplify model decision trees, and reduce tool selection errors while maintaining full functional capability.
+
 **D)** Both designs are identical in token consumption.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -244,16 +323,24 @@ Providing 50+ granular tools overwhelms the model's context window with dozens o
 **Anti-Pattern Alert:**
 *Tool Proliferation*: Exposing dozens of micro-tools that fragment operations, causing context saturation, selection hesitation, and parameter confusion.
 
+</details>
+
 ---
 
 ### Q226. Validating Enums and Allowed Values in Schemas
 A tool `set_user_status` requires a status that can only be `"active"`, `"suspended"`, or `"pending"`. How should the JSON Schema enforce this?
 
 **A)** `"status": {"type": "string", "enum": ["active", "suspended", "pending"]}`.
+
 **B)** `"status": {"type": "string"}` with a prompt asking Claude to be careful.
 
 **C)** `"status": {"type": "integer"}`.
+
 **D)** Hardcoding the status to `"active"` for all users.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -264,15 +351,23 @@ Using the `enum` keyword in JSON Schema provides strict, machine-enforced parame
 - **C)** Status strings cannot be validated as integers.
 - **D)** Hardcoding removes dynamic control.
 
+</details>
+
 ---
 
 ### Q227. Re-trying Tools with Exponential Backoff and Jitter
 A tool wrapper catches an HTTP 429 Too Many Requests from an external partner API. What is the production retry standard?
 
 **A)** Immediately send 50 retries in a tight loop.
+
 **B)** Never retry; fail immediately.
+
 **C)** Reboot the partner's server.
+
 **D)** Exponential Backoff with Jitter: Wait for T = base * 2^(attempt) + rand(0, 1) seconds before retrying, bounding retries to a safe maximum (e.g. 3 attempts).
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -284,16 +379,24 @@ When downstream external services experience rate limits or transient load spike
 - **B)** Failing immediately prevents recovery from transient network glitches.
 - **C)** External partner servers cannot be rebooted.
 
+</details>
+
 ---
 
 ### Q228. Returning Multimodal Data in `tool_result`
 A web-testing agent uses a tool `capture_screenshot` to verify a UI layout. Can the tool return an image directly to Claude in the `tool_result`?
 
 **A)** Yes; Anthropic's Messages API natively supports multimodal tool results: `tool_result.content` can be a list containing an image block (`{"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "..."}}`), allowing Claude to visually inspect the screenshot.
+
 **B)** No, Claude only processes plain text.
+
 **C)** Yes, but only if the image is printed on paper first.
 
 **D)** Only black-and-white JPEG images are supported.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -302,6 +405,8 @@ Anthropic's Messages API natively supports multimodal tool results. A tool can r
 **Why other options are incorrect:**
 - **B)** Claude is fully multimodal (vision + text).
 - **C, D)** Paper printing is absurd; all standard web image formats are supported in base64.
+
+</details>
 
 ---
 
@@ -319,8 +424,14 @@ Why did Claude attempt to call an unregistered tool, and how can the orchestrato
 **A)** Seattle does not have weather.
 
 **B)** The API key was expired.
+
 **C)** Tool Confabulation: The model assumed or hallucinated that a common utility tool must exist based on the user's prompt. Prevention: Emphasize in the system prompt: `"You only have access to the tools explicitly declared in your configuration. Never attempt to invoke undeclared or hypothetical tools."`
+
 **D)** The developer's computer clock was wrong.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -332,17 +443,26 @@ Why did Claude attempt to call an unregistered tool, and how can the orchestrato
 **Anti-Pattern Alert:**
 *Tool Confabulation*: Assuming tools exist without checking schemas, resulting in execution crashes against unregistered tool names.
 
+</details>
+
 ---
 
 ### Q230. Distinguishing Transient Errors from Permanent Errors
 When writing an intelligent tool execution wrapper, how should the wrapper classify errors before returning them to Claude?
 
 **A)** Treat all errors as fatal crashes.
+
 **B)** Hide all errors and return empty JSON.
+
 **C)** Format all errors as binary numbers.
+
 **D)** Categorize into:
 1. Transient / Retryable (e.g. 503 Service Unavailable, 429 Rate Limit, Socket Timeout) → Retry automatically with backoff.
 2. Permanent / User-Correctable (e.g. 400 Bad Request, 404 Entity Not Found, 403 Forbidden) → Return immediately to Claude with `is_error: true` so the model can adjust parameters or inform the user.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** D
 
 **Explanation:**
@@ -353,6 +473,8 @@ Resilient agent architectures distinguish between transient transport errors and
 - **B)** Masking errors blinds the agent and causes hallucinations.
 - **C)** Binary errors cannot be parsed by LLM reasoning loops.
 
+</details>
+
 ---
 
 ### Q231. Tool Argument Injection Attacks
@@ -362,8 +484,14 @@ An attacker inputs: `' OR '1'='1`. What architectural vulnerability exists?
 **A)** Extended Thinking timeout.
 
 **B)** SQL Injection via Unparameterized Tool Implementation: The tool concatenated raw LLM-generated arguments directly into an SQL statement rather than using parameterized queries / prepared statements.
+
 **C)** Cache invalidation.
+
 **D)** Cross-Site Scripting (XSS).
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -373,15 +501,23 @@ LLM tool implementations are backend software and must follow standard secure co
 - **A, C)** Unrelated to SQL injection vulnerabilities.
 - **D)** XSS targets browser DOM rendering, not database queries.
 
+</details>
+
 ---
 
 ### Q232. Schema Nesting: Objects vs. Flat Parameters
 Why is a flat parameter schema (`user_id`, `start_date`, `end_date`) generally preferred over deeply nested objects (`filter.user.profile.identifiers.id`) for LLM tools?
 
 **A)** Flat schemas make database queries run faster.
+
 **B)** Claude cannot parse nested JSON.
+
 **C)** Nested JSON is illegal under RFC 8259.
+
 **D)** Flat or shallow schemas reduce reasoning complexity, minimize token consumption in the schema definition, and significantly decrease the likelihood of the model omitting deep nested keys or misplacing attributes.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -393,15 +529,23 @@ While Claude supports arbitrarily deep JSON Schemas, deeply nested object hierar
 - **B)** Claude parses complex nested JSON accurately when required.
 - **C)** RFC 8259 fully permits nested JSON objects.
 
+</details>
+
 ---
 
 ### Q233. Tool Call Timeout Enforcement
 If an external API takes 90 seconds to respond, but the user expects interactive chat responses within 15 seconds, where should timeouts be enforced?
 
 **A)** Timeouts should never be used in AI systems.
+
 **B)** Inside the user's browser CSS.
+
 **C)** At the tool execution layer: The orchestrator wraps the tool invocation in an explicit timeout (e.g. `asyncio.wait_for(tool_call(), timeout=10.0)`). If the timeout expires, it returns `is_error: true, content: "Tool execution timed out after 10 seconds"` to Claude.
+
 **D)** At the Anthropic billing gateway.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -412,15 +556,23 @@ The LLM host orchestrator is responsible for maintaining interactive application
 - **A)** Omitting timeouts guarantees hanging threads and denial-of-service.
 - **B, D)** CSS and billing gateways do not manage socket I/O timeouts.
 
+</details>
+
 ---
 
 ### Q234. Idempotency in File Modification Tools
 A tool `append_to_file(path, text)` is executed twice because of a network retry. As a result, the same configuration block is duplicated at the end of `nginx.conf`, breaking the web server. How should the tool have been designed?
 
 **A)** The tool should have been named `append_once`.
+
 **B)** Idempotent File Operations: Tools should favor declarative, idempotent primitives (e.g. `write_file(path, full_content)` or `replace_section(path, marker, content)`) rather than blind appending, ensuring that multiple executions produce the exact same final file state.
+
 **C)** Claude should be forbidden from editing configuration files.
+
 **D)** Nginx should not use configuration files.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -432,16 +584,24 @@ Blind append operations are inherently non-idempotent: running them twice duplic
 - **C)** Agents routinely and safely manage config files when properly architected.
 - **D)** Nginx requires configuration files to function.
 
+</details>
+
 ---
 
 ### Q235. Dynamic Tool Gating Based on User Roles (RBAC)
 A company deploys an internal agent for all 500 employees. Only HR managers should be able to execute `view_salary(employee_id)`. How should this access control be enforced?
 
 **A)** Role-Based Access Control (RBAC) at Tool Registration: Inspect the authenticated user's session token *before* constructing the API request. If the user lacks the HR role, completely omit `view_salary` from the `tools` array passed to the API.
+
 **B)** Tell Claude in the system prompt: "Only use view_salary if the user says they are in HR."
+
 **C)** Let all employees view salaries, but ask them not to share.
 
 **D)** Ban all HR managers from using AI.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -454,6 +614,8 @@ Security boundaries must NEVER rely on user honesty or model prompt adherence. A
 **Anti-Pattern Alert:**
 *Prompt-Level Authorization*: Relying on the LLM to enforce access control based on user claims rather than programmatically filtering available tools using verified session claims.
 
+</details>
+
 ---
 
 ### Q236. The Cost of Overly Large Tool Return Payloads
@@ -462,8 +624,14 @@ An agent calls `get_customer_transactions(customer_id="123")`. The database retu
 **A)** The database runs 10x faster.
 
 **B)** Context Saturation & Latency Spike: The next API turn must ingest 400,000 input tokens, costing significant money, increasing processing latency to over 40 seconds, and diluting model attention.
+
 **C)** Claude deletes the customer's account.
+
 **D)** The user receives free tokens.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -472,6 +640,8 @@ Returning massive unpaginated datasets into conversation history creates severe 
 **Why other options are incorrect:**
 - **A)** Dumping massive payloads does not accelerate databases.
 - **C, D)** Context bloat causes latency and cost spikes, not account deletion or free tokens.
+
+</details>
 
 ---
 
@@ -489,8 +659,14 @@ If Claude passes `{"filter": null}`, how should the Python tool handler process 
 **A)** The tool should crash.
 
 **B)** `null` should be converted to the string `"null"`.
+
 **C)** Both should be handled cleanly, typically defaulting to `None` in Python without raising `KeyError` or `TypeError`.
+
 **D)** The database should delete all rows.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -500,15 +676,23 @@ Models may either pass an explicit `null` or omit optional keys from the argumen
 - **A, D)** Crashing or deleting data on null values reflects defective software engineering.
 - **B)** Converting null to the literal string `"null"` causes subtle search bugs (searching for users named "null").
 
+</details>
+
 ---
 
 ### Q238. Tool Name Collisions Across Multiple Services
 An agent integrates tools from two microservices: Jira and GitHub. Both services have a tool named `create_issue`. What occurs if both are registered in the `tools` array?
 
 **A)** The API rejects the request with an HTTP 400 error because tool names MUST be unique within a single request.
+
 **B)** The Anthropic API merges them into a single super-tool.
+
 **C)** Claude randomly executes one or the other.
+
 **D)** Both tools are executed in parallel on every turn.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -518,15 +702,23 @@ The Anthropic Messages API requires that every tool in the `tools` list has a gl
 **Why other options are incorrect:**
 - **B, C, D)** Name collisions violate the uniqueness constraint and are rejected at the gateway.
 
+</details>
+
 ---
 
 ### Q239. Programmatic Safety Gates for Destructive Actions
 A tool `delete_production_cluster` has a valid schema. What is the recommended safety architecture before the tool handler executes the command?
 
 **A)** Print a warning to stdout and execute anyway.
+
 **B)** Blame the model if the cluster is deleted.
+
 **C)** Execute the command immediately if Claude asks for it.
+
 **D)** Programmatic Safety Gate / Human-in-the-Loop Interception: The tool handler detects a high-consequence destructive operation, suspends execution, generates a pending authorization token, and requires out-of-band verification (e.g. Slack approval or MFA confirmation) before executing.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -536,6 +728,8 @@ High-consequence tools (deleting databases, transferring funds, modifying DNS) m
 **Why other options are incorrect:**
 - **A, B, C)** Unchecked autonomous execution of destructive commands violates enterprise safety standards.
 
+</details>
+
 ---
 
 ### Q240. The "Tool Overlap" Dilemma
@@ -543,13 +737,20 @@ A developer registers three tools:
 - `search_google`
 - `search_bing`
 - `search_duckduckgo`
+
 Claude hesitates, alternates inconsistently between them, and occasionally calls all three for a single query. What is the architectural solution?
 
 **A)** Tell Claude to search only on full moons.
 
 **B)** Consolidate into a single tool `search_web` that abstracts the search provider internally, providing Claude with a clear, unambiguous operational interface.
+
 **C)** Disable internet access.
+
 **D)** Add 5 more search engines.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -559,15 +760,23 @@ Exposing multiple tools that perform identical functional tasks creates "Tool Ov
 - **A, C)** Fanciful or destructive suggestions.
 - **D)** Adding more search engines worsens decision confusion.
 
+</details>
+
 ---
 
 ### Q241. Enforcing Output Limits in Tool Responses
 A tool queries logs using `grep`. When searching for `"INFO"`, the command matches 200,000 lines. How should the tool handler format its return payload?
 
 **A)** Return all 200,000 lines.
+
 **B)** Throw an unhandled exception.
+
 **C)** Return an empty string.
+
 **D)** Enforce Truncation with Slicing: Return the first 50 lines, provide a clear metadata header (`"Matched 200,000 lines. Showing first 50 lines. Please refine your search query with more specific terms."`), and truncate the rest.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -578,16 +787,24 @@ Tool handlers must defend the LLM's context window against unbounded data floods
 - **A)** Flooding the context crashes the session or spikes latency.
 - **B, C)** Crashing or returning empty strings hides the fact that matches were found.
 
+</details>
+
 ---
 
 ### Q242. Tool Descriptions: Explaining Return Value Types
 Why should a tool description explain what data format is returned (e.g., `"Returns: JSON object with keys {status, user_id, active_orders}"`)?
 
 **A)** It helps Claude anticipate the shape of the result, allowing it to plan multi-turn reasoning steps and write accurate downstream processing logic.
+
 **B)** Claude cannot read JSON unless told in advance.
 
 **C)** Tool descriptions are executed as JavaScript code.
+
 **D)** It reduces cloud hosting costs by 99%.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -596,16 +813,24 @@ Explaining return shapes in tool descriptions provides forward-looking semantic 
 **Why other options are incorrect:**
 - **B, C, D)** Claude parses JSON natively; descriptions are text documentation, not executed JavaScript or hosting cost multipliers.
 
+</details>
+
 ---
 
 ### Q243. Handling Schema Validation Errors Gracefully
 If a user asks: "Transfer money", and Claude invokes `transfer_funds(amount=100)` but forgets the required parameter `recipient`, what does the client-side schema validator do?
 
 **A)** Transfers the money to a random account.
+
 **B)** Deletes the agent codebase.
 
 **C)** Intercepts the call, intercepts execution before hitting the bank, and returns a `tool_result` with `is_error: true, content: "SchemaValidationError: Missing required parameter 'recipient'"` to Claude.
+
 **D)** Freezes the user's computer.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -613,6 +838,8 @@ Client-side schema validation acts as a protective shield. When required paramet
 
 **Why other options are incorrect:**
 - **A, B, D)** Absurd failure modes; validation gates prevent unauthorized execution.
+
+</details>
 
 ---
 
@@ -622,8 +849,14 @@ A company updates its `create_ticket` tool by adding a new parameter `priority`.
 **A)** Make `priority` a required field immediately.
 
 **B)** Add `priority` as an optional property with a sensible default (`"default": "medium"`), ensuring existing callers and cached conversations that do not pass `priority` continue executing without failure.
+
 **C)** Delete `create_ticket` and create `create_ticket_2026`.
+
 **D)** Force all users to re-login.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -634,15 +867,23 @@ In production systems, tools evolve. Adding new required fields breaks active mu
 - **C)** Creating numbered versions clutters the tool registry.
 - **D)** User logins do not resolve API schema changes.
 
+</details>
+
 ---
 
 ### Q245. Domain 4 (Part 1) Summary: The Tool Contract
 What constitutes the fundamental operational contract of an Anthropic tool?
 
 **A)** A Python script that runs without errors.
+
 **B)** A plain English paragraph in the system prompt.
+
 **C)** An external REST API that has no documentation.
+
 **D)** A formal JSON Schema declaring unambiguous names, actionable descriptions, strictly typed input properties, explicit required fields, and an execution handler returning structured `tool_result` blocks with explicit `is_error` status flags.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -652,3 +893,4 @@ Anthropic tool calling relies on a formal, multi-part contract: declarative JSON
 **Why other options are incorrect:**
 - **A, B, C)** Loose scripts or undocumented REST APIs lack the formal schema and error contracts required for reliable LLM tool use.
 
+</details>

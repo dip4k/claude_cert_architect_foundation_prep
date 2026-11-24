@@ -8,9 +8,15 @@
 An engineer has a personal preference for tabs over spaces configured in `~/.claude/config.json`. The repository they are working on has `.claude/config.json` committed to Git specifying spaces. When running Claude Code inside this repository, which setting takes precedence?
 
 **A)** The user-level setting (`~/.claude/`) overrides the repository setting.
+
 **B)** Claude Code randomly alternates between tabs and spaces.
+
 **C)** The command fails with a configuration collision error.
+
 **D)** The project-level setting (`.claude/`) overrides the user-level setting.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -20,6 +26,7 @@ Claude Code resolves configuration settings through a layered hierarchy:
 2. Project-level (`.claude/`) (shared team/repository standards)
 3. User-level (`~/.claude/`) (developer personal defaults)
 4. CLI / Session flags (immediate runtime overrides)
+
 Project-level settings committed to version control override personal user-level defaults so the whole team stays consistent, while managed enterprise floors cannot be relaxed by either.
 
 **Why other options are incorrect:**
@@ -27,16 +34,24 @@ Project-level settings committed to version control override personal user-level
 - **B)** Configuration resolution is strictly deterministic.
 - **C)** Precedence rules exist specifically to prevent collision errors.
 
+</details>
+
 ---
 
 ### Q97. Enterprise Managed Configuration Overrides
 An enterprise security team mandates that all developer machines must block raw bash execution in Claude Code. A developer attempts to add `"allowedTools": ["Bash"]` inside their personal `~/.claude/config.json`. What happens?
 
 **A)** The user's personal setting merges with the policy and allows Bash in interactive mode only.
+
 **B)** The Enterprise / Managed configuration establishes an immutable security floor; personal and project configurations cannot grant permissions that are explicitly restricted by managed enterprise policies.
+
 **C)** The developer's personal config overrides the enterprise policy.
 
 **D)** Claude Code prompts the user to choose which policy they prefer.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -47,15 +62,23 @@ Enterprise / Managed configuration sits at the top of the governance hierarchy a
 - **C)** Allowing individual developers to bypass enterprise security defeats organizational compliance.
 - **D)** Security enforcement is deterministic, not user-prompted.
 
+</details>
+
 ---
 
 ### Q98. Keeping CLAUDE.md Concise (<200 Lines)
 Why does Anthropic recommend keeping the root `CLAUDE.md` file concise (ideally under 200 lines) rather than dumping an entire 2,000-line wiki into it?
 
 **A)** Context Window Saturation & Attention Dilution: `CLAUDE.md` is loaded into the prompt on EVERY single conversation turn. A bloated `CLAUDE.md` consumes baseline tokens, slows down time-to-first-token latency, and dilutes the model's attention away from the user's specific task.
+
 **B)** GitHub rejects files named `CLAUDE.md` if they exceed 5KB.
+
 **C)** Claude Code can only read the first 100 characters of any file.
+
 **D)** Longer files cause syntax errors in Python.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -64,6 +87,7 @@ Why does Anthropic recommend keeping the root `CLAUDE.md` file concise (ideally 
 1. High token costs on every turn.
 2. Latency degradation.
 3. Attention dilution: when everything is marked as essential, the model prioritizes nothing effectively.
+
 Detailed, task-specific documentation belongs in on-demand **Skills** or path-scoped rules, not the global `CLAUDE.md`.
 
 **Why other options are incorrect:**
@@ -74,16 +98,24 @@ Detailed, task-specific documentation belongs in on-demand **Skills** or path-sc
 **Anti-Pattern Alert:**
 *Monolithic CLAUDE.md*: Using `CLAUDE.md` as an exhaustive dumping ground for all company documentation, wasting tokens and diluting attention across all sessions.
 
+</details>
+
 ---
 
 ### Q99. Modular Rule Organization with `.claude/rules/`
 A large monorepo contains a frontend React app in `/frontend` and a backend Go service in `/backend`. What is the best practice for configuring coding standards without bloating the root `CLAUDE.md`?
 
 **A)** Force developers to type out all coding conventions in every prompt.
+
 **B)** Create a 5,000-line `CLAUDE.md` at the repository root covering both languages.
 
 **C)** Use path-scoped rule files in `.claude/rules/` (e.g. `.claude/rules/frontend.md` and `.claude/rules/backend.md`) with path matching filters, so rules are only loaded when Claude operates on files in those specific directories.
+
 **D)** Delete Go files when working on React, and delete React files when working on Go.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -93,6 +125,8 @@ Claude Code supports modular, path-scoped rules via `.claude/rules/`. By definin
 - **A)** Requiring manual prompt typing wastes developer time and is error-prone.
 - **B)** Creates context bloat and mixes irrelevant language rules.
 - **D)** Deleting codebase files is destructive and absurd.
+
+</details>
 
 ---
 
@@ -107,9 +141,15 @@ In a nested project structure:
 When a developer launches Claude Code while working inside `/my-repo/services/billing/`, how are the `CLAUDE.md` files processed?
 
 **A)** The root `CLAUDE.md` deletes the subdirectory file.
+
 **B)** Only the subdirectory `CLAUDE.md` is read; the root is ignored.
+
 **C)** Claude Code throws a fatal error because multiple `CLAUDE.md` files are illegal.
+
 **D)** The root `CLAUDE.md` is loaded first for repo-wide baseline standards, and the subdirectory `CLAUDE.md` is loaded hierarchically to apply localized overrides and service-specific instructions.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -120,6 +160,8 @@ Claude Code evaluates `CLAUDE.md` files hierarchically. The root `CLAUDE.md` est
 - **A)** Claude Code does not delete user configuration files.
 - **B)** Discarding root rules would lose global standards.
 - **C)** Multiple hierarchical `CLAUDE.md` files are a core supported feature.
+
+</details>
 
 ---
 
@@ -132,8 +174,14 @@ An engineering team is reorganizing its Claude Code configuration. Match the con
 **A)** 1: Rules, 2: Skills, 3: CLAUDE.md
 
 **B)** 1: CLAUDE.md, 2: Path-scoped Rule (`.claude/rules/`), 3: Skill (`.claude/skills/`)
+
 **C)** 1: Skill, 2: CLAUDE.md, 3: Rules
+
 **D)** All three must be stored in `~/.bashrc`
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -145,6 +193,8 @@ An engineering team is reorganizing its Claude Code configuration. Match the con
 - **A, C)** Misallocates on-demand tasks into permanent memory and routine commands into episodic skills.
 - **D)** `~/.bashrc` is a shell script, not a Claude Code AI configuration file.
 
+</details>
+
 ---
 
 ### Q102. Auto-Discovery of Build and Test Commands
@@ -153,9 +203,15 @@ A developer opens a new Rust project with Claude Code. The project has a `Cargo.
 `Test command: cargo test -- --nocapture`?
 
 **A)** Claude Code cannot execute commands unless they are in `CLAUDE.md`.
+
 **B)** Cargo commands are forbidden without written permission.
+
 **C)** Explicitly defining canonical commands eliminates guessing and experimentation: it prevents Claude from trying multiple incorrect command variants (`cargo check`, `cargo run test`), saving tokens, preventing failed tool runs, and accelerating execution.
+
 **D)** Rust code requires special encryption flags.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -165,6 +221,8 @@ While Claude Code can often infer standard tools from project manifests, ambiguo
 **Why other options are incorrect:**
 - **A)** Claude Code can execute any allowed terminal command.
 - **B, D)** Cargo commands are standard and do not require encryption.
+
+</details>
 
 ---
 
@@ -178,6 +236,7 @@ paths:
   - "**/*.py"
 ---
 ```
+
 **B)**
 ```yaml
 ---
@@ -192,12 +251,17 @@ model: python
 language: py
 ---
 ```
+
 **D)**
 ```yaml
 ---
 include: "all"
 ---
 ```
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -205,6 +269,8 @@ Path-scoped rules use standard glob pattern matching in their YAML frontmatter u
 
 **Why other options are incorrect:**
 - **B, C, D)** These do not follow the defined Claude Code rule schema for file-path glob triggering.
+
+</details>
 
 ---
 
@@ -215,10 +281,16 @@ A developer places the following line in their repository's `CLAUDE.md`:
 Why is this an extreme security violation?
 
 **A)** `CLAUDE.md` is committed to version control and ingested directly into model context windows, exposing sensitive credentials in Git history and transmitting raw secrets across API boundaries.
+
 **B)** Claude Code refuses to run if it detects the word "Password".
 
 **C)** Credentials in `CLAUDE.md` are ignored unless wrapped in base64 encoding.
+
 **D)** Environment tokens in `CLAUDE.md` automatically overwrite local `.env` files.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -232,15 +304,23 @@ Why is this an extreme security violation?
 **Anti-Pattern Alert:**
 *Hardcoded Secrets in Project Prompts*: Storing API tokens, database credentials, or private keys inside `CLAUDE.md` or rule files.
 
+</details>
+
 ---
 
 ### Q105. Custom Slash Commands in Claude Code
 How can a team configure a project-specific shortcut command (e.g. `/deploy-staging`) for all developers in a repository?
 
 **A)** By adding a `"commands"` key inside `package.json` scripts and launching Claude with `--npm`.
+
 **B)** By placing the prompt inside `~/.bashrc` as a shell function without any `.claude/` configuration.
+
 **C)** By creating a custom markdown command inside `.claude/commands/` or configuring a custom Skill in `.claude/skills/deploy-staging/SKILL.md`.
+
 **D)** By creating a Git branch named `deploy-staging`.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -252,15 +332,23 @@ Custom slash commands and developer workflows are defined within project-scoped 
 - **B)** Shell functions in `~/.bashrc` are local bash shortcuts, not shared team slash commands inside Claude Code.
 - **D)** Git branch names do not define CLI slash commands.
 
+</details>
+
 ---
 
 ### Q106. Preventing Instruction Conflicts Across Hierarchies
 If the root `CLAUDE.md` says: `"Always format code using Prettier with single quotes"`, but `.claude/rules/legacy.md` (scoped to `/legacy/**`) says: `"Always format legacy code using double quotes"`, how does Claude resolve this when editing `/legacy/app.js`?
 
 **A)** Claude crashes due to contradictory instructions.
+
 **B)** Claude uses single quotes on odd lines and double quotes on even lines.
+
 **C)** The root `CLAUDE.md` always overrides all subdirectory rules.
+
 **D)** Path-scoped rules are more specific than the global root `CLAUDE.md`; therefore, the localized rule applies and Claude uses double quotes for files in `/legacy/`.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -272,6 +360,8 @@ In the configuration hierarchy, path-scoped rules are specifically designed to h
 - **B)** Line-alternating formatting is absurd and non-standard.
 - **C)** If root rules always overrode specific path rules, localized exceptions would be impossible.
 
+</details>
+
 ---
 
 ### Q107. The Cost of Overly Verbose Project Prompts
@@ -280,8 +370,14 @@ A team's `CLAUDE.md` contains 15,000 tokens of architecture explanations, histor
 **A)** Zero impact, because `CLAUDE.md` is only billed once per year.
 
 **B)** High Latency and Cost: 15,000 tokens are injected on every turn across all 1,000 daily queries (15 million extra input tokens daily), creating substantial financial waste and degrading response speed.
+
 **C)** The developers receive free API credits for being descriptive.
+
 **D)** Claude Code runs locally on the CPU without using API tokens.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -291,15 +387,23 @@ Every single token in `CLAUDE.md` is processed as input on every user interactio
 - **A, C)** Token billing occurs continuously per request; there are no annual free exemptions.
 - **D)** Claude Code utilizes Anthropic's hosted cloud API for inference.
 
+</details>
+
 ---
 
 ### Q108. Version Control Best Practices for `.claude/`
 Which files in the `.claude/` directory should be committed to version control (`git`), and which should be placed in `.gitignore`?
 
 **A)** Commit nothing; the entire `.claude/` folder should always be gitignored.
+
 **B)** Commit `.claude/config.json`, `.claude/rules/`, `.claude/skills/`, and `CLAUDE.md`; add `.claude/sessions/`, `.claude/cache/`, and developer-specific local state to `.gitignore`.
+
 **C)** Commit all session logs, API keys, and temporary files.
+
 **D)** Zip the folder and commit the binary `.zip` file.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -311,15 +415,23 @@ Team configurations (shared build rules, coding standards, modular skills, path 
 - **C)** Committing session logs and keys causes repository bloat and massive security vulnerabilities.
 - **D)** Zipping files destroys git diff tracking and version comparison.
 
+</details>
+
 ---
 
 ### Q109. Using `CLAUDE.md` to Guide Test-Driven Development (TDD)
 How can a technical lead configure `CLAUDE.md` to guide Claude Code to write unit tests before modifying application logic?
 
 **A)** Set `temperature: 0` in `.claude/config.json` so the model automatically defaults to test-first coding.
+
 **B)** Set the test runner timeout to 1 millisecond so edits fail immediately.
+
 **C)** Put `"TDD=true"` in `.env` without documenting any workflow steps.
+
 **D)** Add an explicit policy instruction: `"Workflow Rule: When implementing new features or bug fixes, always write the failing unit test first. Run the test to confirm it fails, implement the minimal code required to pass, and run the test suite again to confirm 100% green."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -331,6 +443,8 @@ How can a technical lead configure `CLAUDE.md` to guide Claude Code to write uni
 - **B)** 1ms timeouts cause tests to fail before executing.
 - **C)** Environment variables alone do not instruct Claude Code on workflow order.
 
+</details>
+
 ---
 
 ### Q110. The Perils of Vague Instructions in `CLAUDE.md`
@@ -338,10 +452,16 @@ A developer writes in `CLAUDE.md`: `"Write clean, fast, beautiful, elegant, bug-
 Why is this instruction considered ineffective in architectural review?
 
 **A)** It is an anti-pattern of non-actionable platitudes: it provides zero concrete architectural guidelines, naming conventions, linting commands, or measurable constraints, wasting prompt tokens on subjective noise.
+
 **B)** Those adjectives trigger strict-mode linter warnings during startup.
 
 **C)** Vague words cause `CLAUDE.md` to fail Markdown parsing.
+
 **D)** Claude Code ignores adjectives unless they are formatted in YAML frontmatter.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -354,6 +474,8 @@ Telling an AI model to "write clean, elegant code" is conversational filler. Use
 **Anti-Pattern Alert:**
 *Platitude Prompting*: Filling project configuration files with subjective platitudes ("make it scalable and pretty") rather than concrete technical standards.
 
+</details>
+
 ---
 
 ### Q111. User-Level Global Overrides (`~/.claude/CLAUDE.md`)
@@ -362,8 +484,14 @@ What is the primary use case for maintaining a `CLAUDE.md` in the user's home di
 **A)** To override enterprise managed security policies on a local machine.
 
 **B)** To store shared team coding standards that every teammate will pull via Git.
+
 **C)** To store personal developer ergonomic preferences, such as custom terminal aliases, preferred editor notification styles, or individual accessibility settings across all repositories on their machine.
+
 **D)** To store plaintext production API tokens for all local repositories.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -374,16 +502,24 @@ What is the primary use case for maintaining a `CLAUDE.md` in the user's home di
 - **B)** `~/.claude/CLAUDE.md` is not committed to Git, so teammates never receive it.
 - **D)** Secrets belong in environment variables or secret vaults, never in markdown files.
 
+</details>
+
 ---
 
 ### Q112. Structuring Test Invocations in `CLAUDE.md`
 A repository has 10,000 end-to-end integration tests that take 45 minutes to run, alongside fast unit tests that run in 3 seconds. How should `CLAUDE.md` instruct Claude Code to run tests during active editing?
 
 **A)** `"Run all 10,000 integration tests after every line of code you edit."`
+
 **B)** `"Never run any tests under any circumstances."`
 
 **C)** `"Default Test Command: npm run test:unit. Only run targeted unit tests corresponding to modified files during iteration. Do NOT run full integration tests (npm run test:e2e) unless explicitly instructed by the user."`
+
 **D)** `"Run tests on another developer's laptop."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -394,15 +530,23 @@ Autonomous agents will execute whatever test command is configured. If instructe
 - **B)** Eliminating testing removes verification guardrails entirely.
 - **D)** Remote laptop hijacking is not a supported testing architecture.
 
+</details>
+
 ---
 
 ### Q113. Specifying Code Formatting Tools
 Why should `CLAUDE.md` explicitly reference the project's automated formatter (e.g., `black .` or `prettier --write .`) rather than listing 50 separate manual whitespace and indentation rules?
 
 **A)** Python requires manual formatting only.
+
 **B)** Claude cannot generate whitespace.
+
 **C)** Formatters do not work on computers.
+
 **D)** Let the deterministic tool do deterministic work: offload formatting to automated linters/formatters via CLI execution, saving prompt tokens and guaranteeing exact adherence to team standards.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -414,16 +558,24 @@ Attempting to teach an LLM 50 nuanced spacing, brace-placement, and line-wrappin
 - **B)** Claude outputs whitespace accurately.
 - **C)** Automated code formatters are standard software tooling.
 
+</details>
+
 ---
 
 ### Q114. Temporary Instruction Scoping via CLI Flags
 A developer wants Claude Code to run a single session in an extra-cautious mode where every file modification requires a detailed security explanation, without permanently modifying `CLAUDE.md`. How should this be done?
 
 **A)** Edit `CLAUDE.md`, run the task, and remember to revert the file using `git checkout`.
+
 **B)** Pass the instructions directly in the initial user prompt or use session CLI flags (`--append-system-prompt` or runtime flag), leaving the persistent version-controlled `CLAUDE.md` untouched.
+
 **C)** Delete the repository and clone it again.
 
 **D)** Create a new GitHub account.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -433,15 +585,23 @@ One-off, session-specific constraints should not be committed to persistent conf
 - **A)** Modifying and reverting files is error-prone; developers frequently forget to revert, polluting Git history.
 - **C, D)** Cloning repos or making new accounts is unnecessary overhead.
 
+</details>
+
 ---
 
 ### Q115. Architectural Blueprint Referencing in `CLAUDE.md`
 A complex backend follows Clean Architecture (Domain → Use Cases → Repositories → Controllers). How should `CLAUDE.md` guide Claude to respect this architecture?
 
 **A)** Summarize the layer dependency rule concisely in `CLAUDE.md`: `"Architecture: Clean Architecture. Invariant: Domain models must have zero external dependencies. Controllers may only call Use Cases; never call Repositories directly from Controllers."`
+
 **B)** Paste the entire 500-page book on Clean Architecture into `CLAUDE.md`.
+
 **C)** Tell Claude to do whatever is easiest.
+
 **D)** Forbid Claude from creating new files.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -453,6 +613,8 @@ Concise, high-leverage architectural invariants belong in `CLAUDE.md`. Stating t
 - **C)** "Whatever is easiest" leads to spaghetti architecture.
 - **D)** Forbidding file creation prevents standard development work.
 
+</details>
+
 ---
 
 ### Q116. Path Scoping: Excluding Generated Files
@@ -461,8 +623,14 @@ A repository generates large GraphQL and OpenAPI client files in `/src/generated
 **A)** Claude Code cannot read generated files.
 
 **B)** Generated files will be overwritten on the next build, rendering manual edits futile and corrupting generator state.
+
 **C)** Editing generated files breaks internet access.
+
 **D)** Generated files are legally owned by the compiler.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -473,16 +641,24 @@ Directly editing autogenerated artifacts (Protobuf, GraphQL, OpenAPI codegen, bu
 - **C)** File edits do not disrupt network connectivity.
 - **D)** Legal ownership is irrelevant to compiler output.
 
+</details>
+
 ---
 
 ### Q117. Environment Variable Handling in `CLAUDE.md`
 What is the proper guidance to provide in `CLAUDE.md` regarding local development environment files like `.env`?
 
 **A)** `"Always copy .env.example to .env if .env is missing. Never commit .env to version control. Read config values from process.env rather than hardcoding."`
+
 **B)** `"Commit .env to Git so all team members share the same credentials."`
+
 **C)** `"Delete .env on startup."`
 
 **D)** `"Post .env contents in Slack."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -492,15 +668,23 @@ Documenting environment bootstrapping conventions (e.g. copying `.env.example`, 
 - **B, D)** Exposing `.env` in Git or Slack creates severe security leaks.
 - **C)** Deleting `.env` destroys local configuration.
 
+</details>
+
 ---
 
 ### Q118. Linting Failure Recovery Instructions
 An agent modifies a file and runs the linter, which outputs 3 syntax errors. What instruction in `CLAUDE.md` ensures the agent handles this properly?
 
 **A)** `"If the linter fails, disable the linter and push the code."`
+
 **B)** `"Delete the file if linting fails."`
+
 **C)** `"Ask the user to fix the linting errors manually."`
+
 **D)** `"Linting Policy: All edits must pass linting. If the linter reports errors, inspect the error output, fix the underlying code, and re-run the linter until 0 errors are reported before declaring the task complete."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -512,15 +696,23 @@ Establishing an explicit quality gate in `CLAUDE.md` ensures that the agent take
 - **B)** Deleting files is destructive.
 - **C)** Delegating routine lint fixes back to the user defeats the purpose of developer automation.
 
+</details>
+
 ---
 
 ### Q119. Language and Toolchain Version Pinning
 Why should `CLAUDE.md` specify explicit versions (e.g., `"Python 3.12, Node.js 22, Go 1.23"`)?
 
 **A)** Compilers refuse to run unless versions are written in markdown.
+
 **B)** Claude cannot write code without knowing the year the language was created.
+
 **C)** To prevent Claude from using deprecated syntax or using features from newer language versions not yet supported by the project's production runtime.
+
 **D)** Older language versions cost more tokens.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -531,15 +723,23 @@ LLMs are trained on massive corpuses spanning decades of language syntax. Withou
 - **A, B)** Compilers and models do not require creation years to function.
 - **D)** Token pricing is completely independent of language versions.
 
+</details>
+
 ---
 
 ### Q120. Defining Branching and Git Commit Conventions
 How can `CLAUDE.md` ensure that all Git commits generated by Claude Code adhere to Conventional Commits?
 
 **A)** Install a custom operating system.
+
 **B)** Claude Code cannot execute Git commands.
+
 **C)** Commit messages must be written in binary.
+
 **D)** Include a clear convention guideline: `"Git Commit Standards: Follow Conventional Commits format strictly (e.g., feat(auth): add OAuth2 token refresh, fix(db): resolve connection pool leak). Do not push directly to main."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -551,16 +751,24 @@ Claude Code natively executes git commands. By defining clear commit message sta
 - **B)** Claude Code has full terminal access and routinely executes git commands.
 - **C)** Commit messages are standard text strings.
 
+</details>
+
 ---
 
 ### Q121. Directory-Specific Testing Configurations
 In a monorepo, running `pytest` from the root fails because tests must be run inside their respective package directories (`cd packages/core && poetry run pytest`). Where should this instruction be placed?
 
 **A)** On a sticky note on the developer's monitor.
+
 **B)** In `.claude/rules/packages.md` or a localized `CLAUDE.md` inside `packages/core/`.
+
 **C)** In the user's global `~/.bashrc`.
 
 **D)** In the cloud database schema.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -571,6 +779,8 @@ Package-specific execution requirements belong in localized rule files or subdir
 - **C)** Global shell files pollute other repositories.
 - **D)** Database schemas have no connection to local test runners.
 
+</details>
+
 ---
 
 ### Q122. Preventing Unintended Database Migrations
@@ -579,8 +789,14 @@ A developer is working on a feature and doesn't want Claude Code to execute dest
 **A)** `"Drop all databases before every test."`
 
 **B)** `"Delete the database password from the server."`
+
 **C)** `"Database Policy: Never run migrations that drop tables or columns without explicit user confirmation. All local migrations must be executed against local Docker containers, never shared dev databases."`
+
 **D)** `"Only use SQLite."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -591,16 +807,24 @@ Explicitly stating environmental boundaries and destructive action prohibitions 
 - **B)** Deleting passwords breaks database functionality.
 - **D)** Arbitrarily restricting to SQLite prevents working with production databases.
 
+</details>
+
 ---
 
 ### Q123. The Role of `CLAUDE.md` in Onboarding New Developers
 Beyond guiding Claude Code, what secondary organizational benefit does a well-crafted `CLAUDE.md` provide to engineering teams?
 
 **A)** Human Developer Onboarding: Because `CLAUDE.md` contains concise, verified commands for building, testing, linting, and architectural standards, new human engineers can read it to immediately understand how to develop in the repository.
+
 **B)** It replaces the CEO.
+
 **C)** It automatically pays cloud hosting bills.
 
 **D)** It eliminates the need for Git.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -609,15 +833,23 @@ A concise, well-maintained `CLAUDE.md` serves as single-source-of-truth document
 **Why other options are incorrect:**
 - **B, C, D)** Markdown documentation files do not manage executive leadership, process credit cards, or replace version control.
 
+</details>
+
 ---
 
 ### Q124. Auditing `CLAUDE.md` for Outdated Instructions
 A project migrated from Webpack to Vite six months ago, but `CLAUDE.md` still lists `npm run webpack:build`. What failure occurs during Claude Code sessions?
 
 **A)** Vite automatically uninstalls itself.
+
 **B)** The repository is deleted.
+
 **C)** Claude Code converts all files to CoffeeScript.
+
 **D)** Claude Code attempts to run the non-existent Webpack script, encounters errors, and wastes turns debugging a legacy toolchain until it discovers the Vite config.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -627,15 +859,23 @@ Stale documentation in `CLAUDE.md` misleads the agent. When instructions contrad
 **Why other options are incorrect:**
 - **A, B, C)** Stale markdown instructions cause execution failures and wasted turns, not spontaneous file uninstallation or language mutation.
 
+</details>
+
 ---
 
 ### Q125. Scoping Summary: Order of Evaluation
 To summarize Domain 2 configuration precedence, in what exact order does Claude Code resolve conflicting configuration values (from lowest precedence to highest precedence)?
 
 **A)** Session Flags → Project Config → User Config → Enterprise Managed
+
 **B)** Enterprise Managed (baseline floor) → User-level (`~/.claude/`) → Project-level (`.claude/`) → CLI / Session Flags (highest immediate override)
+
 **C)** Random order on each turn
+
 **D)** Alphabetical order by file path
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -646,3 +886,4 @@ Configuration resolution starts with the Enterprise floor (which sets immutable 
 - **A)** Inverts the precedence order.
 - **C, D)** Configuration resolution is strictly hierarchical and deterministic.
 
+</details>

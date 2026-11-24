@@ -8,9 +8,15 @@
 An engineering team requires an API endpoint to return a strictly typed JSON object matching an invoice schema. In legacy implementations, the team prompted Claude with: `"Return valid JSON matching this schema: {...}. Do not include markdown code blocks or conversational text."` Despite this, 2% of responses still contained introductory text or minor JSON syntax errors. What is the modern (2026) architectural solution?
 
 **A)** Add three exclamation marks to the prompt: `"PLEASE RETURN ONLY JSON!!!"`
+
 **B)** Write a Python regex to clean the text after it fails.
+
 **C)** Use Native Structured Outputs via Constrained Decoding (`output_config.format` with `json_schema`): The Anthropic inference engine compiles the JSON schema into a grammar constraint at the token-generation layer, making it mathematically impossible for the model to output a token that violates the schema.
+
 **D)** Fine-tune a custom model on 10,000 JSON examples.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -25,15 +31,23 @@ Natural language prompting for JSON is probabilistic: models can occasionally ou
 **Anti-Pattern Alert:**
 *Probabilistic Formatting Reliance*: Relying on natural language prompt begging ("please return valid JSON") for mission-critical downstream machine interfaces instead of schema-enforced constrained decoding.
 
+</details>
+
 ---
 
 ### Q187. Interaction Between Structured Output Schemas and Prompt Caching
 When using structured outputs with `output_config.format` and a `json_schema`, how does the schema affect prompt caching?
 
 **A)** The schema cannot be cached and is charged as output tokens.
+
 **B)** Specifying a schema disables prompt caching for the entire account.
+
 **C)** The schema is only checked after the model outputs plain text.
+
 **D)** The schema is injected internally into the model's system prompt prefix (adding a modest ~50-200 token overhead); if the schema remains static across requests, it is included in the prompt cache and benefits from 90% cache read discounts.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -45,16 +59,24 @@ To guide the model toward the target structure, the API compiles the provided `j
 - **B)** Structured outputs and prompt caching work together seamlessly.
 - **C)** Constrained decoding evaluates token probabilities during generation, not post-hoc.
 
+</details>
+
 ---
 
 ### Q188. XML Tagging for Structural Prompt Disambiguation
 Why does Anthropic recommend using XML tags (e.g., `<context>`, `<rules>`, `<examples>`, `<user_query>`) to structure complex prompts for Claude?
 
 **A)** Structural Clarity and Boundary Separation: XML tags provide unambiguous boundaries between different operational layers (instructions vs. reference data vs. untrusted user input), preventing prompt injection and improving attention adherence.
+
 **B)** Claude's internal tokenizer was built exclusively for XML and cannot parse Markdown.
+
 **C)** XML tags reduce token count by 50%.
 
 **D)** XML tags are required by W3C internet standards.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -65,6 +87,8 @@ Claude models are specifically fine-tuned to recognize and respect semantic XML 
 - **C)** XML tags add a small number of tokens for opening/closing tags; they do not reduce token count.
 - **D)** W3C standards do not govern LLM prompt design.
 
+</details>
+
 ---
 
 ### Q189. Few-Shot Prompting: Format Consistency
@@ -73,8 +97,14 @@ When providing few-shot examples inside a prompt to guide Claude on a classifica
 **A)** Every example must be in a different language.
 
 **B)** Structural and Format Consistency: Every example must strictly mirror the exact input-output structure, tagging, and formatting expected in the final production output.
+
 **C)** Examples must be at least 10,000 words long.
+
 **D)** Only negative examples of what NOT to do should be included.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -85,6 +115,8 @@ LLMs are pattern-continuation engines. If few-shot examples vary their formattin
 - **C)** Few-shot examples should be concise and focused to conserve context.
 - **D)** Purely negative examples fail to demonstrate the desired positive pattern.
 
+</details>
+
 ---
 
 ### Q190. Chain-of-Thought (CoT) Prompting vs. Native Extended Thinking
@@ -93,8 +125,14 @@ A developer asks: "Should I write 'Think step by step' in my prompt, or should I
 **A)** Always use "Think step by step" in the user prompt, as extended thinking is deprecated.
 
 **B)** For complex reasoning, use native Extended Thinking (`budget_tokens` or `effort` parameter): It provides a dedicated, cryptographically verifiable reasoning scratchpad that is cleanly decoupled from the final answer, allowing deeper reasoning without polluting the final output text.
+
 **C)** Use both simultaneously and set temperature to 1.0.
+
 **D)** Neither; modern LLMs do not require reasoning steps.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -105,6 +143,8 @@ While legacy prompting used phrases like "Think step by step" to encourage reaso
 - **C)** Temperature cannot be set when extended thinking is enabled.
 - **D)** Complex multi-step reasoning tasks benefit immensely from explicit chain-of-thought scratchpads.
 
+</details>
+
 ---
 
 ### Q191. Positive Behavioral Framing vs. Negative Constraints
@@ -113,9 +153,15 @@ An architect reviews a prompt containing 20 negative rules:
 Why does Anthropic recommend shifting from negative prohibitions to positive framing?
 
 **A)** Negative words trigger model safety filters and crash the API.
+
 **B)** The tokenizer cannot encode the word "NOT".
+
 **C)** Positive Framing Principle: Telling the model *what to do* (e.g., "Write exclusively in active voice. Output pure plain text. Provide a 1-to-2 paragraph direct summary.") gives the model clear generative targets, whereas negative prohibitions tell the model what to avoid without guiding it toward the desired alternative.
+
 **D)** Positive prompts are billed at half price.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -128,16 +174,24 @@ Autoregressive language models generate text by predicting the next most probabl
 **Anti-Pattern Alert:**
 *Prohibition Slicing*: Stacking dozens of "DO NOT" constraints instead of clearly defining the expected positive behavior and output format.
 
+</details>
+
 ---
 
 ### Q192. Role-Based System Prompting
 Which system prompt demonstrates best-practice role calibration for a senior security code auditor?
 
 **A)** `"You are an expert Application Security Architect specializing in OWASP Top 10 vulnerabilities and cryptographic implementations. Your objective is to audit code diffs with high skepticism, identify potential exploits, explain the attack vector clearly, and provide patched code adhering to secure coding standards."`
+
 **B)** `"Answer all questions correctly."`
+
 **C)** `"You are a chatbot."`
 
 **D)** `"Act as a pirate who loves security."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -147,15 +201,23 @@ Effective role prompting establishes four key pillars: (1) Domain Identity, (2) 
 - **B, C)** Generic prompts lack domain depth and operational guidance.
 - **D)** Novelty personas (pirates) introduce stylistic noise that degrades professional technical analysis.
 
+</details>
+
 ---
 
 ### Q193. The Case Facts Layer Pattern
 In an enterprise customer support agent, the user's account ID (`ACC-9921`), verified email (`user@corp.com`), and open ticket number (`TICK-440`) must never be lost, even when conversation history is compacted after 20 turns. How should the prompt be structured?
 
 **A)** Hope Claude remembers them from Turn 1.
+
 **B)** Ask the customer to re-enter their account ID on every turn.
+
 **C)** Write the account ID into the Claude model weights.
+
 **D)** Case Facts Layer Pattern: Maintain a dedicated, immutable `<case_facts>` block containing verified entity keys and values, placed outside summarized conversation history, and reinject it on every turn.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -167,16 +229,24 @@ The **Case Facts Layer** pattern separates invariant transactional state from co
 - **B)** Asking users to repeatedly re-enter their ID creates severe customer friction.
 - **C)** Model weights are immutable and cannot be updated at runtime.
 
+</details>
+
 ---
 
 ### Q194. PostToolUse Normalization Hooks
 An agent queries a server monitoring tool `get_system_metrics`. The tool returns a raw 12MB JSON payload containing thousands of sensor readings, memory pages, and thread dumps. What should the client-side `PostToolUse` normalization hook do before appending the result to conversation history?
 
 **A)** Convert the JSON to an uncompressed WAV audio file.
+
 **B)** Append the full 12MB payload into conversation history.
 
 **C)** PostToolUse Normalization: Filter, slice, or extract only the essential summary metrics (e.g. CPU load, memory utilization %, and error counts), discarding the megabytes of low-level noise before constructing the `tool_result` block.
+
 **D)** Delete the agent.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -190,15 +260,23 @@ Appending raw, unnormalized tool dumps directly into conversation history is a l
 **Anti-Pattern Alert:**
 *Raw Tool Ingestion Bloat*: Passing raw, unparsed API payloads (megabytes of logs or dumps) directly into conversation history without normalization.
 
+</details>
+
 ---
 
 ### Q195. Exploration Scratchpads in Complex Problem Solving
 When tasking Claude with an extensive multi-file architecture refactor, how can an architect prevent conversational context degradation during the research phase?
 
 **A)** Allow Claude to fill the main chat history with 50 pages of exploratory notes.
+
 **B)** Turn off extended thinking.
+
 **C)** Delete the codebase.
+
 **D)** Exploration Scratchpad Pattern: Instruct the agent (or subagent) to record working notes, file mappings, and intermediate hypotheses in an external scratchpad file (e.g. `scratchpad.md`), keeping the active prompt clean and loading only verified conclusions into the primary conversation.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -210,16 +288,24 @@ Large-scale investigations generate substantial exploratory exhaust (intermediat
 - **B)** Disabling thinking degrades reasoning capacity.
 - **C)** Deleting code destroys the asset being analyzed.
 
+</details>
+
 ---
 
 ### Q196. The 1 Million Token Context Window: Appropriate Use Cases
 Claude 4.5 models natively support a **1 million token context window**. Which scenario represents the most appropriate, high-leverage application of this massive capacity?
 
 **A)** Ingesting an entire 300,000-line code repository or a 500-page regulatory compliance corpus into a single prompt for comprehensive, cross-cutting dependency analysis or full-audit synthesis.
+
 **B)** Storing 1 million tokens of conversational chit-chat ("Hello", "How are you?").
 
 **C)** Replacing relational databases with a single giant prompt.
+
 **D)** Pasting random Wikipedia articles to see if the model crashes.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -230,6 +316,8 @@ A 1M token context window is a transformative capability for deep, cross-cutting
 - **C)** LLM context windows are not persistent ACID-compliant transactional databases.
 - **D)** Frivolous testing provides zero architectural value.
 
+</details>
+
 ---
 
 ### Q197. Needles in a Haystack: Retrieval Performance at Scale
@@ -238,8 +326,14 @@ While Claude 4.5 achieves near 100% recall on standard "Needle In A Haystack" be
 **A)** The model loses the ability to perform basic arithmetic.
 
 **B)** Attention Competition / Distractor Density: When a prompt contains thousands of similar, competing facts (e.g., 500 different server configurations that look almost identical), high semantic similarity between distractors can cause subtle retrieval confusion unless queries and data are clearly labeled with unique identifiers.
+
 **C)** Input tokens are billed at 100x the normal rate.
+
 **D)** The model always outputs in German.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -248,16 +342,24 @@ While finding a unique, distinct fact ("The secret word is Banana") in 1M tokens
 **Why other options are incorrect:**
 - **A, C, D)** Massive contexts do not cause language switching, arithmetic degradation, or secret price surges.
 
+</details>
+
 ---
 
 ### Q198. Evaluating Prompt Quality: The Golden Dataset Pattern
 An engineering team is refining the system prompt for an automated claims processing agent. How should they systematically verify that a prompt change does not cause regressions?
 
 **A)** Have the lead developer test 2 queries manually in the chat interface.
+
 **B)** Evaluation Harness with a Golden Dataset: Run automated evaluations against a curated benchmark suite of 200+ diverse, ground-truth claim scenarios (including edge cases and adversarial inputs), scoring accuracy, tool call correctness, and schema adherence programmatically before deploying the prompt to production.
+
 **C)** Deploy the new prompt directly to 100% of production users and wait for customer complaints.
 
 **D)** Ask Claude if it thinks the new prompt is good.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -271,15 +373,23 @@ Prompt engineering in enterprise systems must be treated with the same rigor as 
 **Anti-Pattern Alert:**
 *Vibe-Driven Prompt Deployment*: Rolling out prompt modifications to production based on testing two casual queries in chat without systematic regression evaluation.
 
+</details>
+
 ---
 
 ### Q199. LLM-as-a-Judge Evaluation Architectures
 When evaluating open-ended, subjective agent responses (such as explaining a complex legal clause to a consumer), which automated evaluation pattern is industry standard?
 
 **A)** Calculating BLEU scores against a single reference sentence.
+
 **B)** Counting the number of words generated.
+
 **C)** Using a spell-checker.
+
 **D)** LLM-as-a-Judge: Utilize a frontier model (such as `claude-opus-4-5`) equipped with a detailed evaluation rubric, few-shot scoring examples, and explicit criteria (accuracy, clarity, completeness, tone) to grade the candidate model's outputs deterministically.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -290,6 +400,8 @@ N-gram matching metrics like BLEU and ROUGE correlate poorly with semantic accur
 - **A)** BLEU rewards superficial word matching and penalizes valid paraphrasing.
 - **B, C)** Word counts and spell checkers do not evaluate semantic reasoning or correctness.
 
+</details>
+
 ---
 
 ### Q200. Preventing Prompt Injection via XML Boundary Enforcement
@@ -298,10 +410,16 @@ A developer builds a document question-answering system. The user inputs:
 How does proper XML tag escaping prevent this prompt injection?
 
 **A)** Translating the document to Latin.
+
 **B)** It doesn't; prompt injection is impossible to stop.
 
 **C)** Sanitization and Tag Escaping: The application parser escapes or strips closing tags (e.g. converting `</document>` to `&lt;/document&gt;` or wrapping the untrusted input inside verified `<user_document>` containers), ensuring the model parses the malicious payload strictly as literal data inside the document block rather than as structural prompt markup.
+
 **D)** Changing font color to white.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -310,6 +428,8 @@ Just like SQL injection occurs when user input escapes string literals, prompt i
 **Why other options are incorrect:**
 - **A, D)** Font styling and translation do not resolve semantic markup injection.
 - **B)** Robust architectural defenses effectively neutralize boundary-breakout injections.
+
+</details>
 
 ---
 
@@ -320,9 +440,15 @@ When supplying 10 different financial filings to Claude for comparative analysis
 `<document id="doc_1" company="Acme" year="2025">...</document>`
 `<document id="doc_2" company="Beta" year="2025">...</document>`
 followed by explicit comparative synthesis instructions.
+
 **B)** Merge all 10 filings into a single giant paragraph without breaks.
+
 **C)** Transmit each document as a separate API key.
+
 **D)** Convert all numbers to Roman numerals.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -334,15 +460,23 @@ Attributed XML wrappers (`<document id="..." company="...">`) allow Claude to ma
 - **C)** API keys govern billing, not document encapsulation.
 - **D)** Roman numerals degrade numerical reasoning.
 
+</details>
+
 ---
 
 ### Q202. The "Preachiness" Anti-Pattern in System Prompts
 A developer notices that Claude frequently gives unsolicited moral lectures, apologies, and disclaimers when users ask neutral technical questions. How should the system prompt be tuned to eliminate this?
 
 **A)** Instruct the model: `"Tone: Objective, neutral, direct, matter-of-fact. Never apologize or provide unsolicited ethical lectures. Answer technical questions directly without conversational preambles or disclaimers."`
+
 **B)** Delete all security guardrails.
+
 **C)** Set `temperature: 2.0`.
+
 **D)** Write the prompt in ALL CAPS.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
@@ -354,18 +488,27 @@ Setting an explicit, direct tone guideline in the system prompt calibrates the m
 - **C)** High temperature causes chaotic text generation.
 - **D)** All-caps prompting does not resolve tone calibration.
 
+</details>
+
 ---
 
 ### Q203. Handling Long Conversational Contexts: Truncation vs. Summarization
 When an interactive assistant reaches 90% of its context window capacity, an engineer proposes two solutions:
 - Option X: Drop the oldest 50% of messages (hard truncation).
 - Option Y: Use an asynchronous summarization call to create a structured synopsis of the conversation history, replace the oldest messages with the synopsis, and retain recent turns verbatim.
+
 Which option represents production best practice?
 
 **A)** Option X, because hard truncation is simpler and never loses context.
+
 **B)** Both options are identical in performance.
+
 **C)** Neither; conversation history should never be modified.
+
 **D)** Option Y: Structured summarization preserves continuity, user goals, and established constraints while freeing context capacity, preventing the amnesia caused by hard truncation.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -377,6 +520,8 @@ Hard truncation (Option X) blindly purges history, causing the agent to forget t
 - **B)** They differ dramatically in user experience and conversational retention.
 - **C)** Failing to manage history causes context window overflow crashes.
 
+</details>
+
 ---
 
 ### Q204. Disambiguating Polysemous Tool Arguments via Prompts
@@ -385,8 +530,14 @@ A tool `search_records` accepts a string parameter `query`. Users frequently sub
 **A)** Disable search tools for acronyms.
 
 **B)** Instruct Claude: `"When user queries contain ambiguous domain acronyms or terms, evaluate the conversation context to determine the proper domain. If context is insufficient to determine intent, ask the user a brief clarifying question before invoking search_records."`
+
 **C)** Hardcode all acronyms to financial definitions.
+
 **D)** Tell Claude to guess randomly.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -396,15 +547,23 @@ Instructing the model to perform contextual disambiguation—and to ask a clarif
 - **A)** Disabling search degrades system capability.
 - **C, D)** Guessing or hardcoding leads to erroneous operations when domain context differs.
 
+</details>
+
 ---
 
 ### Q205. Few-Shot Example Placement and Prompt Caching
 Where should few-shot examples be placed in the API request payload to maximize prompt caching efficiency?
 
 **A)** Inside the final user message.
+
 **B)** In the HTTP headers.
+
 **C)** Inside the `system` prompt parameter (or in an early static user message) BEFORE the `cache_control: {"type": "ephemeral"}` breakpoint.
+
 **D)** In a local text file on the user's desktop.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
@@ -416,15 +575,23 @@ Few-shot examples are static reference assets that remain constant across thousa
 - **B)** HTTP headers cannot carry thousands of tokens of prompt examples.
 - **D)** Local desktop files are not sent to the Anthropic API.
 
+</details>
+
 ---
 
 ### Q206. Preserving Code Indentation in Markdown Outputs
 When prompting Claude to generate Python code, what instruction ensures that generated code is cleanly parseable by automated syntax checkers?
 
 **A)** `"Encode the code in base64."`
+
 **B)** `"Write code on a single continuous line."`
+
 **C)** `"Replace all spaces with emojis."`
+
 **D)** `"Output code inside standard markdown fences: \`\`\`python ... \`\`\`. Maintain strict 4-space indentation. Do not interleave conversational explanations inside the code block."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -435,16 +602,24 @@ Providing explicit output framing instructions (standard language fences, strict
 - **A, C)** Emojis and base64 break standard code readability and automated testing.
 - **B)** Single-line Python violates PEP 8 and triggers syntax errors.
 
+</details>
+
 ---
 
 ### Q207. A/B Testing Prompts in Production
 An e-commerce team wants to test whether Prompt V2 improves recommendation conversion rates over Prompt V1. How should the production router be designed?
 
 **A)** Deterministic Traffic Splitting / Feature Flags: Route incoming user sessions dynamically (e.g. 50/50 split based on hashed `user_id`), tagging every API request and outcome event with the prompt version metadata, allowing statistical comparison across identical time periods.
+
 **B)** Run Prompt V1 for 6 months, then run Prompt V2 for 6 months.
+
 **C)** Ask developers which prompt they prefer.
 
 **D)** Switch prompts every millisecond.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -455,6 +630,8 @@ Rigorous A/B testing requires randomized, concurrent traffic allocation. Using f
 - **C)** Developer preference is subjective and ungrounded in real user behavior.
 - **D)** Rapid millisecond switching within sessions corrupts individual user conversations.
 
+</details>
+
 ---
 
 ### Q208. The "Instruction Drift" Anti-Pattern in Long Sessions
@@ -463,8 +640,14 @@ In turn 25 of a data analysis chat, Claude begins executing commands that violat
 **A)** The email database was hacked.
 
 **B)** The user typed the prompt too quickly.
+
 **C)** Instruction Drift / Recency Bias: As conversation history expands to tens of thousands of tokens, initial constraints placed only in early user turns suffer from attention decay. Fix: Place critical safety invariants in the `system` parameter (which retains persistent attention weight) rather than early conversational turns.
+
 **D)** The model became malicious.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -476,15 +659,23 @@ Instructions placed in conversational turns (`role: "user"`) naturally drift fur
 **Anti-Pattern Alert:**
 *Ephemeral Invariants*: Placing critical security policies in conversational user messages instead of the persistent system prompt, leading to instruction drift in deep sessions.
 
+</details>
+
 ---
 
 ### Q209. System Prompt Parameter vs. User Role Instructions
 What is the structural difference between instructions placed in the `system` API parameter versus instructions placed in `messages[0]` with `role: "user"`?
 
 **A)** There is zero difference; both are treated identically.
+
 **B)** The `system` parameter sets the root behavioral persona, operational constraints, and tool usage rules for the entire session and benefits from prompt cache prefix optimization. Messages in the `user` role represent incoming conversational data and specific task requests.
+
 **C)** The `system` parameter is only visible on Tuesdays.
+
 **D)** The `user` role has higher authority than the `system` prompt.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -494,6 +685,8 @@ In the Anthropic Messages API, `system` is a top-level parameter designed specif
 **Why other options are incorrect:**
 - **A)** The API processes `system` and `messages` differently in its prompt compiler.
 - **C, D)** Fanciful claims; `system` instructions govern the overall session behavior.
+
+</details>
 
 ---
 
@@ -513,10 +706,16 @@ When defining a JSON schema for structured output:
 What is guaranteed by the constrained decoding engine?
 
 **A)** The model will always omit `remediation`.
+
 **B)** The model will generate a SQL query.
 
 **C)** The model is guaranteed to generate valid JSON containing at least `summary` and `risk_score` with their specified types; `remediation` may be included or omitted, but if included, it must be a string.
+
 **D)** The schema is ignored.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** C
 
 **Explanation:**
@@ -526,6 +725,8 @@ Constrained decoding strictly adheres to standard JSON Schema specifications. Pr
 - **A)** Optional fields can be generated if relevant; they are not banned.
 - **B, D)** The output is constrained strictly to the JSON schema.
 
+</details>
+
 ---
 
 ### Q211. Prompt Optimization: Reducing Boilerplate Fillers
@@ -534,9 +735,15 @@ A customer-facing bot frequently starts answers with:
 Which prompt constraint eliminates this filler efficiently?
 
 **A)** `"Respond with maximum enthusiasm."`
+
 **B)** `"Output Style: Direct, professional, concise. Never include conversational filler, pleasantries, introductory confirmations ('Certainly', 'Sure'), or self-referential statements ('As an AI'). Begin immediately with the requested answer."`
+
 **C)** `"Delete the user's message."`
+
 **D)** `"Set max_tokens: 5."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
@@ -548,15 +755,23 @@ Explicitly forbidding pleasantries and conversational preambles while mandating 
 - **C)** Deleting messages breaks conversation.
 - **D)** `max_tokens: 5` truncates legitimate answers.
 
+</details>
+
 ---
 
 ### Q212. Grounding Responses with Strict Retrieval Constraints
 In a question-answering system over medical research papers, how can the prompt prevent the model from answering questions using outside pre-training knowledge when the papers do not contain the answer?
 
 **A)** `"Give medical advice to everyone."`
+
 **B)** `"Set temperature: 1.0."`
+
 **C)** `"Answer using your best imagination."`
+
 **D)** `"Grounding Constraint: Answer the question STRICTLY using only the facts directly mentioned inside the provided <research_papers> tags. If the provided papers do not contain sufficient evidence to answer the question, output exactly: 'The provided documents do not contain sufficient evidence to answer this question.' Do not extrapolate or rely on outside medical knowledge."`
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
@@ -567,16 +782,24 @@ High-stakes applications (medicine, legal, finance) require strict factual groun
 - **A, C)** Encouraging imagination or ungrounded medical advice creates extreme liability.
 - **B)** High temperature increases hallucinations.
 
+</details>
+
 ---
 
 ### Q213. Dynamic Prompt Templating Engines
 In production Python backends, what is the recommended practice for interpolating dynamic variables into system prompts?
 
 **A)** Use safe, robust templating engines (such as Jinja2) that handle escaping, whitespace control, and schema validation cleanly, rather than messy inline Python f-strings with manual string concatenation.
+
 **B)** Pass prompt variables via DNS TXT records.
+
 **C)** Hardcode every possible prompt variation as a separate 10,000-line Python file.
 
 **D)** Have human operators edit prompts in Notepad in real time.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -585,19 +808,27 @@ Using established template engines (like Jinja2) provides structured escaping, c
 **Why other options are incorrect:**
 - **B, C, D)** Impractical, unmaintainable, and non-standard engineering patterns.
 
+</details>
+
 ---
 
 ### Q214. Context Preservation Summary: The 3-Tier Architecture
 Which architecture represents the gold standard for maintaining persistent context across 100+ turn enterprise workflows?
 
 **A)** Unlimited sliding window with zero summarization.
+
 **B)** 3-Tier Context Architecture:
 1. Invariant Tier: Cached System Prompt, Tools, and Core Rules.
 2. State Tier: Persistent "Case Facts" block tracking verified entities and current goals.
 3. Dialogue Tier: Compressed historical summary + raw recent turns (N=4) with PostToolUse normalized outputs.
+
 **C)** Clear all history on every turn.
 
 **D)** Store all history in client-side browser cookies.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** B
 
 **Explanation:**
@@ -611,16 +842,24 @@ The 3-Tier Context Architecture solves the trifecta of context challenges:
 - **C)** Clearing history causes total amnesia.
 - **D)** Browser cookies have strict 4KB limits.
 
+</details>
+
 ---
 
 ### Q215. Domain 3 Summary: Prompt Engineering & Context Management
 What is the defining philosophy of Domain 3 in modern Claude systems?
 
 **A)** Rigorous, Deterministic Engineering: Structure prompts with semantic XML, enforce rigid output grammar via constrained decoding schemas, optimize token economics using prompt caching and batch APIs, and maintain context integrity through structured summarization and Case Fact persistence.
+
 **B)** Output tokens are free, so maximize verbosity.
 
 **C)** Never use tools or schemas.
+
 **D)** Try different prompts randomly until something looks okay.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
 **Correct Answer:** A
 
 **Explanation:**
@@ -629,3 +868,4 @@ Modern prompt engineering has evolved from subjective "prompt craft" into discip
 **Why other options are incorrect:**
 - **B, C, D)** Vague experimentation, assuming free compute, and avoiding schemas violate production engineering standards.
 
+</details>
