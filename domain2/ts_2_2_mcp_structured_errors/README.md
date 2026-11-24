@@ -64,38 +64,6 @@ If you flag "no orders found" as an error, the agent retries a healthy system an
 
 ---
 
-## 🔑 Key Terms
-
-- **`isError`**: A boolean flag on a Model Context Protocol tool result indicating whether the tool invocation encountered an execution failure or returned an error payload.
-- **`errorCategory`**: A machine-readable taxonomy classifying the failure as `transient`, `validation`, `business`, or `permission` so Claude knows whether to retry, fix arguments, or escalate.
-- **`isRetryable`**: A boolean property signaling whether repeating the exact same tool call could reasonably succeed without code or parameter modifications (`false` for business rule violations).
-- **Valid empty result**: A successful query execution that accurately returns zero records (such as an empty search list), which must return `isError: false` rather than throwing an error.
-- **Local recovery**: The subagent design pattern of attempting bounded retries for transient errors internally before escalating to the parent coordinator.
-- **Partial results**: Meaningful data retrieved before an error occurred that is passed alongside failure metadata to help the coordinator make informed recovery decisions.
-
----
-
-## 🏗️ Architecture
-
-```mermaid
----
-config:
-  htmlLabels: false
----
-flowchart TD
-    Call["Subagent calls tool"] --> Out{"What came back?"}
-    Out -->|"Success with data or count 0"| Ok["Use result<br>(empty is valid)"]
-    Out -->|"isError true"| Cat{"errorCategory"}
-    Cat -->|"transient"| Retry["Retry locally<br>(safety limit)"]
-    Retry -->|"Still failing"| Up["Propagate to coordinator<br>with attempts and partial results"]
-    Retry -->|"Recovered"| Ok
-    Cat -->|"validation"| Fix["Fix input and call again"]
-    Cat -->|"business"| Explain["Explain policy<br>or escalate_to_human"]
-    Cat -->|"permission"| Stop["Stop and escalate"]
-```
-
----
-
 ## 🧪 Worked Example
 
 ### ❌ Invalid Example (Anti-Pattern / What Breaks)
@@ -161,6 +129,38 @@ Code: `create_mcp_error()`, `validate_error_payload()`, `recovery_action()` and 
 
 ---
 
+## 🔑 Key Terms
+
+- **`isError`**: A boolean flag on a Model Context Protocol tool result indicating whether the tool invocation encountered an execution failure or returned an error payload.
+- **`errorCategory`**: A machine-readable taxonomy classifying the failure as `transient`, `validation`, `business`, or `permission` so Claude knows whether to retry, fix arguments, or escalate.
+- **`isRetryable`**: A boolean property signaling whether repeating the exact same tool call could reasonably succeed without code or parameter modifications (`false` for business rule violations).
+- **Valid empty result**: A successful query execution that accurately returns zero records (such as an empty search list), which must return `isError: false` rather than throwing an error.
+- **Local recovery**: The subagent design pattern of attempting bounded retries for transient errors internally before escalating to the parent coordinator.
+- **Partial results**: Meaningful data retrieved before an error occurred that is passed alongside failure metadata to help the coordinator make informed recovery decisions.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Call["Subagent calls tool"] --> Out{"What came back?"}
+    Out -->|"Success with data or count 0"| Ok["Use result<br>(empty is valid)"]
+    Out -->|"isError true"| Cat{"errorCategory"}
+    Cat -->|"transient"| Retry["Retry locally<br>(safety limit)"]
+    Retry -->|"Still failing"| Up["Propagate to coordinator<br>with attempts and partial results"]
+    Retry -->|"Recovered"| Ok
+    Cat -->|"validation"| Fix["Fix input and call again"]
+    Cat -->|"business"| Explain["Explain policy<br>or escalate_to_human"]
+    Cat -->|"permission"| Stop["Stop and escalate"]
+```
+
+---
+
 ## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: One generic error for every failure
@@ -207,17 +207,6 @@ With the anti-pattern the agent retries and may tell the customer something brok
 | Retries exhausted | Propagate: category, what was attempted, partial results, alternatives | Propagate only "failed". The coordinator loses the facts it needs to decide |
 
 MCP uses camelCase `isError`. The Anthropic Messages API `tool_result` block uses snake_case `is_error`. Mixing them is silently ignored by some adapters.
-
----
-
-## 🛠️ Hands-on Workbook Guide
-
-Open [`ts_2_2_mcp_structured_errors.ipynb`](ts_2_2_mcp_structured_errors.ipynb). It runs offline.
-1. **Create** transient, validation, business and permission errors.
-2. **Validate** them with `validate_error_payload()`. A generic "Operation failed" is rejected.
-3. **Check** that a zero-stock SKU is a valid empty result.
-4. **Recover** a flaky call with `recover_locally()` and see an unresolved error carry its attempts.
-5. **Assert** the schema fields on every error.
 
 ---
 
@@ -269,6 +258,17 @@ Open [`ts_2_2_mcp_structured_errors.ipynb`](ts_2_2_mcp_structured_errors.ipynb).
 - [ ] I know subagents retry transient errors locally and propagate only unresolved ones with partial results.
 
 **Memory hook**: *"Name the failure, say if it can be retried, and never call an empty answer an error."*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [`ts_2_2_mcp_structured_errors.ipynb`](ts_2_2_mcp_structured_errors.ipynb). It runs offline.
+1. **Create** transient, validation, business and permission errors.
+2. **Validate** them with `validate_error_payload()`. A generic "Operation failed" is rejected.
+3. **Check** that a zero-stock SKU is a valid empty result.
+4. **Recover** a flaky call with `recover_locally()` and see an unresolved error carry its attempts.
+5. **Assert** the schema fields on every error.
 
 ---
 

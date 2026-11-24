@@ -4,7 +4,7 @@
 
 ## In One Minute
 - **What**: The Message Batches API runs many requests asynchronously.
-- **Why**: **50% cheaper**, but results can take **up to 24 hours** and there is **no latency SLA**.
+- **Why**: **50% cheaper**, but results can take **up to 24 hours** and there is **no latency SLA** (Service Level Agreement — no guaranteed fast turnaround).
 - **Use for**: overnight reports, weekly audits, nightly test generation. **Not for** blocking work such as a pre-merge check.
 - **Handle failures**: match results by `custom_id`, resubmit only the failed ones (chunk oversized documents), and test your prompt on a small sample first.
 - **Exam answer in one line**: *Batch the latency-tolerant job; keep anything a human or a merge is waiting on synchronous.*
@@ -49,7 +49,7 @@ Each result has the same `custom_id` and a `result.type` of `succeeded`, `errore
 
 > `Worst Case = Interval + 24h + Margin`
 
-For a 30-hour SLA: the interval can be at most \`30 − 24 = 6` h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
+For a 30-hour SLA: the interval can be at most `30 − 24 = 6` h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
 
 **d. Failures.** Resubmit only the `errored` or `expired` `custom_id`s. If a document was too large, split it into chunks, with new ids such as `doc-002-chunk1of3`, and map them back to `doc-002`.
 

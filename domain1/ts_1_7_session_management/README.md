@@ -5,8 +5,8 @@
 ## In One Minute
 
 - **What**: a session is a saved conversation. You can continue it, branch it, or replace it with a summary.
-- **Resume**: `claude --resume <session-name>` (or `-r`) continues a named session; name one with `--name` / `-n`. In the Agent SDK, pass `resume=<session_id>`. Good when nothing important changed.
-- **Fork**: `fork_session` (CLI: `--fork-session` with `--resume`; Python SDK: `fork_session=True`; TypeScript: `forkSession: true`) makes an independent branch from a shared baseline. A fork copies the conversation history, not the files on disk. Good for comparing approaches.
+- **Resume**: `claude --resume <session-name>` (or `-r`) continues a named session; name one with `--name` / `-n`. In the Agent SDK (the Python/TypeScript code library), pass `resume=<session_id>`. Good when nothing important changed.
+- **Fork**: `fork_session` (CLI terminal: `--fork-session` with `--resume`; Python SDK: `fork_session=True`; TypeScript: `forkSession: true`) makes an independent branch from a shared baseline. A fork copies the conversation history, not the files on disk. Good for comparing approaches.
 - **Stale results**: if files changed, tell the resumed session which ones. If the old tool results are mostly stale, start a **new session with a structured summary**.
 - **Exam answer in one line**: resume when results are still valid, fork to compare, summarise into a fresh session when tool results are stale.
 

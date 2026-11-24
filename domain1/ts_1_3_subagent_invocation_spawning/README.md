@@ -342,8 +342,8 @@ Open [ts_1_3_subagent_invocation_spawning.ipynb](ts_1_3_subagent_invocation_spaw
 
 1. **Setup**: test harness.
 2. **Workers**: simulated subagents that return `{content, metadata}`.
-3. **Dispatcher**: handles `Task` calls from one coordinator response.
-4. **Simulation**: one response with two `Task` blocks.
+3. **Dispatcher**: handles `Agent` (formerly `Task`) calls from one coordinator response.
+4. **Simulation**: one response with two `Agent` blocks.
 5. **Checks**: two subagents ran, and metadata stayed attached.
 
 Code: [main.py](main.py) (live API, run manually only) · Offline tests: [tests/test_domain1_enhancements.py](../../tests/test_domain1_enhancements.py)

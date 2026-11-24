@@ -39,7 +39,9 @@ flowchart LR
 
 ---
 
-## 🗺️ Study Order and Quick Map
+## 🗺️ Study Order & Task Statements at a Glance
+
+Follow this sequence from prompt rules (4.1–4.2) to schema contracts (4.3–4.4) to scale & review (4.5–4.6):
 
 ```mermaid
 ---
@@ -47,71 +49,23 @@ config:
   htmlLabels: false
 ---
 flowchart LR
-    T1["4.1 Criteria"] --> T2["4.2 Few-shot"] --> T3["4.3 Schema output"] --> T4["4.4 Validate and retry"] --> T5["4.5 Batches"] --> T6["4.6 Multi-pass review"]
+    T1["4.1 Explicit<br>Criteria"] --> T2["4.2 Few-Shot<br>Examples"]
+    T2 --> T3["4.3 Structured<br>Output"]
+    T3 --> T4["4.4 Validation<br>& Retry"]
+    T4 --> T5["4.5 Message<br>Batches"]
+    T5 --> T6["4.6 Multi-Pass<br>Review"]
 ```
 
-Each study guide starts with "In One Minute" and an "Explain Like I'm 13" picture, then a worked example, exam traps with examples, three exam-style questions with answers, and a self-check checklist.
-
-| Task | What it tests | Key trap | Start here |
+| TS | Study Guide | Core Architectural Focus | Key Exam Trap to Avoid |
 |---|---|---|---|
-| **4.1** | Report/skip criteria, severity examples, disabling noisy categories | "Be conservative"; confidence filtering | [4.1 guide](ts_4_1_explicit_criteria_classification/README.md) |
-| **4.2** | 2-4 targeted examples with reasons; varied layouts; null cases | Many identical examples | [4.2 guide](ts_4_2_few_shot_and_multi_instance/README.md) |
-| **4.3** | Tool use + schema; `tool_choice`; nullable fields; `unclear`/`other` | Required fields; forced tool + thinking | [4.3 guide](ts_4_3_structured_output_tool_use/README.md) |
-| **4.4** | Retry with document + failed output + error; absent vs fixable | Retrying absent data | [4.4 guide](ts_4_4_validation_retry_feedback/README.md) |
-| **4.5** | Batch fit, `custom_id`, SLA maths, failed-only resubmission | Batching a blocking check | [4.5 guide](ts_4_5_message_batches_api/README.md) |
-| **4.6** | Independent instance; per-file + integration pass; confidence routing | Self-review; one giant prompt | [4.6 guide](ts_4_6_multi_pass_review/README.md) |
+| **4.1** | [README](ts_4_1_explicit_criteria_classification/README.md) · [Notebook](ts_4_1_explicit_criteria_classification/ts_4_1_explicit_criteria_classification.ipynb) · [Code](ts_4_1_explicit_criteria_classification/main.py) | Report/skip criteria, severity examples, disabling noisy categories, `detected_pattern`. | Saying "be conservative" or filtering by model confidence scores. |
+| **4.2** | [README](ts_4_2_few_shot_and_multi_instance/README.md) · [Notebook](ts_4_2_few_shot_and_multi_instance/ts_4_2_few_shot_and_multi_instance.ipynb) · [Code](ts_4_2_few_shot_and_multi_instance/main.py) | 2–4 targeted examples with reasoning; varied document layouts; explicit null cases. | Giving 15 identical tabular examples (causes layout overfitting). |
+| **4.3** | [README](ts_4_3_structured_output_tool_use/README.md) · [Notebook](ts_4_3_structured_output_tool_use/ts_4_3_structured_output_tool_use.ipynb) · [Code](ts_4_3_structured_output_tool_use/main.py) | JSON schema via `tool_use`; `tool_choice`; nullable fields; `unclear`/`other` enums. | Marking every field required (forces fabrication), or forced tool + thinking (HTTP 400). |
+| **4.4** | [README](ts_4_4_validation_retry_feedback/README.md) · [Notebook](ts_4_4_validation_retry_feedback/ts_4_4_validation_retry_feedback.ipynb) · [Code](ts_4_4_validation_retry_feedback/main.py) | Retry with document + failed output + error; semantic sum checks; absent vs fixable. | Retrying when the requested fact is physically missing from the source document. |
+| **4.5** | [README](ts_4_5_message_batches_api/README.md) · [Notebook](ts_4_5_message_batches_api/ts_4_5_message_batches_api.ipynb) · [Code](ts_4_5_message_batches_api/main.py) | 50% discount for async 24h jobs; `custom_id` matching; SLA math; partial resubmission. | Using Batches API for blocking pre-merge PR checks. |
+| **4.6** | [README](ts_4_6_multi_pass_review/README.md) · [Notebook](ts_4_6_multi_pass_review/ts_4_6_multi_pass_review.ipynb) · [Code](ts_4_6_multi_pass_review/main.py) | Independent review instance; Pass 1 per-file + Pass 2 integration; confidence routing. | Same-session self-review, or stuffing 20 files into one giant prompt. |
 
-Cross-links: 4.1 ↔ 4.4 (`detected_pattern`, dismissals), 4.3 ↔ 4.4 (schema then validation), 4.5 ↔ 4.6 (batch the nightly review), 4.2 ↔ 4.6 (independent reviewer payload).
-
----
-
-## 📋 Task Statements & Core Architectural Principles
-
-### [TS 4.1: Design Prompts with Explicit Criteria to Improve Precision and Reduce False Positives](ts_4_1_explicit_criteria_classification/main.py)
-- **Categorical Criteria vs Vague Guidance**: Explicit criteria with code examples drastically outperform subjective directives like "be conservative and careful".
-- **Negative Boundaries**: Explicitly state what NOT to report (e.g. ignore missing types in test helper functions) to prevent over-eager classification.
-- **Managing False Positives**: Temporarily disable noisy categories entirely while refining criteria, rather than filtering by unreliable model confidence scores.
-- **Concrete Severity Tiers**: Define Critical, High, Medium, Low with unambiguous technical criteria.
-- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_1_explicit_criteria_classification/README.md) · [Interactive Workbook](ts_4_1_explicit_criteria_classification/ts_4_1_explicit_criteria_classification.ipynb) · [Executable Code](ts_4_1_explicit_criteria_classification/main.py)
-
-### [TS 4.2: Apply Few-Shot Prompting to Improve Output Consistency and Quality](ts_4_2_few_shot_and_multi_instance/main.py)
-- **Targeted Examples**: 2–4 high-impact few-shot examples illustrating complex reasoning, boundary edge cases, and expected output formatting.
-- **Generalization**: Teach underlying principles and reasoning rather than string matching.
-- **Structural Diversity**: Include diverse layout examples (tables, key-value blocks, unstructured text) to eliminate null extraction errors on varied enterprise documents.
-- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_2_few_shot_and_multi_instance/README.md) · [Interactive Workbook](ts_4_2_few_shot_and_multi_instance/ts_4_2_few_shot_and_multi_instance.ipynb) · [Executable Code](ts_4_2_few_shot_and_multi_instance/main.py)
-
-### [TS 4.3: Enforce Structured Output Using Tool Use and JSON Schemas](ts_4_3_structured_output_tool_use/main.py)
-- **Reliable Valid Syntax**: Enforcing schemas via `tool_use` (`any` or a named tool) removes JSON syntax errors and markdown parsing failures. It does not catch semantic errors such as totals that do not add up. A forced tool cannot be combined with extended thinking (only `auto`/`none`).
-- **Preventing Hallucinations via Nullable Fields**: Mark missing-prone fields as `type: ["string", "null"]` so Claude outputs `null` instead of fabricating data.
-- **Extensible Taxonomy**: Use enum categories with `"unclear"` (no signal in the document) and `"other"` plus a companion detail string (for example `other_category_detail`).
-- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_3_structured_output_tool_use/README.md) · [Interactive Workbook](ts_4_3_structured_output_tool_use/ts_4_3_structured_output_tool_use.ipynb) · [Executable Code](ts_4_3_structured_output_tool_use/main.py)
-
-### [TS 4.4: Implement Validation, Retry, and Feedback Loops for Extraction Quality](ts_4_4_validation_retry_feedback/main.py)
-- **Targeted Error Feedback**: Feed specific Pydantic / JSON schema validator errors (field, observed value, expected format) back to Claude for self-correction.
-- **Recoverable vs Unrecoverable Errors**: Retries fix formatting and math errors; retries fail when data is fundamentally absent from source documents. Stop retries and escalate unrecoverable errors to human queues.
-- **Semantic Cross-Checking**: Compare independent fields (e.g. `sum(line_items)` vs `stated_total`) to catch calculation mismatches.
-- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_4_validation_retry_feedback/README.md) · [Interactive Workbook](ts_4_4_validation_retry_feedback/ts_4_4_validation_retry_feedback.ipynb) · [Executable Code](ts_4_4_validation_retry_feedback/main.py)
-
-### [TS 4.5: Design Efficient Batch Processing Strategies](ts_4_5_message_batches_api/main.py)
-- **Message Batches API**: 50% discount on API costs with up to 24-hour turnaround window (no latency SLA).
-- **Workload Qualification**: Ideal for non-blocking overnight audits, large-scale extraction, and test generation; never use for blocking pre-merge CI checks.
-- **Correlation & Partial Recovery**: Assign deterministic `custom_id`s to correlate results and resubmit only failed requests.
-- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_5_message_batches_api/README.md) · [Interactive Workbook](ts_4_5_message_batches_api/ts_4_5_message_batches_api.ipynb) · [Executable Code](ts_4_5_message_batches_api/main.py)
-
-### [TS 4.6: Design Multi-Instance and Multi-Pass Review Architectures](ts_4_6_multi_pass_review/main.py)
-- **Mitigating Self-Review Bias**: Independent Claude review instances (with clean context) catch subtle defects that the authoring instance overlooks.
-- **Multi-Pass Review Pipeline**: Split large PR reviews into Pass 1 (isolated per-file checks) + Pass 2 (cross-file integration pass) to prevent attention dilution.
-- **Study Guide & Lab**: [Study Guide (README.md)](ts_4_6_multi_pass_review/README.md) · [Interactive Workbook](ts_4_6_multi_pass_review/ts_4_6_multi_pass_review.ipynb) · [Executable Code](ts_4_6_multi_pass_review/main.py)
-
----
-
-## 🛠️ Hands-on Exercises in this Domain
-- `ts_4_1_explicit_criteria_classification/`: Precision classification with explicit negative boundaries and severity tiers.
-- `ts_4_2_few_shot_and_multi_instance/`: Diverse few-shot prompting across varied invoice structures.
-- `ts_4_3_structured_output_tool_use/`: Schema extraction via `tool_use` with nullable fields.
-- `ts_4_4_validation_retry_feedback/`: Programmatic validation-retry loops and unrecoverable missing data handling.
-- `ts_4_5_message_batches_api/`: Batch submission, `custom_id` correlation, and partial failure resubmission.
-- `ts_4_6_multi_pass_review/`: Two-pass code review architecture (local per-file pass + cross-file integration pass).
+**Cross-links:** 4.1 ↔ 4.4 (`detected_pattern`, dismissals) · 4.3 ↔ 4.4 (schema syntax then code validation) · 4.5 ↔ 4.6 (batch the nightly review) · 4.2 ↔ 4.6 (few-shot in independent reviews).
 
 ---
 
@@ -198,6 +152,17 @@ flowchart TD
 | **Validation fails due to physically absent source facts?** | **YES** | Fast-fail and abort retries immediately; route to human review *(retries cannot invent data)*. |
 | **Message Batches API for pre-merge PR blocking checks?** | **YES** | Reject: Batches have up to 24h turnaround *(reserve Batches for overnight non-blocking jobs)*. |
 | **Auditing multi-file PRs without attention dilution?** | **YES** | Two-Pass Review: Pass 1 (local per-file) + Pass 2 (cross-file integration). |
+
+---
+
+## 🛠️ Offline Verification & Test Commands
+
+All Domain 4 exercises and simulations execute 100% offline:
+
+```bash
+# Run all Domain 4 offline unit tests:
+uv run pytest tests/test_domain4_enhancements.py -q
+```
 
 ---
 

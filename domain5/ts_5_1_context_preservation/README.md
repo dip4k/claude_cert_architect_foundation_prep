@@ -45,7 +45,7 @@ config:
   htmlLabels: false
 ---
 flowchart LR
-    Turn1["Turn 1:<br>Order ORD-9921, \$149.99"] --> Sum1["Turn 10 Summary:<br>'Order issue for ~\$150'"]
+    Turn1["Turn 1:<br>Order ORD-9921, $149.99"] --> Sum1["Turn 10 Summary:<br>'Order issue for ~$150'"]
     Sum1 --> Sum2["Turn 20 Summary:<br>'User asked about an order'"]
     Sum2 --> Failure["Turn 25 Tool Call:<br>Order ID erased -> Hallucination!"]
 ```

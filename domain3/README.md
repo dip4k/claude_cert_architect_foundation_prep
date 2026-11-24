@@ -62,12 +62,12 @@ flowchart LR
 
 | TS | Study Guide | Core Architectural Focus | Key Exam Trap to Avoid |
 |---|---|---|---|
-| **3.1** | [README](ts_3_1_claude_code_workflows/README.md) | `CLAUDE.md` hierarchy (User `~/.claude/` vs Project `.claude/`), `@import` modularity, `/memory`. | Storing shared team conventions in personal `~/.claude/CLAUDE.md` (not in Git). |
-| **3.2** | [README](ts_3_2_slash_commands_and_skills/README.md) | Project `.claude/commands/`, `SKILL.md` frontmatter (`context: fork`, `allowed-tools`, `argument-hint`). | Running noisy discovery skills in the primary session context without `context: fork`. |
-| **3.3** | [README](ts_3_3_path_specific_rules/README.md) | YAML frontmatter `paths: [...]` glob patterns; conditional loading on file match to save context. | Creating a `CLAUDE.md` in every directory for files scattered across folders (e.g. `**/*.test.tsx`). |
-| **3.4** | [README](ts_3_4_plan_mode_and_refinement/README.md) | Plan mode for architectural/multi-file refactors (10+ files); Direct execution for single-file fixes. | Entering Plan Mode for trivial single-file bug fixes with known stack traces. |
-| **3.5** | [README](ts_3_5_iterative_refinement_interview/README.md) | 2–3 concrete I/O examples; test-driven iteration; Interview Pattern for surfacing hidden requirements. | Giving vague prose instructions ("make it faster") instead of concrete input/output examples. |
-| **3.6** | [README](ts_3_6_cicd_pipeline_automation/README.md) | Non-interactive `-p` / `--print` flag; `--output-format json`; `--json-schema`; independent review instance. | Running `claude` in automated CI scripts without `-p` (hangs runner waiting for stdin). |
+| **3.1** | [README](ts_3_1_claude_code_workflows/README.md) · [Notebook](ts_3_1_claude_code_workflows/ts_3_1_claude_code_workflows.ipynb) · [Code](ts_3_1_claude_code_workflows/main.py) | `CLAUDE.md` hierarchy (User `~/.claude/` vs Project `.claude/`), `@import` modularity, `/memory`. | Storing shared team conventions in personal `~/.claude/CLAUDE.md` (not in Git). |
+| **3.2** | [README](ts_3_2_slash_commands_and_skills/README.md) · [Notebook](ts_3_2_slash_commands_and_skills/ts_3_2_slash_commands_and_skills.ipynb) · [Code](ts_3_2_slash_commands_and_skills/main.py) | Project `.claude/commands/`, `SKILL.md` frontmatter (`context: fork`, `allowed-tools`, `argument-hint`). | Running noisy discovery skills in the primary session context without `context: fork`. |
+| **3.3** | [README](ts_3_3_path_specific_rules/README.md) · [Notebook](ts_3_3_path_specific_rules/ts_3_3_path_specific_rules.ipynb) · [Code](ts_3_3_path_specific_rules/main.py) | YAML frontmatter `paths: [...]` glob patterns; conditional loading on file match to save context. | Creating a `CLAUDE.md` in every directory for files scattered across folders (e.g. `**/*.test.tsx`). |
+| **3.4** | [README](ts_3_4_plan_mode_and_refinement/README.md) · [Notebook](ts_3_4_plan_mode_and_refinement/ts_3_4_plan_mode_and_refinement.ipynb) · [Code](ts_3_4_plan_mode_and_refinement/main.py) | Plan mode for architectural/multi-file refactors (10+ files); Direct execution for single-file fixes. | Entering Plan Mode for trivial single-file bug fixes with known stack traces. |
+| **3.5** | [README](ts_3_5_iterative_refinement_interview/README.md) · [Notebook](ts_3_5_iterative_refinement_interview/ts_3_5_iterative_refinement_interview.ipynb) · [Code](ts_3_5_iterative_refinement_interview/main.py) | 2–3 concrete I/O examples; test-driven iteration; Interview Pattern for surfacing hidden requirements. | Giving vague prose instructions ("make it faster") instead of concrete input/output examples. |
+| **3.6** | [README](ts_3_6_cicd_pipeline_automation/README.md) · [Notebook](ts_3_6_cicd_pipeline_automation/ts_3_6_cicd_pipeline_automation.ipynb) · [Code](ts_3_6_cicd_pipeline_automation/main.py) | Non-interactive `-p` / `--print` flag; `--output-format json`; `--json-schema`; independent review instance. | Running `claude` in automated CI scripts without `-p` (hangs runner waiting for stdin). |
 
 ---
 
@@ -92,13 +92,33 @@ flowchart LR
 
 ---
 
+## 🧭 Quick Decision Flow
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Q1["Rule needed by every teammate<br>on every turn?"] -->|"Yes"| A1["Project ./CLAUDE.md or .claude/CLAUDE.md<br>under 200 lines with @import (TS 3.1)"]
+    Q1 -->|"No"| Q2["Rule tied to specific file patterns<br>across many folders?"]
+    Q2 -->|"Yes"| A2[".claude/rules/*.md with<br>paths: glob frontmatter (TS 3.3)"]
+    Q2 -->|"No"| Q3["Noisy on-demand workflow or<br>shared shortcut?"]
+    Q3 -->|"Yes"| A3["Skill with context: fork or<br>.claude/commands/ (TS 3.2)"]
+    Q3 -->|"No"| Q4["Multi-file architectural change?"]
+    Q4 -->|"Yes"| A4["Plan Mode first; clarify with<br>2-3 I/O examples (TS 3.4, 3.5)"]
+    Q4 -->|"No"| A5["Small fix: Direct Execution;<br>CI pipeline: claude -p + JSON (TS 3.6)"]
+```
+
+---
+
 ## 🛠️ Offline Verification & Test Commands
 
 All Domain 3 exercises and simulations execute 100% offline:
 
 ```bash
 # Run all Domain 3 offline tests:
-uv run pytest tests/test_new_task_statements.py -k "ts32 or ts33 or ts35 or ts36" -q
+uv run pytest tests/test_domain3_enhancements.py -q
 ```
 
 ---

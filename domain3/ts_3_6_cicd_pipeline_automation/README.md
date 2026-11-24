@@ -4,8 +4,8 @@
 
 ## In One Minute
 
-- **`-p` / `--print`** runs Claude Code non-interactively. Without it, a CI job hangs waiting for input. (`CLAUDE_HEADLESS` and `--batch` do not exist.)
-- **`--output-format json` with `--json-schema`** gives machine-parseable findings that a script can post as inline PR comments.
+- **`-p` / `--print`** runs Claude Code non-interactively. Without it, a CI (**Continuous Integration**) job hangs waiting for input. (`CLAUDE_HEADLESS` and `--batch` do not exist.)
+- **`--output-format json` with `--json-schema`** gives machine-parseable findings that a script can post as inline PR (**Pull Request**) comments.
 - **`CLAUDE.md`** gives the CI instance your testing standards, fixtures and review criteria.
 - **Use an independent review instance.** The session that wrote the code is worse at reviewing it. On re-runs, include prior findings and ask only for new or unaddressed issues. For test generation, include the existing test files.
 - **Exam answer in one line**: a CI job that hangs needs `-p`.

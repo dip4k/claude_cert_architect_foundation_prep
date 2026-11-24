@@ -7,7 +7,7 @@
 - **What**: hooks are code that runs around tool calls, outside the model.
 - **Two kinds**: a **pre-tool interception hook** (`PreToolUse`) can block a call. A **`PostToolUse` hook** cleans the result before Claude reads it.
 - **Examples**: block a refund over \$500 and redirect to a human. Turn Unix timestamps into ISO 8601. Turn numeric status codes into names.
-- **Hooks are deterministic. Prompts are probabilistic.**
+- **Hooks are deterministic (code rules that always run). Prompts are probabilistic (instructions the model might occasionally skip).**
 - **Exam answer in one line**: policy that must always hold goes in a hook, and format cleanup goes in `PostToolUse`.
 
 ---

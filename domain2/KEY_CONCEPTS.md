@@ -81,7 +81,7 @@ flowchart TD
 ### TS 2.1: Design Effective Tool Interfaces with Clear Descriptions and Boundaries
 
 #### 1. Why Tool Descriptions Are the Primary Routing Mechanism
-In large language model orchestration, tool descriptions are not decorative human documentation; they are **semantic routing vectors**. When Claude processes an incoming request alongside a set of tools, its attention mechanism compares the semantic intent of the query against the names, descriptions, and input schemas of every declared tool.
+In large language model orchestration, tool descriptions are not decorative human documentation; they are **the routing signals Claude reads to pick the right tool** (semantic routing). When Claude processes an incoming request alongside a set of tools, it compares the user's intent against the names, descriptions, and input schemas of every declared tool.
 
 If descriptions are minimal or functional duplicates (e.g. `get_customer` described as `"Retrieves customer info"` and `lookup_order` described as `"Retrieves order details"`), the semantic distance between the tools collapses. When a user asks: `"Where is package #9921 for alice@example.com?"`, Claude must choose between two plausible identifiers. Without explicit guidance, it will frequently call `get_customer` because the email address appears first in the token sequence, triggering an unneeded round trip and degrading turn latency.
 
@@ -211,7 +211,7 @@ flowchart TD
 
     subgraph Scoped ["Pattern: Scoped Subagents (3-4 Tools Each)"]
         direction TB
-        Coord["Coordinator (Task tool only)"]
+        Coord["Coordinator (Agent/Task tool only)"]
         S1["Support Subagent<br>(get_customer, lookup_order)"]
         S2["Refund Subagent<br>(validate_policy, process_refund)"]
         S3["Escalation Subagent<br>(create_ticket, notify_lead)"]

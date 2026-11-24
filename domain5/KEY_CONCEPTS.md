@@ -327,10 +327,10 @@ When working interactively in Claude Code:
 
 ### TS 5.5: Design Human Review Workflows and Confidence Calibration
 
-#### 1. The Flaw of Aggregate Accuracy
-A standard trap in enterprise AI evaluation:
+#### 1. The Flaw of Aggregate Accuracy (Why Averages Hide Weak Groups)
+A standard trap in enterprise AI evaluation (sometimes called **Simpson's Paradox**, where a high overall average hides a failing subgroup):
 - An automated document extraction pipeline reports **98% overall aggregate accuracy**.
-- Management believes the system is ready for full automation.
+- Management believes the system is ready for full automation (**straight-through processing, or STP**, meaning automatic approval with no human check).
 - **The Hidden Vulnerability**: The dataset consists of 95% standard domestic invoices (where accuracy is 99.8%) and 5% complex international customs forms. On the international customs forms, **the accuracy is only 58%**.
 - **The Production Standard**: Measure accuracy **segmented by document type, vendor, and complexity tier**.
 
@@ -363,19 +363,19 @@ config:
 ---
 flowchart TD
     Doc["Incoming Document Extraction"] --> ValueCheck{"Financial Value over $1,000?"}
-    ValueCheck -- "Yes" --> HighValReview["Mandatory Human Review<br>(Policy threshold overrides model)"]
-    ValueCheck -- "No" --> UnrecCheck{"Missing source<br>document fact?"}
-    UnrecCheck -- "Yes" --> HumanTriage["Route to Human Triage<br>(Fast-fail unrecoverable)"]
-    UnrecCheck -- "No" --> ConfCheck{"Model Confidence at least 95%?"}
-    ConfCheck -- "No" --> HumanQueue["Route to Human Exception Queue"]
-    ConfCheck -- "Yes" --> StratCheck{"Selected in 5-10% Sample?"}
-    StratCheck -- "Yes" --> Auditor["Route to QA Auditor<br>(Drift & calibration benchmark)"]
-    StratCheck -- "No" --> STP["✅ Automated STP Processing"]
+    ValueCheck -->|"Yes"| HighValReview["Mandatory Human Review<br>(Policy threshold overrides model)"]
+    ValueCheck -->|"No"| UnrecCheck{"Missing source<br>document fact?"}
+    UnrecCheck -->|"Yes"| HumanTriage["Route to Human Triage<br>(Fast-fail unrecoverable)"]
+    UnrecCheck -->|"No"| ConfCheck{"Model Confidence at least 95%?"}
+    ConfCheck -->|"No"| HumanQueue["Route to Human Exception Queue"]
+    ConfCheck -->|"Yes"| StratCheck{"Selected in 5-10% Sample?"}
+    StratCheck -->|"Yes"| Auditor["Route to QA Auditor<br>(Drift & calibration benchmark)"]
+    StratCheck -->|"No"| STP["✅ Automated STP Processing"]
 ```
 
 
 #### 4. Field-Level Confidence and Calibration
-- Ask for confidence **per field** and check it against a **labelled validation set** (reliability bins; expected calibration error, ECE).
+- Ask for confidence **per field** and check it against a **labelled validation set** (comparing predicted confidence bins against actual accuracy, measured as **Expected Calibration Error, or ECE**).
 - **Validate accuracy per segment** (document type x field) before reducing human review for that segment.
 - Stratified sampling draws within each (document type, field) stratum. The sampling rate (for example 5-10%) is a design choice, not a fixed exam number.
 - Route low-confidence, ambiguous or contradictory-source items to humans.

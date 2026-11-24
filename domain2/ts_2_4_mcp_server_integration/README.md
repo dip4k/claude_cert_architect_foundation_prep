@@ -4,7 +4,7 @@
 
 ## In One Minute
 
-- **What**: MCP servers add tools and resources to Claude Code. You decide **where** they are configured and **how secrets** are handled.
+- **What**: MCP (**Model Context Protocol**) servers add external tools and read-only data resources to Claude Code. You decide **where** they are configured and **how secrets** are handled.
 - **Where**: Project `.mcp.json` is shared and version controlled. User `~/.claude.json` is personal or experimental.
 - **Secrets**: Never commit tokens. Write `${GITHUB_TOKEN}` in the file and keep the value in the environment.
 - **At connection**: Tools from **all** configured servers are discovered and available **at the same time**.
@@ -72,37 +72,6 @@ A catalog as a resource means the agent sees what exists **before** it starts gu
 
 ---
 
-## 🔑 Key Terms
-
-- **`.mcp.json`**: The repository-scoped configuration file tracked in version control that defines team-wide Model Context Protocol server connections for all developers.
-- **`~/.claude.json`**: The user-level configuration file stored in the local home directory for personal tools, experimental servers, or private workflows.
-- **`${VAR}` environment expansion**: A secure configuration syntax that resolves dynamic system environment variables at runtime, preventing API keys and secrets from being committed to source control.
-- **MCP resource**: Read-only structured data or context artifacts (such as database schemas, documentation indexes, or project boards) that an agent inspects without triggering side effects.
-- **MCP tool**: An executable, parameter-driven function exposed by an MCP server that allows an agent to take actions, query remote APIs, or mutate external state.
-- **Community MCP server**: A battle-tested, pre-built Model Context Protocol server developed for standard platforms (such as GitHub, Jira, or PostgreSQL) that should be prioritized over building custom servers from scratch.
-
----
-
-## 🏗️ Architecture
-
-```mermaid
----
-config:
-  htmlLabels: false
----
-flowchart TD
-    Repo[".mcp.json<br>(version controlled)<br>GitHub, Jira servers<br>tokens as ${VAR}"] --> Claude["Claude Code<br>connects at startup"]
-    User["~/.claude.json<br>(personal)<br>experimental servers"] --> Claude
-    Env["Environment<br>GITHUB_TOKEN=..."] -->|"expands ${VAR}"| Repo
-    Claude --> All["Tools from all servers<br>available together"]
-    Servers["MCP servers"] --> Res["Resources:<br>issue summaries, doc tree, schema"]
-    Servers --> Tools["Tools:<br>search_issues, create_ticket"]
-    Res --> Agent["Agent plans with<br>fewer exploratory calls"]
-    Tools --> Agent
-```
-
----
-
 ## 🧪 Worked Example
 
 ### ❌ Invalid Example (Anti-Pattern / What Breaks)
@@ -166,6 +135,37 @@ Code: `load_mcp_config()`, `expand_env()`, `find_hardcoded_secrets()`, `discover
 
 ---
 
+## 🔑 Key Terms
+
+- **`.mcp.json`**: The repository-scoped configuration file tracked in version control that defines team-wide Model Context Protocol server connections for all developers.
+- **`~/.claude.json`**: The user-level configuration file stored in the local home directory for personal tools, experimental servers, or private workflows.
+- **`${VAR}` environment expansion**: A secure configuration syntax that resolves dynamic system environment variables at runtime, preventing API keys and secrets from being committed to source control.
+- **MCP resource**: Read-only structured data or context artifacts (such as database schemas, documentation indexes, or project boards) that an agent inspects without triggering side effects.
+- **MCP tool**: An executable, parameter-driven function exposed by an MCP server that allows an agent to take actions, query remote APIs, or mutate external state.
+- **Community MCP server**: A battle-tested, pre-built Model Context Protocol server developed for standard platforms (such as GitHub, Jira, or PostgreSQL) that should be prioritized over building custom servers from scratch.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Repo[".mcp.json<br>(version controlled)<br>GitHub, Jira servers<br>tokens as ${VAR}"] --> Claude["Claude Code<br>connects at startup"]
+    User["~/.claude.json<br>(personal)<br>experimental servers"] --> Claude
+    Env["Environment<br>GITHUB_TOKEN=..."] -->|"expands ${VAR}"| Repo
+    Claude --> All["Tools from all servers<br>available together"]
+    Servers["MCP servers"] --> Res["Resources:<br>issue summaries, doc tree, schema"]
+    Servers --> Tools["Tools:<br>search_issues, create_ticket"]
+    Res --> Agent["Agent plans with<br>fewer exploratory calls"]
+    Tools --> Agent
+```
+
+---
+
 ## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Putting a team server in a personal file
@@ -206,17 +206,6 @@ All configured servers' tools are discovered at connection time and are availabl
 
 - A large read-only catalog (issue summaries, DB schema, doc hierarchy) is best exposed as an MCP **resource** the agent can browse. Wrapping it in a search tool makes the agent guess queries through many exploratory calls.
 - For standard integrations (GitHub, Jira, Slack), use a community server first. Build a custom server only for team-specific systems that nothing covers.
-
----
-
-## 🛠️ Hands-on Workbook Guide
-
-Open [`ts_2_4_mcp_server_integration.ipynb`](ts_2_4_mcp_server_integration.ipynb). It runs offline.
-1. **Parse** an example `.mcp.json` and expand `${VAR}` from a fake environment.
-2. **Detect** a hardcoded secret with `find_hardcoded_secrets()`.
-3. **Merge** tools from two servers with `discover_tools()`.
-4. **List and read** resources from `DeveloperMCPService`.
-5. **Assert** missing variables raise a clear error.
 
 ---
 
@@ -268,6 +257,17 @@ Open [`ts_2_4_mcp_server_integration.ipynb`](ts_2_4_mcp_server_integration.ipynb
 - [ ] I know richer MCP descriptions stop the agent preferring Grep, and community servers are first choice for standard services.
 
 **Memory hook**: *"Team in `.mcp.json`, me in `~/.claude.json`, secrets in `${VARS}`, catalogs as resources."*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [`ts_2_4_mcp_server_integration.ipynb`](ts_2_4_mcp_server_integration.ipynb). It runs offline.
+1. **Parse** an example `.mcp.json` and expand `${VAR}` from a fake environment.
+2. **Detect** a hardcoded secret with `find_hardcoded_secrets()`.
+3. **Merge** tools from two servers with `discover_tools()`.
+4. **List and read** resources from `DeveloperMCPService`.
+5. **Assert** missing variables raise a clear error.
 
 ---
 

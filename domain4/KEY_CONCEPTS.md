@@ -3,6 +3,30 @@
 
 ---
 
+## 🗺️ Study Order (Domain weight: 20%)
+
+Other domain weights for context: D1 27%, D2 18%, D3 20%, D4 20%, D5 15%.
+
+1. **TS 4.1** explicit criteria: the base skill; every later task depends on clear criteria.
+2. **TS 4.2** few-shot: show examples once the criteria are clear.
+3. **TS 4.3** structured output: put the output in a schema.
+4. **TS 4.4** validation and retry: check the output and decide when to retry.
+5. **TS 4.5** batches: run the same work cheaply at scale.
+6. **TS 4.6** multi-pass review: independent review of the results (and of code).
+
+| Task | What it tests | Key trap | Study guide |
+|---|---|---|---|
+| **4.1** | Explicit report/skip criteria, severity examples, disabling noisy categories | "Be conservative" or confidence filtering | [README](ts_4_1_explicit_criteria_classification/README.md) |
+| **4.2** | 2-4 targeted examples with reasons, varied layouts, null cases | Many identical examples | [README](ts_4_2_few_shot_and_multi_instance/README.md) |
+| **4.3** | Tool use + schema, `tool_choice`, nullable fields, enum `unclear`/`other` | Required fields, or forced tool + thinking | [README](ts_4_3_structured_output_tool_use/README.md) |
+| **4.4** | Retry with document + failed output + error; absent vs fixable | Retrying absent data | [README](ts_4_4_validation_retry_feedback/README.md) |
+| **4.5** | Batch fit, `custom_id`, SLA maths, failed-only resubmission | Batching a blocking check | [README](ts_4_5_message_batches_api/README.md) |
+| **4.6** | Independent instance, per-file + integration passes, confidence routing | Self-review or one giant prompt | [README](ts_4_6_multi_pass_review/README.md) |
+
+Back to the [Domain 4 overview](README.md).
+
+---
+
 ## 📌 Executive Architecture & Task Statement Mapping
 
 ```mermaid
@@ -27,28 +51,6 @@ flowchart LR
         H4["TS 4.6:<br>Two-Pass Review"]
     end
 ```
-
-## 🗺️ Study Order (Domain weight: 20%)
-
-Other domain weights for context: D1 27%, D2 18%, D3 20%, D4 20%, D5 15%.
-
-1. **TS 4.1** explicit criteria: the base skill; every later task depends on clear criteria.
-2. **TS 4.2** few-shot: show examples once the criteria are clear.
-3. **TS 4.3** structured output: put the output in a schema.
-4. **TS 4.4** validation and retry: check the output and decide when to retry.
-5. **TS 4.5** batches: run the same work cheaply at scale.
-6. **TS 4.6** multi-pass review: independent review of the results (and of code).
-
-| Task | What it tests | Key trap | Study guide |
-|---|---|---|---|
-| **4.1** | Explicit report/skip criteria, severity examples, disabling noisy categories | "Be conservative" or confidence filtering | [README](ts_4_1_explicit_criteria_classification/README.md) |
-| **4.2** | 2-4 targeted examples with reasons, varied layouts, null cases | Many identical examples | [README](ts_4_2_few_shot_and_multi_instance/README.md) |
-| **4.3** | Tool use + schema, `tool_choice`, nullable fields, enum `unclear`/`other` | Required fields, or forced tool + thinking | [README](ts_4_3_structured_output_tool_use/README.md) |
-| **4.4** | Retry with document + failed output + error; absent vs fixable | Retrying absent data | [README](ts_4_4_validation_retry_feedback/README.md) |
-| **4.5** | Batch fit, `custom_id`, SLA maths, failed-only resubmission | Batching a blocking check | [README](ts_4_5_message_batches_api/README.md) |
-| **4.6** | Independent instance, per-file + integration passes, confidence routing | Self-review or one giant prompt | [README](ts_4_6_multi_pass_review/README.md) |
-
-Back to the [Domain 4 overview](README.md).
 
 ---
 
@@ -230,8 +232,8 @@ config:
 ---
 flowchart TD
     Start["Validation Error Occurs"] --> Check{"Is data present<br>in document?"}
-    Check -- "YES" --> Rec["Recoverable Error<br>(Formatting / Math)<br>Send targeted feedback"]
-    Check -- "NO" --> Unrec["Unrecoverable Error<br>(Data missing from source)<br>Escalate to human review"]
+    Check -->|"Yes"| Rec["Recoverable Error<br>(Formatting / Math)<br>Send targeted feedback"]
+    Check -->|"No"| Unrec["Unrecoverable Error<br>(Data missing from source)<br>Escalate to human review"]
 ```
 
 #### 3. Semantic Cross-Validation
@@ -518,7 +520,7 @@ Option C is correct. The primary architectural purpose of assigning deterministi
 ---
 
 ### Question 6: Few-Shot Structural Diversity & Layout Generalization
-**Scenario**: You are architecting a high-volume financial data extraction pipeline for an international logistics network. Invoices originate from 300+ freight carriers in varied physical formats. When processing standard tabular invoices with clear column headers (`Item`, `Qty`, `Rate`, `Total`), Claude extracts `line_items` with 99.2% accuracy. However, when processing service invoices where billing details are described in dense narrative paragraphs (*"Consultant performed 12 hours of site inspection on Oct 4 at $125/hr, plus 2 hours of equipment calibration at $75/hr"*), the extraction accuracy drops to 48%, frequently returning `line_items: []`.
+**Scenario**: You are architecting a high-volume financial data extraction pipeline for an international logistics network. Invoices originate from 300+ freight carriers in varied physical formats. When processing standard tabular invoices with clear column headers (`Item`, `Qty`, `Rate`, `Total`), Claude extracts `line_items` with 99.2% accuracy. However, when processing service invoices where billing details are described in dense narrative paragraphs (*"Consultant performed 12 hours of site inspection on Oct 4 at \$125/hr, plus 2 hours of equipment calibration at \$75/hr"*), the extraction accuracy drops to 48%, frequently returning `line_items: []`.
 
 Inspection reveals that the current system prompt contains three few-shot examples, all depicting 4-column tabular invoices.
 

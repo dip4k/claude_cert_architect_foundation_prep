@@ -4,7 +4,7 @@
 
 ## In One Minute
 
-- **What**: One **coordinator** agent plans the work and hands slices to specialised **subagents**. This is hub-and-spoke.
+- **What**: One **coordinator** agent plans the work and hands slices to specialised **subagents**—a **hub-and-spoke** design (one central manager talking to isolated helpers).
 - **Why**: one agent doing everything loses focus. Subagents that talk to each other cannot be audited.
 - **Key facts**: subagents start with an **isolated context**. All communication goes **through the coordinator**.
 - **Coordinator jobs**: decompose broadly, pick subagents by query complexity, give each a separate slice, check for gaps, re-delegate, then synthesise.

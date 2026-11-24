@@ -40,7 +40,7 @@ flowchart LR
     subgraph Multi ["Multi-Agent Orchestration"]
         direction TB
         M1["TS 1.2:<br>Hub-and-Spoke Topology"]
-        M2["TS 1.3:<br>Parallel Task Spawning"]
+        M2["TS 1.3:<br>Parallel Agent (Task) Spawning"]
         M3["TS 1.6:<br>Two-Pass Decomposition"]
         M4["TS 1.7:<br>Session Forking"]
     end
@@ -50,7 +50,7 @@ flowchart LR
 |---|---|---|---|
 | **TS 1.1** | Agentic Loop Lifecycle | `stop_reason == "end_turn"` | State machine handling `tool_use` blocks & dual history |
 | **TS 1.2** | Coordinator-Subagent Patterns | 100% Context Isolation | Hub-and-spoke router with explicit prompt context injection |
-| **TS 1.3** | Subagent Spawning & Invocation | Single-turn concurrent execution | Multiple `Task` tool calls emitted in a single coordinator response |
+| **TS 1.3** | Subagent Spawning & Invocation | Single-turn concurrent execution | Multiple `Agent` (formerly `Task`) tool calls emitted in a single coordinator response |
 | **TS 1.4** | Multi-Step Workflow Enforcement | Code-enforced state gates | Python state machine blocking actions prior to verified prerequisites |
 | **TS 1.5** | Agent SDK Hooks | Hard pre/post runtime boundary | `PreToolUse` (financial/policy intercept) & `PostToolUse` (normalization) |
 | **TS 1.6** | Task Decomposition Strategies | Attention degradation mitigation | Two-pass prompt chaining (Local per-file + Cross-file integration) |
@@ -239,8 +239,8 @@ In the Claude Agent SDK and Claude Code, subagents are spawned via a dedicated b
 #### 2. Parallel Subagent Spawning in a Single Turn
 A critical latency optimization tested heavily on the exam:
 - **Anti-Pattern (Sequential)**: Turn 1 spawns Subagent A -> waits for result -> Turn 2 spawns Subagent B -> waits for result. Total latency: `T_A + T_B + 2 × T_overhead`.
-- **Production Standard (Concurrent Parallel)**: The coordinator emits multiple `Task` tool calls in a **single turn** (single assistant response).
-  - The runtime orchestrator intercepts all `Task` blocks simultaneously.
+- **Production Standard (Concurrent Parallel)**: The coordinator emits multiple `Agent` (formerly `Task`) tool calls in a **single turn** (single assistant response).
+  - The runtime orchestrator intercepts all `Agent` blocks simultaneously.
   - Spawns concurrent execution threads/tasks for Subagent A, Subagent B, and Subagent C.
   - Returns all `tool_result` blocks together in the subsequent turn.
   - Latency: `max(T_A, T_B, T_C) + T_overhead` (about the slowest subagent instead of the sum).
@@ -253,7 +253,7 @@ sequenceDiagram
     participant Sub1 as Search Subagent
     participant Sub2 as Finance Subagent
 
-    Coord->>Runtime: Turn 1: Emits 2 Task calls
+    Coord->>Runtime: Turn 1: Emits 2 Agent calls
     par Concurrent Subagents
         Runtime->>Sub1: Run search prompt
         Sub1-->>Runtime: Return filings data
@@ -720,7 +720,7 @@ flowchart TD
     Q1 -->|"No"| Q2["2. Enforcing business rules?"]
     Q2 -->|"Yes"| A2["Programmatic Gate / PreToolUse<br>Never rely on prompts alone"]
     Q2 -->|"No"| Q3["3. Spawning subagents?"]
-    Q3 -->|"Yes"| A3["Multiple Task Calls in Turn 1<br>Concurrent parallel fan-out"]
+    Q3 -->|"Yes"| A3["Multiple Agent (Task) Calls in Turn 1<br>Concurrent parallel fan-out"]
     Q3 -->|"No"| Q4["4. Multi-file code review?"]
     Q4 -->|"Yes"| A4["Two-Pass Prompt Chaining<br>Pass 1: Local / Pass 2: Integration"]
     Q4 -->|"No"| A5["Fresh Session + Summary<br>Discard stale context on rebase"]
@@ -730,7 +730,7 @@ flowchart TD
 | :--- | :---: | :--- |
 | **Deterministically ending an agentic loop?** | **YES** | Check `response.stop_reason == "end_turn"` *(NEVER parse assistant text content)*. |
 | **Enforcing strict business/financial rules or tool sequence?** | **YES** | Programmatic Prerequisite Gate in code or `PreToolUse` SDK hook *(NEVER prompt instructions alone)*. |
-| **Spawning multiple independent subagents efficiently?** | **YES** | Emit multiple `Task` tool calls in a **SINGLE coordinator turn** *(NEVER sequential round-trips)*. |
+| **Spawning multiple independent subagents efficiently?** | **YES** | Emit multiple `Agent` (formerly `Task`) tool calls in a **SINGLE coordinator turn** *(NEVER sequential round-trips)*. |
 | **Managing multi-file reviews without missing bugs?** | **YES** | Two-Pass Prompt Chaining: Pass 1 (per-file) + Pass 2 (cross-file integration). |
 | **Source code changed out-of-band during extended session?** | **YES** | Discard stale session; inject structured summary into a fresh session. |
 

@@ -7,7 +7,7 @@
 - **What:** Decide which extracted values need a human and prove that automation is safe.
 - **Trap:** *97% overall accuracy* can hide a segment (a document type or field) that is far worse.
 - **Check accuracy per segment** before you reduce human review for that segment.
-- **Sample high-confidence outputs at random**, stratified by document type and field.
+- **Sample high-confidence outputs at random**, **stratified** (sampling fairly from every group, not just the biggest one) by document type and field.
 - **Calibrate field-level confidence** on a labelled validation set. Route low-confidence, ambiguous or contradictory items to people.
 - **Exam answer in one line:** *Stratified sampling + segment accuracy + calibrated field confidence.*
 
@@ -29,8 +29,8 @@
 
 ## 📖 Concepts Explained
 
-### 1. Simpson's Paradox: Why Aggregate Metrics Deceive Leadership
-In high-volume document automation and data extraction systems, reporting aggregate accuracy (e.g. *"Our extraction pipeline achieves 97.5% accuracy overall!"*) creates a dangerous illusion of production readiness.
+### 1. Simpson's Paradox: Why Overall Averages Hide Weak Groups
+In high-volume document automation and data extraction systems, reporting aggregate accuracy (e.g. *"Our extraction pipeline achieves 97.5% accuracy overall!"*) creates a dangerous illusion of production readiness. In statistics, **Simpson's Paradox** happens when a strong overall average hides a failing subgroup inside the data.
 
 In enterprise operations, document distributions are heavily skewed:
 - 85% of volume consists of standard, cleanly printed domestic supplier invoices that achieve 99.8% extraction accuracy.
@@ -42,12 +42,12 @@ In enterprise operations, document distributions are heavily skewed:
 When an extraction pipeline routes low-confidence items to human reviewers, high-confidence extractions are approved automatically without human inspection. How do you detect novel failure modes or model drift in automated throughput?
 - **Flat Random Sampling Fails**: If you sample 5% of all traffic completely at random, rare or specialized document types may receive zero representation in the audit batch.
 - **Stratified Random Sampling (5–10%)**: The pipeline partitions automated traffic into discrete strata `(document_type, field, vendor)` and samples a deterministic percentage from **within every individual stratum**.
-- Crucially, you must sample **high-confidence predictions** to discover "confidently wrong" hallucinations and measure the true background error rate of autonomous straight-through processing (STP).
+- Crucially, you must sample **high-confidence predictions** to discover "confidently wrong" hallucinations and measure the true background error rate of autonomous **straight-through processing (STP)**—items approved automatically with no human click.
 
 ### 3. Field-Level Confidence Calibration via Labeled Validation Sets
 Models do not natively output calibrated probabilities. A model reporting 0.95 confidence on an extracted date might only be correct 70% of the time on that specific document format.
 - **Field-Level Granularity**: Request confidence scores on individual extracted fields, not a single global score for the entire page. A model might be 99% confident in the invoice date, but only 45% confident in the line-item tax rate.
-- **Empirical Calibration**: Run the extraction model across a labeled holdout validation set and plot reliability diagrams (accuracy vs confidence bins) to compute the **Expected Calibration Error (ECE)**. A segment is calibrated when items assigned 90% confidence achieve approximately 90% accuracy.
+- **Empirical Calibration**: Run the extraction model across a labeled holdout validation set and compare predicted confidence bins against actual accuracy (the gap is called **Expected Calibration Error, or ECE**). A segment is calibrated when items assigned 90% confidence achieve approximately 90% accuracy.
 - Calibrate review thresholds independently per field: financial totals require a strict ≥ 0.95 threshold, while internal document descriptions may permit straight-through processing at ≥ 0.80.
 
 ### 4. Triaging to Human Review

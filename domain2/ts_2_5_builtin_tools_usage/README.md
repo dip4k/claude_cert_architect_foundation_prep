@@ -5,7 +5,7 @@
 ## In One Minute
 
 - **What**: Claude Code ships built-in tools. Pick the right one for each job.
-- **Pick**: `Grep` searches file **content**. `Glob` matches file **paths**. `Read` and `Write` handle **whole files**. `Edit` makes a **targeted replacement** of unique text.
+- **Pick**: `Grep` searches file **content**. `Glob` matches file **paths** using filename wildcard patterns (globs like `**/*.py`). `Read` and `Write` handle **whole files**. `Edit` makes a **targeted replacement** of unique text.
 - **When Edit fails** because the text is not unique: use `Read` + `Write` (or expand the anchor so it is unique).
 - **Explore step by step**: `Grep` for entry points, `Read` the imports, then follow the code. Do not read everything up front.
 - **Trace through wrappers**: list the wrapper's exported names, then `Grep` each name.
@@ -56,39 +56,6 @@
 3. Follow what the imports point to. Repeat.
 
 **Trace usage across wrapper modules.** A wrapper module re-exports other code, so names change on the way. List the names the wrapper exports. Then `Grep` each name across the repo to see who really uses it.
-
----
-
-## 🔑 Key Terms
-
-- **Grep**: A built-in content search tool that scans files across the workspace for specific regex or text patterns, returning matching lines and file paths.
-- **Glob**: A built-in filesystem search tool that locates files and directories matching path patterns (such as `**/*.py` or `src/**/*.ts`).
-- **Read / Write**: Core filesystem tools used to inspect full or partial file contents and overwrite or create complete files respectively.
-- **Edit**: A surgical file modification tool that replaces an exact, uniquely matched snippet of existing code with new content.
-- **Anchor text**: The target string of code provided to `Edit` which must appear exactly once within the file to ensure precise, collision-free replacement.
-- **Wrapper module**: An intermediary file or `__init__.py` bundle that re-exports functions and classes from nested submodules, requiring multi-step Grep tracking to map call sites.
-
----
-
-## 🏗️ Architecture
-
-```mermaid
----
-config:
-  htmlLabels: false
----
-flowchart TD
-    Start["Need to change code"] --> Find["Grep for entry points<br>or Glob for paths"]
-    Find --> Read["Read the file<br>(imports first)"]
-    Read --> Edit["Edit with unique anchor"]
-    Edit --> Ok{"Edit succeeded?"}
-    Ok -->|"Yes"| Done["Done"]
-    Ok -->|"No: text not unique"| Choose{"Can the anchor<br>be made unique?"}
-    Choose -->|"Yes"| Expand["Edit with a longer anchor"]
-    Choose -->|"No"| RW["Read full file,<br>then Write it back"]
-    Expand --> Done
-    RW --> Done
-```
 
 ---
 
@@ -146,6 +113,39 @@ Code: `BuiltinToolbox` in [main.py](main.py): `edit_file()`, `execute_edit_with_
 
 ---
 
+## 🔑 Key Terms
+
+- **Grep**: A built-in content search tool that scans files across the workspace for specific regex or text patterns, returning matching lines and file paths.
+- **Glob**: A built-in filesystem search tool that locates files and directories matching path patterns (such as `**/*.py` or `src/**/*.ts`).
+- **Read / Write**: Core filesystem tools used to inspect full or partial file contents and overwrite or create complete files respectively.
+- **Edit**: A surgical file modification tool that replaces an exact, uniquely matched snippet of existing code with new content.
+- **Anchor text**: The target string of code provided to `Edit` which must appear exactly once within the file to ensure precise, collision-free replacement.
+- **Wrapper module**: An intermediary file or `__init__.py` bundle that re-exports functions and classes from nested submodules, requiring multi-step Grep tracking to map call sites.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Start["Need to change code"] --> Find["Grep for entry points<br>or Glob for paths"]
+    Find --> Read["Read the file<br>(imports first)"]
+    Read --> Edit["Edit with unique anchor"]
+    Edit --> Ok{"Edit succeeded?"}
+    Ok -->|"Yes"| Done["Done"]
+    Ok -->|"No: text not unique"| Choose{"Can the anchor<br>be made unique?"}
+    Choose -->|"Yes"| Expand["Edit with a longer anchor"]
+    Choose -->|"No"| RW["Read full file,<br>then Write it back"]
+    Expand --> Done
+    RW --> Done
+```
+
+---
+
 ## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Grep and Glob swapped
@@ -189,17 +189,6 @@ PATTERN (incremental):
 ANTI-PATTERN: Grep "charge_card" -> finds only the definition and the wrapper. Callers use `pay(...)`.
 PATTERN: Read the wrapper, list its exported names (charge_card, pay), then Grep each name.
 ```
-
----
-
-## 🛠️ Hands-on Workbook Guide
-
-Open [`ts_2_5_builtin_tools_usage.ipynb`](ts_2_5_builtin_tools_usage.ipynb). It runs offline in a temporary folder.
-1. **Create** a small project with `Write`.
-2. **Search** with `Grep` and `Glob`.
-3. **Trigger** an ambiguous `Edit` and read the error.
-4. **Recover** with an expanded anchor, then with `Read` + `Write`.
-5. **Trace** usage through a wrapper module with `trace_usage()`.
 
 ---
 
@@ -251,6 +240,17 @@ Open [`ts_2_5_builtin_tools_usage.ipynb`](ts_2_5_builtin_tools_usage.ipynb). It 
 - [ ] I can trace wrapper usage: list exported names, then Grep each.
 
 **Memory hook**: *"Grep = what's inside, Glob = what's named, Edit = unique only, otherwise Read then Write."*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [`ts_2_5_builtin_tools_usage.ipynb`](ts_2_5_builtin_tools_usage.ipynb). It runs offline in a temporary folder.
+1. **Create** a small project with `Write`.
+2. **Search** with `Grep` and `Glob`.
+3. **Trigger** an ambiguous `Edit` and read the error.
+4. **Recover** with an expanded anchor, then with `Read` + `Write`.
+5. **Trace** usage through a wrapper module with `trace_usage()`.
 
 ---
 

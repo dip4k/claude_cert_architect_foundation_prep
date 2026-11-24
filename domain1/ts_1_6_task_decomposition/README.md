@@ -5,7 +5,7 @@
 ## In One Minute
 
 - **What**: break a big job into smaller steps so each Claude call has one clear focus.
-- **Two styles**: **prompt chaining** (a fixed pipeline you design up front) and **dynamic adaptive decomposition** (the plan changes as you learn).
+- **Two styles**: **prompt chaining** (a fixed multi-step pipeline where one step's clean output feeds the next prompt) and **dynamic adaptive decomposition** (the plan changes as you learn).
 - **Code review rule**: review each file on its own, then run one **cross-file integration pass**.
 - **Open-ended work**: map the structure, find the high-impact areas, make a prioritised plan, and adapt it.
 - **Exam answer in one line**: a big multi-file review with uneven results needs per-file passes plus an integration pass. A bigger model, smaller PRs, or voting do not fix it.

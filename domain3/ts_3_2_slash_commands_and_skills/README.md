@@ -5,7 +5,7 @@
 ## In One Minute
 
 - **Slash command** = a saved prompt. A **project-scoped command** lives in `.claude/commands/` and is shared through version control. A **user-scoped command** lives in `~/.claude/commands/` and is personal.
-- **Skill** = an on-demand task workflow in `.claude/skills/<name>/SKILL.md`. Frontmatter keys: `context: fork`, `allowed-tools`, `argument-hint`.
+- **Skill** = an on-demand task workflow in `.claude/skills/<name>/SKILL.md`. Frontmatter (the `---` metadata header at the top of the file) keys: `context: fork`, `allowed-tools`, `argument-hint`.
 - **`context: fork`** runs the skill in an isolated context, so noisy exploration does not fill your main conversation. Only the result comes back.
 - **Skills vs CLAUDE.md**: skills load on demand for a task; `CLAUDE.md` is always loaded for universal standards. Personal skill variants go in `~/.claude/skills/` with a *different name*.
 - **Exam answer in one line**: a team `/review` command goes in `.claude/commands/` in the repo.

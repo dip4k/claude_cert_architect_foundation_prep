@@ -62,33 +62,6 @@
 
 ---
 
-## 🔑 Key Terms
-
-- **Least privilege tool scoping**: The architectural principle of granting each agent or subagent only the minimal set of 3 to 5 tools strictly required for its specialized task, minimizing distraction and misrouting.
-- **Tool overload**: Cognitive degradation occurring when an agent is presented with an excessive number of tools (typically over 10 to 15), leading to latency, increased token consumption, and frequent selection errors.
-- **Constrained tool**: A secured, restricted alternative to an overly permissive utility (such as replacing open-ended `fetch_url` with host-allowlisted `load_document`).
-- **Scoped cross-role tool**: A small, read-only helper tool granted directly to a specialist agent (such as giving `verify_fact` to a synthesis agent) to eliminate repetitive round-trip coordinator latency.
-- **`tool_choice` directive**: An API parameter configuring Claude's tool invocation behavior across `auto` (model decides), `any` (forces some tool call), `tool` (forces a specific named tool), or `none` (prohibits tool calls).
-
----
-
-## 🏗️ Architecture
-
-```mermaid
----
-config:
-  htmlLabels: false
----
-flowchart TD
-    Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user,<br>escalate_to_human"]
-    Coord --> Search["Search agent<br>claude-haiku-4-5<br>web_search, load_doc,<br>extract_metadata"]
-    Coord --> Synth["Synthesis agent<br>claude-haiku-4-5<br>summarize_content, verify_fact"]
-    Coord --> Support["Support agent<br>claude-haiku-4-5<br>get_customer, lookup_order,<br>process_refund, escalate_to_human"]
-    Synth -.->|"Complex case"| Coord
-```
-
----
-
 ## 🧪 Worked Example
 
 ### ❌ Invalid Example (Anti-Pattern / What Breaks)
@@ -144,6 +117,33 @@ turn_2_request = {
 
 ---
 
+## 🔑 Key Terms
+
+- **Least privilege tool scoping**: The architectural principle of granting each agent or subagent only the minimal set of 3 to 5 tools strictly required for its specialized task, minimizing distraction and misrouting.
+- **Tool overload**: Cognitive degradation occurring when an agent is presented with an excessive number of tools (typically over 10 to 15), leading to latency, increased token consumption, and frequent selection errors.
+- **Constrained tool**: A secured, restricted alternative to an overly permissive utility (such as replacing open-ended `fetch_url` with host-allowlisted `load_document`).
+- **Scoped cross-role tool**: A small, read-only helper tool granted directly to a specialist agent (such as giving `verify_fact` to a synthesis agent) to eliminate repetitive round-trip coordinator latency.
+- **`tool_choice` directive**: An API parameter configuring Claude's tool invocation behavior across `auto` (model decides), `any` (forces some tool call), `tool` (forces a specific named tool), or `none` (prohibits tool calls).
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user,<br>escalate_to_human"]
+    Coord --> Search["Search agent<br>claude-haiku-4-5<br>web_search, load_doc,<br>extract_metadata"]
+    Coord --> Synth["Synthesis agent<br>claude-haiku-4-5<br>summarize_content, verify_fact"]
+    Coord --> Support["Support agent<br>claude-haiku-4-5<br>get_customer, lookup_order,<br>process_refund, escalate_to_human"]
+    Synth -.->|"Complex case"| Coord
+```
+
+---
+
 ## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Tool overload
@@ -195,17 +195,6 @@ client.messages.create(thinking={"type": "enabled", "budget_tokens": 2000},
 
 ---
 
-## 🛠️ Hands-on Workbook Guide
-
-Open [`ts_2_3_tool_distribution_and_choice.ipynb`](ts_2_3_tool_distribution_and_choice.ipynb). It runs offline.
-1. **Count** tools in the 18-tool monolith vs scoped roles.
-2. **Test** `load_document()` with allowed and blocked URLs.
-3. **Build** `tool_choice` values for auto, any, none and forced.
-4. **Validate** request params. See the thinking plus forced combination rejected.
-5. **Assert** every role stays within 5 tools.
-
----
-
 ## 📝 Exam-Style Practice Questions
 
 **Q1.** A synthesis agent must verify simple facts often. Each check goes through the coordinator and adds latency. A few checks are complex. What is the best design?
@@ -254,6 +243,17 @@ Open [`ts_2_3_tool_distribution_and_choice.ipynb`](ts_2_3_tool_distribution_and_
 - [ ] I know thinking allows only `auto` or `none`.
 
 **Memory hook**: *"Small toolbox per role. `any` means any tool, forced means that tool, thinking means auto."*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [`ts_2_3_tool_distribution_and_choice.ipynb`](ts_2_3_tool_distribution_and_choice.ipynb). It runs offline.
+1. **Count** tools in the 18-tool monolith vs scoped roles.
+2. **Test** `load_document()` with allowed and blocked URLs.
+3. **Build** `tool_choice` values for auto, any, none and forced.
+4. **Validate** request params. See the thinking plus forced combination rejected.
+5. **Assert** every role stays within 5 tools.
 
 ---
 

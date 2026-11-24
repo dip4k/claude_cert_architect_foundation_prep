@@ -55,34 +55,6 @@ Use `tool_choice` to force a mandatory step (see [2.3](../ts_2_3_tool_distributi
 
 ---
 
-## 🔑 Key Terms
-
-- **Tool description**: The authoritative markdown text within a tool's JSON schema that guides Claude's semantic routing by defining its exact purpose, trigger phrases, argument formats, and explicit negative boundaries.
-- **Boundary statement**: An explicit negative constraint within a tool description (for example, "Do NOT use for tracking; use `lookup_order`") that steers the model away from near-neighbor tools.
-- **Overlapping descriptions**: Semantic ambiguity between two or more tools with similar or generic summaries, which causes non-deterministic tool selection and frequent misrouting errors.
-- **Input format**: The exact structural specification, pattern, or syntax expected for a tool parameter (such as `ORD-[0-9]{4}`), preventing Claude from passing invalid or hallucinated arguments.
-- **Tool decomposition (split / rename)**: The architectural practice of replacing a broad, multi-purpose tool with focused, single-responsibility functions that each have distinct names and unambiguous scopes.
-
----
-
-## 🏗️ Architecture
-
-```mermaid
----
-config:
-  htmlLabels: false
----
-flowchart TD
-    Query["User asks:<br>Where is order ORD-9821?"] --> Router["Claude reads all<br>tool descriptions"]
-    Router --> Check{"Which description<br>matches best?"}
-    Check -->|"Order status, tracking, ORD- IDs"| Order["lookup_order<br>order_id: ORD-digits"]
-    Check -->|"Identity, tier, CUST- IDs"| Cust["get_customer<br>identifier: email or CUST-XXXX"]
-    Order --> Result["tool_result returned<br>to Claude"]
-    Cust --> Result
-```
-
----
-
 ## 🧪 Worked Example
 
 ### ❌ Invalid Example (Anti-Pattern / What Breaks)
@@ -150,6 +122,34 @@ The code in [main.py](main.py) has both tools, `audit_tool()` to flag thin descr
 
 ---
 
+## 🔑 Key Terms
+
+- **Tool description**: The authoritative markdown text within a tool's JSON schema that guides Claude's semantic routing by defining its exact purpose, trigger phrases, argument formats, and explicit negative boundaries.
+- **Boundary statement**: An explicit negative constraint within a tool description (for example, "Do NOT use for tracking; use `lookup_order`") that steers the model away from near-neighbor tools.
+- **Overlapping descriptions**: Semantic ambiguity between two or more tools with similar or generic summaries, which causes non-deterministic tool selection and frequent misrouting errors.
+- **Input format**: The exact structural specification, pattern, or syntax expected for a tool parameter (such as `ORD-[0-9]{4}`), preventing Claude from passing invalid or hallucinated arguments.
+- **Tool decomposition (split / rename)**: The architectural practice of replacing a broad, multi-purpose tool with focused, single-responsibility functions that each have distinct names and unambiguous scopes.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Query["User asks:<br>Where is order ORD-9821?"] --> Router["Claude reads all<br>tool descriptions"]
+    Router --> Check{"Which description<br>matches best?"}
+    Check -->|"Order status, tracking, ORD- IDs"| Order["lookup_order<br>order_id: ORD-digits"]
+    Check -->|"Identity, tier, CUST- IDs"| Cust["get_customer<br>identifier: email or CUST-XXXX"]
+    Order --> Result["tool_result returned<br>to Claude"]
+    Cust --> Result
+```
+
+---
+
 ## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Wrong tool picked because descriptions are thin
@@ -209,19 +209,6 @@ Fix with explicit formats and examples in each parameter description (`order_id:
 
 ---
 
-## 🛠️ Hands-on Workbook Guide
-
-Open [`ts_2_1_tool_interface_design.ipynb`](ts_2_1_tool_interface_design.ipynb). It runs offline.
-1. **Load** the tools and the vague pair from [main.py](main.py).
-2. **Audit** thin descriptions with `audit_tool()`.
-3. **Measure** overlap with `description_overlap()`.
-4. **Compare** the vague pair with the split tools.
-5. **Dispatch** a request to `lookup_order` and check the result.
-
-Run live API examples by hand only. See [EXECUTION_POLICY.md](../../EXECUTION_POLICY.md).
-
----
-
 ## 📝 Exam-Style Practice Questions
 
 **Q1.** A support agent has `get_customer` ("Retrieves customer details") and `lookup_order` ("Retrieves order details"). It often calls `get_customer` for order questions. What is the best first step?
@@ -270,6 +257,19 @@ Run live API examples by hand only. See [EXECUTION_POLICY.md](../../EXECUTION_PO
 - [ ] I know a keyword-sensitive system prompt can override descriptions.
 
 **Memory hook**: *"The description is the router. Fix the label before you fix the system."*
+
+---
+
+## 🛠️ Hands-on Workbook Guide
+
+Open [`ts_2_1_tool_interface_design.ipynb`](ts_2_1_tool_interface_design.ipynb). It runs offline.
+1. **Load** the tools and the vague pair from [main.py](main.py).
+2. **Audit** thin descriptions with `audit_tool()`.
+3. **Measure** overlap with `description_overlap()`.
+4. **Compare** the vague pair with the split tools.
+5. **Dispatch** a request to `lookup_order` and check the result.
+
+Run live API examples by hand only. See [EXECUTION_POLICY.md](../../EXECUTION_POLICY.md).
 
 ---
 

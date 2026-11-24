@@ -4,7 +4,7 @@
 
 ## In One Minute
 
-- **What**: a path-scoped rule is a file in `.claude/rules/` with a `paths:` list of globs in its frontmatter.
+- **What**: a path-scoped rule is a file in `.claude/rules/` with a `paths:` list of globs (filename wildcard patterns like `**/*.test.tsx`) in its frontmatter (the `---` metadata header at the top of the file).
 - **Why**: it loads only when Claude edits a matching file, so it saves tokens.
 - **Best for**: conventions spread across many folders, such as tests that sit next to the code.
 - **Exam answer in one line**: tests co-located across the repo means glob-pattern path-scoped rules. Not root `CLAUDE.md` inference, not a skill, not a `CLAUDE.md` in every directory.

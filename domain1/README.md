@@ -34,7 +34,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- |
 | **TS 1.1** | **Agentic Loops** | **Car Dashboard Gauge vs Transmission** | Stopping an agent based on conversational text ("I think we're done") fails under natural language variation. | **Deterministic `stop_reason` Inspection**: Continue on `"tool_use"`; exit solely on `"end_turn"` ([TS 1.1](ts_1_1_multi_tool_agent_loop/main.py)). |
 | **TS 1.2** | **Coordinator-Subagent Patterns** | **Air Traffic Controller vs Pilot Radio Chatter** | Allowing planes (subagents) to debate routes over shared open channels causes collision and chaos. | **Hub-and-Spoke Topology**: Central coordinator manages isolated leaf agents; zero peer-to-peer chatter ([TS 1.2](ts_1_2_coordinator_subagents/main.py)). |
-| **TS 1.3** | **Subagent Spawning** | **Restaurant Kitchen Order Tickets** | Head chef waiting for appetizer to finish before ordering the dessert causes 80-second customer delays. | **Single-Turn Concurrent Spawning**: Coordinator emits multiple `Task` blocks in one turn ([TS 1.3](ts_1_3_subagent_invocation_spawning/main.py)). |
+| **TS 1.3** | **Subagent Spawning** | **Restaurant Kitchen Order Tickets** | Head chef waiting for appetizer to finish before ordering the dessert causes 80-second customer delays. | **Single-Turn Concurrent Spawning**: Coordinator emits multiple `Agent` (formerly `Task`) calls in one turn ([TS 1.3](ts_1_3_subagent_invocation_spawning/main.py)). |
 | **TS 1.4** | **Workflow Enforcement** | **Bank Vault Electronic Turnstile** | A warning sign ("Please verify ID before opening vault") is easily bypassed by an urgent intruder. | **Programmatic Prerequisite Gate**: Python code gate blocking financial execution until verified ([TS 1.4](ts_1_4_prerequisite_enforcement/main.py)). |
 | **TS 1.5** | **Agent SDK Hooks** | **Airport Security & Currency Exchange** | Checking passports after passengers board is useless; receiving raw mixed currencies confuses cashiers. | **SDK Hooks**: `PreToolUse` for security interception; `PostToolUse` for payload trimming and normalization ([TS 1.5](ts_1_5_sdk_hooks/main.py)). |
 | **TS 1.6** | **Task Decomposition** | **Automobile Assembly Line Quality Check** | Inspecting an entire assembled 5,000-part car in one glance causes inspectors to miss missing bolts. | **Two-Pass Prompt Chaining**: Pass 1 audits individual files locally; Pass 2 audits integration contracts ([TS 1.6](ts_1_6_task_decomposition/main.py)). |
@@ -48,7 +48,7 @@ flowchart LR
 | :--- | :--- | :--- | :--- | :--- |
 | **Monolithic Agent** | Single agent calls all tools sequentially. | Zero isolation; single context accumulates all tokens. | Severe attention dilution; tool saturation; context bloat. | Reject for multi-step or multi-source research tasks. |
 | **Peer-to-Peer Mesh** | Subagents invoke and message each other directly. | Shared or gossiped memory buffers. | Combinatorial message explosion (O(N²)); untraceable bugs; runaway loops. | **Strict Anti-Pattern on Exam**: Eliminate immediately. |
-| **Hub-and-Spoke** | Central coordinator delegates to leaf subagents via `Task`. | **100% Context Isolation**: Subagents inherit zero parent history. | Coordinator decomposition bottleneck if subtasks are partitioned too narrowly. | **Gold Standard on Exam**: Single audit point, clean boundaries, concurrent execution. |
+| **Hub-and-Spoke** | Central coordinator delegates to leaf subagents via `Agent` (formerly `Task`). | **100% Context Isolation**: Subagents inherit zero parent history. | Coordinator decomposition bottleneck if subtasks are partitioned too narrowly. | **Gold Standard on Exam**: Single audit point, clean boundaries, concurrent execution. |
 
 ---
 
@@ -65,13 +65,13 @@ flowchart LR
     T11["1.1 Agentic Loop<br>stop_reason engine"] --> T14["1.4 Code Gates<br>& Handoffs"]
     T14 --> T15["1.5 SDK Hooks<br>Pre/Post boundaries"]
     T15 --> T12["1.2 Coordinator<br>& Subagents"]
-    T12 --> T13["1.3 Concurrent Task<br>Spawning"]
+    T12 --> T13["1.3 Concurrent Agent<br>(Task) Spawning"]
     T13 --> T16["1.6 Two-Pass Task<br>Decomposition"]
     T16 --> T17["1.7 Session State<br>& Resumption"]
 ```
 
 1. **Single-Agent Mechanics First**: TS 1.1 (the client-side while loop), TS 1.4 (programmatic state gates), and TS 1.5 (SDK interception hooks).
-2. **Multi-Agent Systems Next**: TS 1.2 (hub-and-spoke coordination) and TS 1.3 (concurrent single-turn `Task` spawning).
+2. **Multi-Agent Systems Next**: TS 1.2 (hub-and-spoke coordination) and TS 1.3 (concurrent single-turn `Agent` spawning).
 3. **Complex Systems & Session Lifecycles**: TS 1.6 (two-pass prompt chaining for large PRs) and TS 1.7 (session resumption vs fresh summary resets).
 
 ---
@@ -80,13 +80,13 @@ flowchart LR
 
 | TS | Study Guide | Core Architectural Focus | Key Exam Trap to Avoid |
 |---|---|---|---|
-| **1.1** | [README](ts_1_1_multi_tool_agent_loop/README.md) | `stop_reason` drives loop control: `tool_use` continues; `end_turn` terminates deterministically. | Parsing assistant text strings for "done", or using an iteration cap as the normal exit. |
-| **1.2** | [README](ts_1_2_coordinator_subagents/README.md) | Hub-and-spoke topology, strict context isolation, dynamic complexity routing, gap detection. | Blaming subagents for low coverage when the coordinator decomposed the query too narrowly. |
-| **1.3** | [README](ts_1_3_subagent_invocation_spawning/README.md) | `Task` tool in `allowedTools`, parallel single-turn spawning, separating content from metadata. | Spawning subagents sequentially across multiple turns, or assuming subagents inherit context. |
-| **1.4** | [README](ts_1_4_prerequisite_enforcement/README.md) | Programmatic prerequisite gates, structured handoff manifests, multi-concern decomposition. | Attempting to fix a skipped business rule with stronger prompts or few-shot examples. |
-| **1.5** | [README](ts_1_5_sdk_hooks/README.md) | `PreToolUse` for financial/policy gating; `PostToolUse` for PII redaction and payload trimming. | Placing non-negotiable security or compliance rules solely in natural language prompts. |
-| **1.6** | [README](ts_1_6_task_decomposition/README.md) | Prompt chaining vs adaptive decomposition, two-pass review (file-level + integration). | Proposing a larger model or bigger context window to evaluate 15+ files in one prompt. |
-| **1.7** | [README](ts_1_7_session_management/README.md) | `--resume <session>`, `fork_session` for divergent branches, clean session resets with summary. | Resuming a 60-turn stale session after git rebase without informing Claude of file diffs. |
+| **1.1** | [README](ts_1_1_multi_tool_agent_loop/README.md) · [Notebook](ts_1_1_multi_tool_agent_loop/ts_1_1_multi_tool_agent_loop.ipynb) | `stop_reason` drives loop control: `tool_use` continues; `end_turn` terminates deterministically. | Parsing assistant text strings for "done", or using an iteration cap as the normal exit. |
+| **1.2** | [README](ts_1_2_coordinator_subagents/README.md) · [Notebook](ts_1_2_coordinator_subagents/ts_1_2_coordinator_subagents.ipynb) | Hub-and-spoke topology, strict context isolation, dynamic complexity routing, gap detection. | Blaming subagents for low coverage when the coordinator decomposed the query too narrowly. |
+| **1.3** | [README](ts_1_3_subagent_invocation_spawning/README.md) · [Notebook](ts_1_3_subagent_invocation_spawning/ts_1_3_subagent_invocation_spawning.ipynb) | `Agent` (formerly `Task`) in `allowedTools`, parallel single-turn spawning, separating content from metadata. | Spawning subagents sequentially across multiple turns, or assuming subagents inherit context. |
+| **1.4** | [README](ts_1_4_prerequisite_enforcement/README.md) · [Notebook](ts_1_4_prerequisite_enforcement/ts_1_4_prerequisite_enforcement.ipynb) | Programmatic prerequisite gates, structured handoff manifests, multi-concern decomposition. | Attempting to fix a skipped business rule with stronger prompts or few-shot examples. |
+| **1.5** | [README](ts_1_5_sdk_hooks/README.md) · [Notebook](ts_1_5_sdk_hooks/ts_1_5_sdk_hooks.ipynb) | `PreToolUse` for financial/policy gating; `PostToolUse` for PII redaction and payload trimming. | Placing non-negotiable security or compliance rules solely in natural language prompts. |
+| **1.6** | [README](ts_1_6_task_decomposition/README.md) · [Notebook](ts_1_6_task_decomposition/ts_1_6_task_decomposition.ipynb) | Prompt chaining vs adaptive decomposition, two-pass review (file-level + integration). | Proposing a larger model or bigger context window to evaluate 15+ files in one prompt. |
+| **1.7** | [README](ts_1_7_session_management/README.md) · [Notebook](ts_1_7_session_management/ts_1_7_session_management.ipynb) | `--resume <session>`, `fork_session` for divergent branches, clean session resets with summary. | Resuming a 60-turn stale session after git rebase without informing Claude of file diffs. |
 
 ---
 
@@ -101,9 +101,9 @@ flowchart LR
 4. **All Inter-Agent Communication Routes Through the Coordinator (TS 1.2)**:  
    In enterprise systems, subagents never communicate peer-to-peer. The coordinator acts as the single point of truth, logging, and routing. When coverage is incomplete, check whether the coordinator decomposed the query too narrowly.
 5. **Emit Parallel Subagents in a Single Turn (TS 1.3)**:  
-   Coordinator environments must whitelist `"Task"` in `allowedTools`. To run subagents concurrently, emit multiple `Task` calls in a single coordinator response turn, cutting turn latency by 40–60%.
+   Coordinator environments must allow `"Agent"` (formerly `"Task"`) in `allowedTools`. To run subagents concurrently, emit multiple `Agent` calls in a single coordinator response turn, cutting turn latency by 40–60%.
 6. **Programmatic Gates Over Probabilistic Prompts (TS 1.4, 1.5)**:  
-   Business, compliance, and financial thresholds (> \$500) must be enforced in application code or SDK hooks (`PreToolUse`). System prompts have a non-zero failure rate under user manipulation or ambiguity.
+   Business, compliance, and financial thresholds (> \$500) must be enforced in application code or SDK hooks (`PreToolUse`) so they are **deterministic** (guaranteed to run every time). System prompts are **probabilistic** (the model can sometimes skip or misunderstand them under user pressure or ambiguity).
 7. **Two Passes for Large Code Reviews (TS 1.6)**:  
    Evaluating 10+ files in a single prompt induces attention dilution. Implement Two-Pass Prompt Chaining: Pass 1 executes isolated per-file reviews; Pass 2 reviews cross-file interface contracts.
 8. **Reset Stale Sessions After Codebase Drift (TS 1.7)**:  
@@ -122,6 +122,26 @@ flowchart LR
 
 ---
 
+## 🧭 Quick Decision Flow
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart TD
+    Q1["Loop stopping early or hanging?"] -->|"Yes"| A1["Branch on response.stop_reason<br>never on text or cap (TS 1.1)"]
+    Q1 -->|"No"| Q2["Must enforce a rule or limit every time?"]
+    Q2 -->|"Yes"| A2["Code gate or PreToolUse hook;<br>PostToolUse to trim output (TS 1.4, 1.5)"]
+    Q2 -->|"No"| Q3["Report misses a topic or runs slow?"]
+    Q3 -->|"Yes"| A3["Coordinator hub-and-spoke +<br>parallel Agent calls in 1 turn (TS 1.2, 1.3)"]
+    Q3 -->|"No"| Q4["Large multi-file code review?"]
+    Q4 -->|"Yes"| A4["Two-Pass Chain: per-file first,<br>then integration pass (TS 1.6)"]
+    Q4 -->|"No"| A5["Files stale after rebase?<br>New session + summary; else --resume (TS 1.7)"]
+```
+
+---
+
 ## 🛠️ Hands-on Labs & Offline Verification
 
 Every folder in Domain 1 includes a study guide, offline unit test, and zero-token simulation:
@@ -135,7 +155,7 @@ uv run pytest tests/test_domain1_enhancements.py -q
 |---|---|---|
 | [ts_1_1_multi_tool_agent_loop](ts_1_1_multi_tool_agent_loop/) | Autonomous control loop | Explicit `stop_reason` branching & safety cap fallback |
 | [ts_1_2_coordinator_subagents](ts_1_2_coordinator_subagents/) | Coordinator orchestration | Hub-and-spoke research system with coverage gap checks |
-| [ts_1_3_subagent_invocation_spawning](ts_1_3_subagent_invocation_spawning/) | Concurrent subagent spawning | Single-turn multiple `Task` emissions with ordered results |
+| [ts_1_3_subagent_invocation_spawning](ts_1_3_subagent_invocation_spawning/) | Concurrent subagent spawning | Single-turn multiple `Agent` (Task) emissions with ordered results |
 | [ts_1_4_prerequisite_enforcement](ts_1_4_prerequisite_enforcement/) | Programmatic state gating | Refund authorization gate & structured escalation manifest |
 | [ts_1_5_sdk_hooks](ts_1_5_sdk_hooks/) | Agent SDK hooks | `PreToolUse` policy interception & `PostToolUse` data normalization |
 | [ts_1_6_task_decomposition](ts_1_6_task_decomposition/) | Multi-pass prompt chaining | Pass 1 per-file analysis + Pass 2 integration review |
