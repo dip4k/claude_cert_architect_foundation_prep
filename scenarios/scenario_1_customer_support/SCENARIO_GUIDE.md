@@ -1,21 +1,23 @@
 # Scenario 1: Customer Support Resolution Agent
 
-## 1. In One Minute
+## 1. The Big Picture (In Plain English)
 
-**What it is.** An Agent SDK customer support agent that resolves returns, billing disputes, and order tracking. It relies on four focused MCP tools: `get_customer`, `lookup_order`, `process_refund`, and `escalate_to_human`. The target SLA is 80%+ First Contact Resolution (FCR) while cleanly escalating policy exceptions and human requests to human agents.
+Imagine an e-commerce support bot built with the Claude Agent SDK. Its job is to help customers check orders, process simple returns, and hand off tricky cases to human agents. It has four focused tools: `get_customer`, `lookup_order`, `process_refund`, and `escalate_to_human`. The business goal is to resolve **80% or more** of support requests on the first contact without ever issuing an unauthorized refund.
 
-**Domains hit:** Domain 1 (Agentic Architecture), Domain 2 (Tool Design & MCP), Domain 5 (Context Management & Reliability).
+**Everyday Analogy — The Bank Vault Turnstile:**
+Putting a sign on a bank vault that says *"Authorized Staff Only"* will not stop someone who pushes past it. An electronic turnstile that physically stays locked until your badge scans green will. In an AI agent, prompt instructions are polite signs; Python code checks (called **programmatic gates** or **hooks**) are the locked turnstile.
 
-**Key Task Statements:** TS 1.1 (Core loop), TS 1.4 (Prerequisite gates), TS 1.5 (Hooks), TS 2.1 (Tool descriptions), TS 2.2 (MCP structured errors), TS 2.3 (Tool distribution), TS 5.1 (Context & Case Facts), TS 5.2 (Escalation triggers).
+- **Domains Tested:** Domain 1 (Agentic Architecture, 27%), Domain 2 (Tool Design & MCP, 18%), Domain 5 (Context Management & Reliability, 15%).
+- **Task Statements:** TS 1.1 (Agent loop), TS 1.4 (Prerequisite gates), TS 1.5 (Hooks), TS 2.1 (Tool descriptions), TS 2.2 (Structured tool errors), TS 2.3 (Tool scoping), TS 5.1 (Context & Case Facts), TS 5.2 (Escalation triggers).
 
-**Top 3 Traps:**
-1. **The Probabilistic Gate Trap**: Using a prompt instruction or few-shot examples to enforce a critical security or financial rule (e.g. verifying identity before processing a refund).
-2. **The Sentiment Trap**: Using emotional sentiment scores or self-reported confidence to decide when to escalate, rather than explicit customer requests or policy gaps.
-3. **The Classifier Band-Aid**: Adding a machine learning routing classifier or merging tools before fixing ambiguous, vague tool descriptions.
+### Top 3 Mistakes to Watch Out For
+1. **Using a prompt for a rule that must never break:** Telling Claude *"NEVER refund before checking ID"* works most of the time, until an angry customer or prompt injection talks the model into skipping the check. Money and identity rules belong in code.
+2. **Escalating based on mood or confidence:** Sending a customer to a human just because they sound frustrated—or because the model guesses a low confidence score—wastes human agent time. Escalate only when the customer asks for a person, policy forbids an action, or tools keep failing.
+3. **Adding a classifier before fixing unclear tool descriptions:** If Claude keeps calling `lookup_order` when it should call `get_customer`, do not build an extra ML router right away. First rewrite the tool descriptions with clear boundaries and examples.
 
 ---
 
-## 2. Architecture Diagram
+## 2. How the System Works
 
 ```mermaid
 ---
@@ -23,35 +25,46 @@ config:
   htmlLabels: false
 ---
 flowchart TD
-    User["Customer Message"] --> Cache["1. Prompt Caching Prefix<br>(Static Tools + Rules Cached)"]
-    Cache --> Loop["2. Core Agent Loop<br>(Evaluates stop_reason)"]
+    User["Customer Message"] --> Cache["1. Prompt Caching Prefix<br>(Static Tools and Rules Cached)"]
+    Cache --> Loop["2. Core Agent Loop<br>(Checks stop_reason)"]
 
-    Loop -->|"stop_reason: end_turn"| Reply["Reply to Customer"]
-    Loop -->|"stop_reason: tool_use"| Gate{"3. Programmatic Gate<br>Identity verified?<br>Refund up to \$500?"}
+    Loop -->|"stop_reason: end_turn"| Reply["Send Reply to Customer"]
+    Loop -->|"stop_reason: tool_use"| Gate{"3. Python Code Gate<br>Identity verified?<br>Refund up to \$500?"}
 
     Gate -->|"Blocked by Policy"| Err["Return Structured Error<br>(isError: true, isRetryable: false)"]
-    Gate -->|"Policy Allowed"| Exec["4. Execute MCP Tool<br>(lookup_order / process_refund)"]
-    Gate -->|"Explicit Human Demand"| Escalate["7. escalate_to_human<br>(Structured Case Manifest)"]
+    Gate -->|"Policy Allowed"| Exec["4. Run MCP Tool<br>(lookup_order / process_refund)"]
+    Gate -->|"Customer Asks for Human"| Escalate["7. escalate_to_human<br>(Structured Case Handoff)"]
 
-    Exec --> Trim["5. PostToolUse Hook<br>(Trim 40 raw DB fields to 4)"]
-    Trim --> Facts["6. Case Facts Layer<br>(Persistent Session State)"]
+    Exec --> Trim["5. PostToolUse Hook<br>(Trim 40 raw DB fields to 5)"]
+    Trim --> Facts["6. Case Facts Block<br>(Pinned Outside Summaries)"]
 ```
+
+### Walkthrough of the Flow
+1. **Static instructions stay cached at the top:** Tool definitions and policy rules sit in the cached prefix so the system does not pay full price to re-read them on every turn.
+2. **The loop follows `stop_reason`:** Your application code keeps running tools whenever Claude returns `stop_reason == "tool_use"` and stops to reply only when `stop_reason == "end_turn"`.
+3. **Code checks run before any sensitive tool:** Before `lookup_order` or `process_refund` touches the backend, a Python check verifies that `get_customer` already authenticated the customer and that the refund is within the `$500` and `30-day` limits.
+4. **Raw database responses are trimmed:** A `PostToolUse` hook strips out ~35 internal database fields (warehouse IDs, partition keys, staff IDs) and keeps only the 5 fields the agent actually needs.
+5. **Key facts stay pinned:** Verified details (`customer_id`, `is_authenticated`, `active_order_id`) live in a small **Case Facts** block outside summarized chat history so they never get lost in long conversations.
 
 ---
 
-## 3. How a Good Answer Thinks
+## 3. Core Design Rules (Why Naive Fixes Fail)
 
-When evaluating an exam question for Customer Support, follow this decision sequence:
-
-1. **What is the root cause?** Never treat a symptom. If the agent invokes the wrong tool, inspect and expand tool descriptions first before adding complex classifiers.
-2. **Must the rule hold 100% of the time?** Financial transactions, customer authentication, and refund caps must be enforced by deterministic code (a programmatic pre-tool hook or gateway). Prompts and few-shot examples are probabilistic.
-3. **Escalation requires explicit triggers**:
-   * Customer explicitly asks for a human or manager → Escalate immediately without interrogation.
-   * Hard policy gap or edge case encountered → Escalate with a structured handoff payload.
-   * Consecutive unrecoverable tool failures (retry limit breached) → Escalate.
-   * *Never* escalate based on sentiment scores or self-reported model confidence.
-4. **Least Privilege**: Equip the support agent strictly with its 4-5 domain tools. Never grant broad HR, financial ledger, or terminal tools.
-5. **Multiple matches found?** If searching "Alex Kim" returns two records, prompt the customer for an unambiguous secondary identifier (phone or email). Never guess or default to the most recent record.
+1. **Enforce 100% rules in code, not prompts:**
+   Identity checks, ownership checks (making sure Bob cannot inspect Alice's order), and the `$500` refund cap must live in deterministic host code or a `PreToolUse` hook. Prompts are probabilistic and will eventually fail under urgent phrasing or adversarial inputs.
+2. **Fix tool descriptions before adding extra models:**
+   When Claude picks the wrong tool, the cheapest and cleanest root fix is improving the tool description: explain *when* to use it, *what format* it expects, and *when NOT to use it*.
+3. **Use explicit escalation triggers:**
+   - Customer asks for a human or manager → Escalate **right away** with a structured summary. Do not ask extra diagnostic questions first.
+   - Request falls outside written policy (e.g., refund over `$500`, delivered over `30 days` ago, or price matching) → Escalate with a clear reason.
+   - Tool fails repeatedly and is not retryable → Escalate cleanly instead of looping forever.
+   - *Never* escalate based on sentiment scores or self-reported confidence.
+4. **Follow Least Privilege:**
+   Give the support agent only its 4 domain tools (`get_customer`, `lookup_order`, `process_refund`, `escalate_to_human`). Do not attach finance, HR, or shell tools "just in case."
+5. **Clarify duplicate matches—never guess:**
+   If looking up `"Alex Kim"` returns two customers, ask for a phone number or email. Never guess the most recent account, and never reveal other customers' addresses.
+6. **Return structured tool errors:**
+   When a backend service times out, return `isError: true` with a category (`"transient"`), a human-readable message, and `isRetryable: true`. Never return an empty list `{}` with `isError: false`, or Claude will assume the customer has no orders.
 
 ```mermaid
 ---
@@ -59,170 +72,214 @@ config:
   htmlLabels: false
 ---
 flowchart TD
-    Q{"What does the<br>question describe?"} -->|"Rule must hold 100%"| Code["Enforce in code via hook/gate"]
-    Q -->|"Agent picks wrong tool"| Desc["Expand and clarify<br>tool descriptions first"]
-    Q -->|"Customer asks for human"| EscNow["Escalate immediately with<br>structured handoff"]
-    Q -->|"Policy exception/gap"| EscPol["Escalate using explicit criteria"]
-    Q -->|"Session loses details"| Facts["Pin persistent Case Facts block"]
-    Q -->|"External API tool fails"| ErrRet["Return structured error<br>Retry only if isRetryable: true"]
+    Q{"What problem appears<br>in the question?"} -->|"Rule must hold 100%"| Code["Enforce in Python code<br>or a PreToolUse hook"]
+    Q -->|"Agent picks wrong tool"| Desc["Rewrite and clarify<br>tool descriptions first"]
+    Q -->|"Customer asks for human"| EscNow["Escalate right away with<br>structured handoff"]
+    Q -->|"Policy limit or gap"| EscPol["Escalate using explicit<br>policy criteria"]
+    Q -->|"Long chat loses IDs"| Facts["Pin Case Facts block and<br>trim tool payloads"]
+    Q -->|"Backend API fails"| ErrRet["Return structured error<br>Retry only if isRetryable"]
 ```
 
-### Model & Sampling Invariants:
-- **Model Choice**: Use `claude-sonnet-5-5` (or Sonnet 4.5) for the coordinator/support agent. Use `claude-haiku-4-5` for fast background classification or sub-tasks.
-- **Extended Thinking Rules**: When `thinking` is enabled (`budget_tokens`), **omit `temperature`**, `top_p`, and `top_k`. Non-default sampling values return HTTP 400.
-- **Thinking Continuity**: Assistant thinking blocks must be returned verbatim with their cryptographic signatures across multi-turn loops.
-- **Prompt Caching Layout**: Place static tool definitions and system instructions at the top with `cache_control: {"type": "ephemeral"}` to receive 90% read discounts. Place dynamic customer dialogue and Case Facts downstream after the cache breakpoint.
+### Model & API Rules for This Scenario
+- **Model choice:** Use `claude-sonnet-4-5` for the customer support agent (and coordinators), and `claude-haiku-4-5` for lightweight background classification or extraction tasks.
+- **Extended Thinking rules:** If you turn on `thinking` (`budget_tokens`), **omit `temperature`**, `top_p`, and `top_k` (passing them causes an HTTP `400` error), and use only `tool_choice` `"auto"` or `"none"`.
+- **Preserve thinking blocks:** In multi-turn tool loops, pass Claude's `thinking` blocks back unmodified with their cryptographic `signature`.
+- **Prompt caching layout:** Put static tool schemas and rules first with `cache_control: {"type": "ephemeral"}`, and place dynamic customer messages and Case Facts below the breakpoint.
 
 ---
 
-## 4. Task Statement Map
+## 4. What the Exam Tests (Task Statement Map)
 
-| Task Statement | How It Manifests in Scenario 1 | Exam Trap |
+| Task Statement | How It Shows Up Here | Tempting Wrong Answer |
 | :--- | :--- | :--- |
-| **TS 1.1 Agent Loop** | Loop continues on `stop_reason: "tool_use"`, stops on `"end_turn"`. | Parsing response text with regex instead of reading `stop_reason`. |
-| **TS 1.4 Prerequisite Gates** | Customer identity must be authenticated before checking orders or issuing refunds. | Relying on system prompts or few-shot examples to block unauthenticated actions. |
-| **TS 1.5 Hooks** | Programmatic pre-tool hook blocks refunds > \$500; `PostToolUse` trims database payloads. | Asking Claude to remember the \$500 limit in its head. |
-| **TS 2.1 Tool Design** | Distinct descriptions for `get_customer` (identity) vs `lookup_order` (orders). | Adding a machine learning routing classifier before fixing weak descriptions. |
-| **TS 2.2 MCP Errors** | Tools return `isError: true`, descriptive category, and `isRetryable` boolean flag. | Returning generic "Operation failed" strings or masking failures as empty results. |
-| **TS 2.3 Tool Distribution** | Support agent receives strictly its 4 designated tools. | Granting broad enterprise tools "just in case" the agent needs them. |
-| **TS 5.1 Context Window** | Immutable Case Facts block pinned outside summarized history; payload trimming. | Relying on conversational summaries to remember customer IDs and amounts. |
-| **TS 5.2 Escalation** | Explicit customer demand or policy gap triggers immediate structured handoff. | Using emotional sentiment analysis or self-reported confidence scores. |
+| **TS 1.1 Agent Loop** | Loop keeps running on `stop_reason: "tool_use"` and stops on `"end_turn"`. | Searching reply text with regex for phrases like `"All done"`. |
+| **TS 1.4 Prerequisite Gates** | Code blocks `lookup_order` and `process_refund` until `get_customer` succeeds. | Writing `"NEVER refund before checking ID"` in bold in the system prompt. |
+| **TS 1.5 Hooks** | Pre-tool check blocks refunds over `$500`; `PostToolUse` trims raw DB responses. | Asking Claude to remember the `$500` rule in its head. |
+| **TS 2.1 Tool Descriptions** | Clear boundaries between `get_customer` (who) and `lookup_order` (what order). | Training an ML routing classifier before improving tool descriptions. |
+| **TS 2.2 MCP Tool Errors** | Errors include `isError: true`, category, and `isRetryable` flag. | Returning `"Operation failed"` or returning `{}` as a fake success. |
+| **TS 2.3 Tool Scoping** | Support agent receives only its 4 support tools. | Giving the agent all company tools "just in case." |
+| **TS 5.1 Context & Case Facts** | Pinned Case Facts block outside summaries + trimmed tool payloads. | Expecting conversation summaries to preserve exact order IDs and amounts. |
+| **TS 5.2 Escalation Triggers** | Explicit human demand or policy gap triggers a structured handoff right away. | Triggering escalation from anger sentiment or model confidence scores. |
 
 ---
 
-## 5. Step-by-Step Worked Example
+## 5. Realistic Walkthrough (End-to-End Example)
 
-**Customer Interaction**: "My name is Alex Kim. Refund my desk order."
+**Customer Message:** *"My name is Alex Kim. Refund my desk order."*
 
-1. **Disambiguation**: The agent queries `get_customer(name="Alex Kim")`. The database returns two matches. The agent halts and prompts: *"I found two accounts under Alex Kim. Could you please confirm your account email or phone number?"* (Does not guess).
-2. **Authentication**: The customer provides `alex1@example.com`. `get_customer` executes successfully. The orchestrator updates the persistent **Case Facts block** with `customer_id: "cust_201"` and `is_authenticated: true`.
-3. **Tool Ingestion & Trimming**: The agent calls `lookup_order(customer_id="cust_201")`. The raw database returns 40 fields (internal warehouse IDs, tracking timestamps, supplier codes). A `PostToolUse` hook strips the payload down to 5 critical fields: `order_id`, `status`, `total`, `items`, and `delivery_date`.
-4. **Programmatic Gate Check**: The customer requests a full refund of \$750. The agent attempts to call `process_refund(order_id="ORD-99", amount=750)`. The pre-tool execution hook intercepts the call, detects that \$750 exceeds the hardcoded `REFUND_APPROVAL_LIMIT_USD = 500.0`, blocks execution, and returns a structured error: `{"isError": true, "code": "POLICY_LIMIT_EXCEEDED", "isRetryable": false}`.
-5. **Human Escalation**: The agent recognizes the non-retryable policy limit and invokes `escalate_to_human`, passing the Case Facts, interaction summary, and the reason (*"Refund amount \$750 exceeds automated policy limit of \$500"*). A human Tier-2 representative takes over cleanly.
+1. **Avoid Guessing on Duplicate Names:**
+   The agent searches `get_customer(name="Alex Kim")` and finds two customers with that name. Instead of picking one at random, it asks: *"I found two accounts under Alex Kim. Could you share the email address or phone number on your account?"*
+2. **Verify Identity and Save Case Facts:**
+   The customer replies with `alex1@example.com`. `get_customer` verifies the account and pins `customer_id: "cust_201"` and `is_authenticated: true` into the **Case Facts** block so it stays intact even if earlier chat messages are summarized later.
+3. **Trim Bloated CRM Output:**
+   The customer asks about their desk order (`ord_9903`, `$750.00`). Once verified, `lookup_order` returns 40 raw database fields. A `PostToolUse` hook trims the payload down to 5 clean fields: `order_id`, `status`, `total_usd`, `items`, and `days_since_delivery`.
+4. **Enforce the Refund Limit in Code:**
+   The agent tries to call `process_refund(order_id="ord_9903")`. Before the payment API runs, the Python gate sees `$750.00 > $500.00`, blocks the payout, and returns:
+   `{"isError": true, "errorCategory": "business", "isRetryable": false, "message": "Refund $750.00 exceeds the $500 automated limit."}`
+5. **Hand Off Cleanly to a Human:**
+   Seeing a non-retryable policy limit, the agent calls `escalate_to_human` with the verified Case Facts, actions already taken, and the exact reason (*"Refund amount $750.00 exceeds $500 automated policy limit"*). A human specialist picks up the ticket with zero repeated questions.
 
 ---
 
-## 6. Exam-Style Practice Questions with Distractor Teardowns
+## 6. Practice Questions (Try Before Peeking!)
 
-### Q1. Policy Enforcement Guarantee
-In testing, the support agent occasionally calls `process_refund` for amounts exceeding the company's \$500 limit. Which architectural change provides the strongest guarantee that refunds over \$500 are never processed autonomously?
+Read each question carefully, pick your answer (A–D), and then open the hidden explanation to check your reasoning.
 
-- **A)** Add the \$500 limit to the system prompt in bold uppercase letters.
-- **B)** Provide five few-shot examples demonstrating the agent refusing refunds over \$500.
-- **C)** Implement a programmatic pre-tool hook in code that checks the refund amount and redirects to `escalate_to_human` if amount > \$500.
-- **D)** Instruct the agent to state its numerical confidence score before each refund invocation.
+### Q1. Guaranteeing a Refund Limit
+In testing, the support agent occasionally calls `process_refund` for amounts over the company's `$500` limit. Which change gives the strongest guarantee that refunds over `$500` are never issued automatically?
+
+- **A)** Add the `$500` limit to the system prompt in bold uppercase letters.
+- **B)** Add five few-shot examples showing the agent refusing refunds over `$500`.
+- **C)** Add a programmatic pre-tool check in code that inspects the refund amount and routes anything over `$500` to `escalate_to_human`.
+- **D)** Ask the agent to print a numerical confidence score before calling `process_refund`.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
-**Distractor Teardown:**
-- **A is incorrect (The Probabilistic Gate Trap):** System prompts are probabilistic. Even with bold formatting, models under edge-case pressure can overlook prompt instructions.
-- **B is incorrect:** Few-shot examples improve adherence but do not provide an immutable guarantee for financial compliance.
-- **C is correct:** Programmatic gates execute in deterministic host code before the tool reaches the payment gateway, providing a 100% guarantee.
-- **D is incorrect (The Self-Reported Confidence Trap):** Self-reported confidence scores from LLMs are uncalibrated and cannot prevent policy violations.
+- **A is wrong:** System prompts are probabilistic. Under urgent or tricky user messages, the model can still ignore bold text.
+- **B is wrong:** Few-shot examples improve behavior, but they still cannot give a 100% guarantee for financial rules.
+- **C is right:** A deterministic check in host code runs before the payment API is ever called, making a violation impossible.
+- **D is wrong:** Models' self-reported confidence scores are uncalibrated and do not enforce policy limits.
+
+</details>
 
 ---
 
-### Q2. Managing Context Saturation from Database Payloads
-The `lookup_order` tool returns approximately 40 database fields. In conversations lasting 15 turns or more, the agent begins confusing past and current order statuses. What is the most effective architectural fix?
+### Q2. Stopping Context Bloat from Database Payloads
+The `lookup_order` tool returns around 40 raw database fields. After 15 turns, the agent starts mixing up old and new order statuses. What is the most effective fix?
 
-- **A)** Switch from Sonnet to a larger model.
-- **B)** Implement a `PostToolUse` normalization hook that trims the tool result to only the 4-5 fields required for resolution before appending to conversation history.
-- **C)** Re-summarize the entire conversation history on every single turn.
-- **D)** Remove `lookup_order` from the toolset and require the customer to type their order details.
+- **A)** Switch to a larger model.
+- **B)** Add a `PostToolUse` normalization hook that trims the tool result down to the 5 fields needed for support decisions before adding it to chat history.
+- **C)** Re-summarize the entire chat history after every single turn.
+- **D)** Remove `lookup_order` and ask customers to type their order details manually.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
-**Distractor Teardown:**
-- **A is incorrect:** Model size does not fix context bloat; larger models still suffer attention dilution when flooded with 40 irrelevant fields per turn.
-- **B is correct:** `PostToolUse` normalization intercepts raw payloads and strips internal IDs, shipping carrier telemetry, and supplier keys, keeping the prompt lean.
-- **C is incorrect:** Summarizing every turn is computationally expensive and causes loss of exact transactional figures.
-- **D is incorrect:** Removing the tool degrades First Contact Resolution and creates extreme customer friction.
+- **A is wrong:** Larger models still suffer attention loss when flooded with dozens of irrelevant database fields on every turn.
+- **B is right:** Trimming payloads in `PostToolUse` removes internal noise (warehouse IDs, carrier logs, shard keys) before it bloats the context window.
+- **C is wrong:** Summarizing every turn wastes compute and blurs exact numbers and IDs.
+- **D is wrong:** Removing the tool hurts resolution rates and frustrates customers.
+
+</details>
 
 ---
 
-### Q3. Handling Tool Timeouts Cleanly
-The `lookup_order` API service experiences a transient network timeout. Which response should the MCP tool handler return to Claude?
+### Q3. Returning Clean Tool Timeouts
+The `lookup_order` backend times out due to a brief network glitch. What should the MCP tool handler return to Claude?
 
-- **A)** A structured error block: `{"isError": true, "errorCategory": "transient", "isRetryable": true, "message": "Order service timeout after 5000ms. Retry with backoff."}`.
-- **B)** A plain text message saying "Operation failed".
-- **C)** An empty dictionary `{}` marked with status 200 OK.
-- **D)** Raise an unhandled exception that terminates the agent session immediately.
+- **A)** A structured error object: `{"isError": true, "errorCategory": "transient", "isRetryable": true, "message": "Order service timed out after 5000ms. Retry with backoff."}`.
+- **B)** A plain string saying `"Operation failed"`.
+- **C)** An empty dictionary `{}` with status `200 OK` (`isError: false`).
+- **D)** Raise an unhandled exception that crashes the entire support session.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** A
 
-**Distractor Teardown:**
-- **A is correct:** Returning `isError: true` with a clear retryable category and diagnostic message allows Claude's reasoning loop to attempt an informed retry or notify the user gracefully.
-- **B is incorrect:** Opaque text provides zero diagnostic recovery information to the model.
-- **C is incorrect (The Silent Fallback Trap):** Returning an empty success payload masks the failure; Claude will assume the customer has zero orders on file.
-- **D is incorrect:** Crashing the session on a transient network glitch destroys customer experience.
+- **A is right:** Returning `isError: true` with a category and `isRetryable` flag tells Claude what broke and whether retrying makes sense.
+- **B is wrong:** `"Operation failed"` gives Claude no clue whether to retry, ask the user, or escalate.
+- **C is wrong:** Returning an empty success hides the outage and makes Claude tell the customer they have zero orders.
+- **D is wrong:** Crashing the session over a temporary timeout ruins the user experience.
+
+</details>
 
 ---
 
-### Q4. Immediate Human Escalation
-A customer types: *"I have had enough. Stop talking and transfer me to a human manager immediately."* The agent has the tools and capability to resolve the customer's technical issue. What should the agent do?
+### Q4. Responding to an Explicit Human Request
+A customer types: *"I have had enough. Stop talking and transfer me to a human manager immediately."* The agent actually has the tools to solve their problem. What should the agent do?
 
-- **A)** Attempt to resolve the issue first, and offer a human transfer only if the resolution attempt fails.
-- **B)** Ask the customer why they want a manager and request more details.
-- **C)** Run a sentiment analysis classifier to verify whether the customer is genuinely angry.
-- **D)** Escalate immediately to a human supervisor with a structured handoff payload.
+- **A)** Try to solve the issue first, and transfer only if that fails.
+- **B)** Ask the customer two quick questions to understand why they want a manager.
+- **C)** Run a sentiment classifier to check if the customer is truly angry.
+- **D)** Escalate right away to a human supervisor with a structured handoff payload.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** D
 
-**Distractor Teardown:**
-- **A is incorrect:** Overriding an explicit customer request to speak with a human causes severe customer frustration and violates escalation policy.
-- **B is incorrect:** Probing or interrogating the customer after an explicit transfer request creates unnecessary friction.
-- **C is incorrect (The Sentiment Trap):** Sentiment is irrelevant when an explicit human request has already been issued.
-- **D is correct:** Explicit human requests trigger immediate handoff with accumulated Case Facts and interaction history.
+- **A is wrong:** Ignoring an explicit request for a human breaks escalation policy and angers the customer.
+- **B is wrong:** Interrogating the customer after they already asked for a transfer adds unnecessary friction.
+- **C is wrong:** Sentiment scores do not matter once the customer has explicitly asked for a human.
+- **D is right:** Explicit human requests trigger an immediate handoff carrying the Case Facts and conversation summary.
+
+</details>
 
 ---
 
-### Q5. Entity Retention Across Long Histories
-In an extended 25-turn support session, earlier turns are summarized to conserve tokens. Shortly after, the agent asks the customer to restate their order ID. What architectural pattern resolves this amnesia?
+### Q5. Keeping Order IDs Across Long Chats
+In a 25-turn support conversation, older turns are summarized to save tokens. Right afterward, the agent asks the customer to repeat their order ID. What design prevents this?
 
-- **A)** Increase the summarizer model's output token limit.
-- **B)** Enforce a strict sliding window that keeps only the last 3 turns.
-- **C)** Maintain a persistent Case Facts layer outside the summarized message array that is re-injected on every turn.
-- **D)** Repeat the full uncompressed transcript inside the system prompt.
+- **A)** Increase the summarizer's max output tokens.
+- **B)** Use a sliding window that keeps only the last 3 messages.
+- **C)** Store verified entities (customer ID, order ID, auth status) in a pinned **Case Facts** block outside the summarized history.
+- **D)** Paste the entire uncompressed transcript into the system prompt.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** C
 
-**Distractor Teardown:**
-- **A is incorrect:** Increasing summary output length does not guarantee retention of specific alphanumeric IDs.
-- **B is incorrect:** Sliding windows discard early turns completely, guaranteeing loss of the order ID.
-- **C is correct:** The Case Facts pattern pins verified transactional entities (IDs, verification status, amounts) in an invariant block outside summarized history.
-- **D is incorrect:** Repeating the full transcript destroys prompt caching efficiency and exhausts the context window.
+- **A is wrong:** Longer summaries still risk dropping exact alphanumeric IDs over time.
+- **B is wrong:** Keeping only the last 3 turns guarantees early order IDs are thrown away.
+- **C is right:** A pinned Case Facts block stays untouched outside chat compaction, so exact IDs and auth status never vanish.
+- **D is wrong:** Re-sending the whole transcript breaks prompt caching and fills the context window.
+
+</details>
 
 ---
 
-### Q6. Tool Scoping and Distribution
-A support agent is provisioned with 18 tools, including HR leave lookup, internal finance billing adjustments, and code repository querying. The agent occasionally invokes an unrelated finance tool when asked about an order. What is the correct first step?
+### Q6. Fixing Wrong Tool Choices from Too Many Tools
+A support agent is given 18 tools, including HR leave lookup, internal finance adjustments, and code repo search. It occasionally calls an internal finance tool when asked about an order. What should you do first?
 
-- **A)** Add a prompt instruction listing the 14 tools the agent is forbidden to use.
-- **B)** Restrict the agent's tool allowlist strictly to its 4 relevant customer support tools.
-- **C)** Build an upstream classifier model to pre-filter tools dynamically.
-- **D)** Lower the model temperature to 0.0.
+- **A)** Add a prompt rule listing the 14 tools the agent must not call.
+- **B)** Restrict the agent's tool list strictly to its 4 customer support tools.
+- **C)** Train an upstream ML classifier to filter tools before each turn.
+- **D)** Set model temperature to `0.0`.
+
+<details>
+<summary>Show Answer & Explanation</summary>
 
 **Correct Answer:** B
 
-**Distractor Teardown:**
-- **A is incorrect:** Negative prompt constraints are probabilistic and do not remove tool schemas from the prompt prefix.
-- **B is correct (Principle of Least Privilege):** Tools outside the support agent's scope should never be registered in its context window.
-- **C is incorrect:** Adding a machine learning classifier is an over-engineered band-aid for an over-provisioned toolset.
-- **D is incorrect:** Temperature does not resolve tool bloat or ambiguous schema selection.
+- **A is wrong:** Telling the model to ignore 14 tools still leaves all 14 schemas cluttering its prompt.
+- **B is right:** Under the Principle of Least Privilege, irrelevant tools should never be registered with the agent at all.
+- **C is wrong:** Adding an ML router is over-engineering when the real fix is simply removing unrelated tools.
+- **D is wrong:** Lowering temperature does not fix an overstuffed toolset.
+
+</details>
 
 ---
 
-## 7. Self-Check Checklist
+## 7. Hands-On Lab, Self-Check & Memory Hook
 
-- [ ] I can explain why programmatic code gates beat system prompts for financial limits and authentication.
-- [ ] I can list the four core tools for customer support and explain each tool's boundary.
-- [ ] I know the two valid escalation triggers (explicit human request, policy gap) and two invalid triggers (sentiment score, self-reported confidence).
-- [ ] I understand how `PostToolUse` normalization protects the context window from raw database bloat.
-- [ ] I know why tool descriptions must be improved before considering routing classifiers.
+- **Inspect the code:** Read [`simulation.py`](simulation.py) to see `GATED_TOOLS`, `REFUND_APPROVAL_LIMIT_USD`, `CaseFacts`, and `resolve_customer_by_name` in action.
+- **Run the interactive lab:** Open [`scenario_workbench.ipynb`](scenario_workbench.ipynb) and execute all cells offline.
+- **Run the unit tests (WSL Ubuntu-26.04):**
+  ```bash
+  uv run pytest scenarios/scenario_1_customer_support/test_scenario_1_simulation.py
+  ```
 
-**Memory Hook:** *"Money in code, humans on request, facts in a block."*
+### Self-Check Checklist
+- [ ] I can explain why Python code gates beat prompts for identity checks and refund caps.
+- [ ] I know what each of the 4 support tools does and how `PostToolUse` trims noisy payloads.
+- [ ] I know the valid escalation triggers (explicit human request, policy gap, repeated failures) vs. invalid ones (mood/sentiment, model confidence).
+- [ ] I can explain what the **Case Facts** block stores and why it stays outside chat summaries.
+- [ ] I know to improve tool descriptions and remove extra tools before building a classifier.
 
-**Related Practice Bank Questions:**
-* [Set 1 (Core Agentic Loop): Q1, Q9, Q10, Q20, Q22](../../practice_exam_bank_300/set_01_domain1_core_agentic_loop.md)
-* [Set 8 (Tool Schemas & Errors): Q216, Q222, Q224, Q235, Q239](../../practice_exam_bank_300/set_08_domain4_tool_schemas_error_handling.md)
-* [Set 10 (Governance & HITL): Q276, Q277, Q283, Q284](../../practice_exam_bank_300/set_10_domain5_governance_safety_risk.md)
+**Exam-Day Memory Hook:** *"Money in code, humans on request, facts in a block."*
+
+**Related Practice Bank Sets:**
+- [Set 1 (Core Agentic Loop): Q1, Q9, Q10, Q20, Q22](../../practice_exam_bank_300/set_01_domain1_core_agentic_loop.md)
+- [Set 8 (Tool Schemas & Errors): Q216, Q222, Q224, Q235, Q239](../../practice_exam_bank_300/set_08_domain4_tool_schemas_error_handling.md)
+- [Set 10 (Governance & HITL): Q276, Q277, Q283, Q284](../../practice_exam_bank_300/set_10_domain5_governance_safety_risk.md)
+
+---
+
+[← Back to Scenarios Overview](../README.md) · [Next: Scenario 2 →](../scenario_2_code_generation/SCENARIO_GUIDE.md) · [60-Question Practice Exam](../MASTER_SCENARIO_PRACTICE.md)

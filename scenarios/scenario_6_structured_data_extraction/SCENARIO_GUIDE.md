@@ -1,33 +1,24 @@
 # Scenario 6: Structured Data Extraction
 
-## 1. In One Minute
+## 1. The Big Picture (In Plain English)
 
-**What it is.** A production-grade document extraction pipeline that ingests complex, unstructured sources (PDF invoices, contracts, medical intake forms, utility bills, receipts), enforces strict schema constraints, performs deterministic semantic validation, corrects errors through targeted feedback loops, routes edge cases through calibrated human review, and cost-optimizes high-volume backlogs.
+Imagine an accounts payable or medical intake pipeline that reads messy PDFs, receipts, and forms, turns them into clean JSON for a database, checks that the numbers actually add up, and sends uncertain cases to human reviewers. The core challenge is simple to state and tricky in production: **guarantee valid JSON every time, without ever letting the model invent facts that are not on the page.**
 
-**Official Metrics & SLAs:**
-* **Structural Compliance:** 100% valid JSON conforming to specified schemas without downstream parser crashes.
-* **Semantic Accuracy:** ≥ 99.0% field-level accuracy on critical transaction attributes (amounts, dates, vendor IDs).
-* **Hallucination Prevention:** Zero invented values for attributes physically absent from source documents.
-* **Human Escalation:** ≤ 5% overall escalation rate, routed via calibrated confidence scoring and backed by continuous stratified quality audits.
+**Everyday Analogy — A Customs Declaration with an "N/A" Box:**
+If a customs form has a mandatory box asking for *"Serial Number of Secondary Electronics"* and offers no `"N/A"` or `"None"` option, travelers who do not have a second device are pressured to write something anyway. In JSON extraction, marking an optional field (like `purchase_order_number` or `tax_id`) as a required non-null string forces Claude to invent a realistic fake number whenever the document omits it.
 
-**Domains Hit:** Domain 4 (Prompt Engineering & Structured Output - 20%), Domain 5 (Context Management & Reliability - 15%).
+- **Domains Tested:** Domain 4 (Prompt Engineering & Structured Output, 20%), Domain 5 (Context Management & Reliability, 15%).
+- **Task Statements:** TS 4.1 (Explicit criteria), TS 4.2 (Few-shot examples), TS 4.3 (Structured output via `tool_use` & schemas), TS 4.4 (Validation & retry loops), TS 4.5 (Message Batches API), TS 5.5 (Human review & stratified auditing).
+- **Production Targets:** 100% valid JSON syntax, ≥ 99% accuracy on key amounts/dates, 0 fabricated missing values, and ongoing **5–10% stratified audits** even on high-confidence records.
 
-**Key Task Statements:**
-* **TS 4.1 (Explicit Criteria):** Define unambiguous extraction guidelines, date normalization standards, currency conventions, and boundary rules.
-* **TS 4.2 (Few-Shot Examples):** Provide multimodal or text few-shot examples for irregular table layouts, dense receipts, and handwritten marginalia.
-* **TS 4.3 (Structured Output):** Enforce structured generation via Native Constrained Decoding (`output_config.format`) or Tool Use (`tool_choice`).
-* **TS 4.4 (Validation & Bounded Retries):** Implement multi-tier validation (schema syntax + deterministic business logic) and closed-loop error correction.
-* **TS 4.5 (Message Batches API):** Process asynchronous high-volume backlogs with 50% token cost reduction, 24-hour turnaround, and `custom_id` tracking.
-* **TS 5.5 (Human-in-the-Loop & Auditing):** Calibrate confidence routing and maintain stratified sampling across document vendors and categories.
-
-**Top 3 Anti-Patterns to Avoid on Exam Day:**
-1. **The "Schema Guarantees Truth" Illusion:** Assuming that because an LLM returned valid JSON matching a schema, the extracted values are factually correct. A schema guarantees structural grammar and data types, not semantic truth. Deterministic programmatic checks (e.g. `subtotal + tax == total`, valid ISO country codes, checksum algorithms) must always execute post-extraction.
-2. **The "Forced Required Field" Hallucination Trap:** Defining an attribute that is frequently absent in source documents (such as `purchase_order_number`, `tax_id`, or `discount_code`) as `required: true` in the JSON schema. When the attribute does not appear in the document, the model is forced by schema constraints to invent a plausible string to satisfy validation. Fields that may be absent MUST be marked `nullable: true` or optional.
-3. **The Extended Thinking + Forced Tool `400 Bad Request` Crash:** Attempting to enable Extended Thinking (`thinking={"type": "enabled", "budget_tokens": ...}`) while concurrently forcing a specific tool (`tool_choice={"type": "tool", "name": "extract_invoice"}`) or `tool_choice={"type": "any"}`. The Anthropic API rejects this configuration with HTTP 400. Extraction workflows using forced tool choice must omit thinking, or use `tool_choice: {"type": "auto"}` with explicit reasoning instructions.
+### Top 3 Mistakes to Watch Out For
+1. **Assuming valid JSON means true facts:** A JSON schema checks **shape and data types**, not truth. You still need deterministic Python checks (such as `subtotal + tax == total`) after extraction.
+2. **Making optional fields required non-null strings:** If a vendor leaves off a PO number or tax ID and your schema requires a string, Claude cannot return `null`, so it invents a plausible number.
+3. **Combining Extended Thinking with forced `tool_choice`:** Enabling `thinking` while forcing `tool_choice: {"type": "tool", ...}` or `"any"` causes an immediate **HTTP 400** error.
 
 ---
 
-## 2. Architecture Diagram
+## 2. How the System Works
 
 ```mermaid
 ---
@@ -35,68 +26,54 @@ config:
   htmlLabels: false
 ---
 flowchart TD
-    Doc["Unstructured Document<br>(PDF / Scanned Form / OCR)"] --> Router{"Ingestion Workload SLA?"}
+    Doc["Messy Document<br>(PDF / Scan / Receipt)"] --> Router{"How urgent<br>is the job?"}
 
-    Router -->|"Real-Time (under 5s)"| RT["Real-Time Messages API<br>(claude-haiku-4-5)"]
-    Router -->|"Backlog (≤ 24h)"| Batch["Message Batches API<br>(50% Discount, custom_id)"]
+    Router -->|"Interactive (under 5s)"| RT["Real-Time Messages API<br>(claude-haiku-4-5)"]
+    Router -->|"Backlog (up to 24h)"| Batch["Message Batches API<br>(50% Off, custom_id tracking)"]
 
-    RT & Batch --> Engine["Extraction Engine<br>JSON Schema / Tool Choice<br>(Nullable absent fields,<br>'other'/'unclear' enums)"]
+    RT & Batch --> Engine["Extraction via Tool Use<br>(Nullable optional fields,<br>'other' and 'unclear' enums)"]
 
-    Engine --> Gate1{"Layer 1: Syntax Gate<br>Valid JSON & types?"}
-    Gate1 -->|"Syntax Fail"| FixSyntax{"Fixable Syntax?<br>(Retries under 2)"}
-    FixSyntax -->|"Yes"| Retry1["Targeted Syntax Retry<br>(Pass doc + invalid output)"]
-    FixSyntax -->|"No / Max"| Human["Human Review Queue"]
+    Engine --> Gate1{"Layer 1: Syntax Check<br>Valid JSON and types?"}
+    Gate1 -->|"Syntax Fail"| FixSyntax{"Retries under 2?"}
+    FixSyntax -->|"Yes"| Retry1["Targeted Syntax Retry<br>(Send doc + bad output)"]
+    FixSyntax -->|"No"| Human["Human Review Queue"]
 
-    Gate1 -->|"Pass"| Gate2{"Layer 2: Semantic Gate<br>subtotal + tax == total?<br>Valid date order?"}
-    Gate2 -->|"Calculation Error"| Retry2["Closed-Loop Retry<br>(Original doc + output<br>+ exact math error)"]
-    Gate2 -->|"Missing in Source"| Human
+    Gate1 -->|"Pass"| Gate2{"Layer 2: Math & Logic Check<br>subtotal + tax == total?"}
+    Gate2 -->|"Fixable Math Error"| Retry2["Closed-Loop Retry<br>(Original doc + bad JSON<br>+ exact math delta)"]
+    Gate2 -->|"Fact Missing in Doc"| Human
 
-    Gate2 -->|"Pass"| Conf{"Layer 3: Router<br>Calibrated Confidence?"}
-    Conf -->|"High (≥ 0.90)"| Auto["Auto-Commit to ERP<br>+ Stratified Audit (5%)"]
-    Conf -->|"Medium (0.75-0.89)"| Spot["Spot-Check Queue (20%)"]
-    Conf -->|"Low (under 0.75)"| Human
+    Gate2 -->|"Pass"| Conf{"Layer 3: Confidence Router<br>How confident?"}
+    Conf -->|"High (≥ 0.90)"| Auto["Auto-Save to ERP<br>+ 5-10% Stratified Audit"]
+    Conf -->|"Medium (0.70-0.89)"| Spot["Spot-Check Queue"]
+    Conf -->|"Low (under 0.70)"| Human
 ```
+
+### Walkthrough of the Flow
+1. **Pick the right API lane:** Interactive uploads go through the Real-Time API; large backlogs (like 80,000 archived invoices) go through the Message Batches API with `custom_id` for a 50% discount.
+2. **Guarantee JSON shape with `tool_use`:** Force an extraction tool whose JSON schema marks potentially missing fields as nullable (`["string", "null"]`) and includes `"other"` / `"unclear"` escape hatches in enums.
+3. **Validate math and business rules in Python:** Check `subtotal + tax == total` (allowing a `0.02` rounding tolerance) and verify line-item sums.
+4. **Retry only fixable errors:** If the math is off, send a 3-part retry (original document + failed JSON + exact discrepancy). If a field is simply absent from the document, **stop retrying right away** and route to a human.
+5. **Keep auditing high-confidence output:** Auto-save high-confidence records, while pulling a continuous **5–10% stratified sample** across document types and vendors to catch silent drift.
 
 ---
 
-## 3. How a Good Answer Thinks
+## 3. Core Design Rules (Why Naive Fixes Fail)
 
-Follow this architectural decision sequence on the CCAR-F exam:
-
-1. **Enforce Structural Shape at the Grammar Level**:
-   * *Never* rely on prompt-level begging (e.g., *"Please output only raw JSON without backticks"*).
-   * Use **Native Constrained Decoding** (`output_config={"format": {"type": "json_schema", "schema": ...}}`) or **Tool Use** with forced tool choice (`tool_choice={"type": "tool", "name": "extract_invoice"}`).
-   * Constrained decoding clamps generation at the logits level, preventing syntax errors and markdown formatting wrappers before tokens leave the inference engine.
-2. **Observe Extended Thinking Compatibility Invariants**:
-   * If `thinking` is enabled:
-     * **Do NOT provide `temperature`** (must be omitted; passing any value returns HTTP 400).
-     * **Do NOT provide `top_p` or `top_k`** (leave unset).
-     * **Do NOT force tool choice** (`tool_choice: "any"` or `tool_choice: {"type": "tool", ...}` returns HTTP 400). Only `auto` or `none` is permitted.
-   * *Two-Pass Extraction Architecture:* When deep document comprehension or messy handwritten table reasoning is needed, execute Pass 1 with `claude-sonnet-4-5` using Extended Thinking (`tool_choice: "auto"` or free-form reasoning) to analyze relationships and transcribe unformatted text. Execute Pass 2 with fast `claude-haiku-4-5` using forced schema extraction to convert Pass 1 analysis into validated JSON.
-3. **Eliminate Hallucinations for Missing Data**:
-   * Real-world documents frequently omit fields: missing PO numbers, absent tax exemptions, unlisted discount codes.
-   * If a field is declared `required: true` with `type: "string"`, the LLM is forced by grammar constraints to output characters. It will fabricate a realistic number.
-   * *The Invariant:* Any attribute that might be absent MUST be marked nullable (`type: ["string", "null"]`) or omitted from the `required` array.
-4. **Resilient Categorization via Enums with Fallbacks**:
-   * Fixed enums (`["office_supplies", "travel", "software"]`) fail when real documents introduce novel categories (e.g., "catering", "freight surcharge").
-   * *The Pattern:* Always include `"other"` and `"unclear"` in enum values, paired with a companion nullable string property `"other_description"`.
-5. **Architect Closed-Loop Error Correction**:
-   * A blind retry (resending the identical prompt) repeats the model's stochastic hallucination or error.
-   * A retry that sends *only* the error message leaves the model without the context needed to repair its answer.
-   * *The Invariant:* Every error correction retry payload must contain 3 items:
-     1. The **original document text or image**.
-     2. The **previously extracted (faulty) JSON payload**.
-     3. The **specific, deterministic validation error** (e.g., `"Validation Error: Stated total 1500.00 does not equal subtotal 1200.00 + tax 250.00. Please inspect line items on Page 2."`).
-   * *The Boundary:* If deterministic validation fails because the data is *physically missing* from the source document, DO NOT RETRY. Retrying cannot discover nonexistent text; it will induce hallucination. Route immediately to human review.
-6. **Economics of Backlogs vs Real-Time**:
-   * Interactive user flows (customer uploading an ID during signup) require **Real-Time Messages API** (< 5s latency).
-   * Backlog digestion (25,000 archived invoices, overnight document scanning) requires the **Message Batches API**:
-     * 50% discount across both input and output tokens.
-     * Turnaround SLA up to 24 hours.
-     * Correlation maintained via developer-supplied `custom_id` strings.
-7. **Human-in-the-Loop & Stratified Auditing**:
-   * An aggregate accuracy metric (e.g., "98.5% across all documents") masks severe sub-segment failure (e.g., 99.8% on standard US receipts, but 35% on multi-currency foreign bills of lading).
-   * Even when confidence scores exceed 0.90 and auto-commit is enabled, maintain continuous **stratified sampling** (3–5% random sample) segmented by vendor, document format, and language to detect model drift.
+1. **Enforce JSON shape at the tool/schema layer—not by begging in the prompt:**
+   Prompts like *"Return ONLY raw JSON, no backticks"* still fail a few percent of the time. Use `tool_use` (with `tool_choice: {"type": "tool", "name": "extract_invoice"}`) or native constrained decoding (`output_config.format`) so invalid syntax cannot happen.
+2. **Mark missing-prone fields as nullable:**
+   Any field a document might omit (`purchase_order_number`, `tax_id`) must allow `null` (`"type": ["string", "null"]`) or be optional. Otherwise grammar constraints force Claude to invent characters.
+3. **Give enums an `"other"` and `"unclear"` escape hatch:**
+   Fixed lists like `["airfare", "lodging", "meals", "taxi"]` break when an employee submits `"Airport Wi-Fi"`. Add `"other"` + `"unclear"` to the enum along with a nullable `"other_category_detail"` string.
+4. **Never combine Extended Thinking with forced `tool_choice`:**
+   The API rejects `thinking={"type": "enabled", ...}` together with `tool_choice` `"any"` or `{"type": "tool", ...}` (**HTTP 400**). Also remember to omit `temperature`, `top_p`, and `top_k` whenever thinking is enabled.
+   - *Two-Pass Workaround for messy multi-page forms:* Run **Pass 1** on `claude-sonnet-4-5` with Extended Thinking and `tool_choice: "auto"` to reason through handwriting or tables; then run **Pass 2** on `claude-haiku-4-5` *without* thinking and with forced `tool_choice` to emit clean JSON cheaply.
+5. **Use 3-part closed-loop retries—and fast-fail on missing facts:**
+   - **When math fails:** Send back (1) the original document, (2) the faulty JSON, and (3) the exact mismatch (`subtotal 120 + tax 15 = 135 != total 150`).
+   - **When a fact is physically absent from the page:** **Never retry.** Retrying cannot conjure text that is not there—it only pressures the model to hallucinate.
+   - **Rounding tolerance:** Use an epsilon check (`abs(expected - total) < 0.02`) so valid commercial penny-rounding differences do not cause false failures.
+6. **Never drop human review based on one overall accuracy number:**
+   A `98%` overall score can hide a `40%` failure rate on rare foreign invoices (**Simpson's Paradox**). Keep continuous **5–10% stratified sampling** grouped by vendor, format, and currency.
 
 ```mermaid
 ---
@@ -104,292 +81,208 @@ config:
   htmlLabels: false
 ---
 flowchart TD
-    Q{"What is the<br>extraction challenge?"} -->|"Malformed JSON output"| ToolChoice["Enforce JSON Schema via<br>Constrained Decoding or Tool"]
-    Q -->|"Missing field hallucinated"| Nullable["Mark fields nullable/optional<br>Add 'unclear' to enum"]
-    Q -->|"Thinking HTTP 400 error"| Fix400["Omit temperature parameter<br>Use tool_choice auto or 2-pass"]
-    Q -->|"Extracted totals wrong"| SemanticCode["Implement code checks<br>(subtotal + tax == total)"]
-    Q -->|"Calculation error retry"| GuardRetry["Retry calculation with feedback<br>Escalate missing data"]
-    Q -->|"Non-urgent backlog"| BatchesAPI["Use Message Batches API<br>(50% cheaper, custom_id mapping)"]
-    Q -->|"Eliminate human review"| StratifiedAudit["Enforce stratified sampling<br>across categories and vendors"]
+    Q{"What extraction issue<br>appears on the exam?"} -->|"Random markdown or bad JSON"| ToolChoice["Enforce JSON via tool_use<br>or output_config.format"]
+    Q -->|"Model invents missing PO/tax ID"| Nullable["Mark field nullable<br>and add 'other'/'unclear' enum"]
+    Q -->|"HTTP 400 with thinking on"| Fix400["Omit temperature; use<br>two-pass or tool_choice auto"]
+    Q -->|"Subtotal + tax != total"| MathRetry["3-part closed-loop retry<br>with exact math delta"]
+    Q -->|"Fact missing on paper"| FastFail["Stop retrying immediately<br>Set null and route to human"]
+    Q -->|"80k archived contracts"| BatchesAPI["Use Message Batches API<br>(50% off, custom_id)"]
+    Q -->|"98% overall accuracy claim"| StratAudit["Keep 5-10% stratified audit<br>by vendor and doc type"]
 ```
+
+### Model & API Rules for This Scenario
+- **Model choice:** Use `claude-haiku-4-5` for fast, low-cost forced-tool extraction; pair with `claude-sonnet-4-5` in Pass 1 only when complex spatial or handwritten reasoning is needed.
+- **Multi-page tables:** Keep all pages of a multi-page invoice in a **single prompt** separated by clear markers (`--- Page 2 of 3 ---`) so table rows split across pages are not lost across separate turns.
 
 ---
 
-## 4. Task Statement Map
+## 4. What the Exam Tests (Task Statement Map)
 
-| Task Statement | How It Manifests in Scenario 6 | CCAR-F Exam Trap |
+| Task Statement | How It Shows Up Here | Tempting Wrong Answer |
 | :--- | :--- | :--- |
-| **TS 4.1 Explicit Criteria** | Unambiguous schema field descriptions, ISO 8601 date formatting, standard currency codes, and null-handling criteria. | Using vague instructions like *"extract all fields carefully"* instead of strict per-field constraints. |
-| **TS 4.2 Few-Shot Prompting** | Paired few-shot examples illustrating complex edge cases (e.g., discounted line items, handwritten tax exemptions). | Providing only simple synthetic examples that fail to reflect production document layout messiness. |
-| **TS 4.3 Structured Output** | Enforcing extraction via Native Constrained Decoding (`output_config.format`) or Tool Use (`tool_choice`). | Relying on system prompt pleading (`"Output only raw JSON"`) or post-hoc regex parsing. |
-| **TS 4.4 Validation & Retry** | Deterministic post-extraction code checks (totals, date ranges) and structured 3-part retry payloads. | Repeating identical failed prompts, or retrying when data is physically absent from the source. |
-| **TS 4.5 Message Batches** | Offloading non-urgent document backlogs to the Batches API for a 50% token cost reduction. | Routing blocking interactive requests to the 24-hour Batches API, or omitting `custom_id` mapping. |
-| **TS 5.5 Human-in-the-Loop** | Triaging extractions by calibrated confidence and maintaining continuous stratified quality sampling. | Removing human review due to high aggregate accuracy, ignoring class and vendor distribution skews. |
+| **TS 4.1 Explicit Criteria** | Clear field definitions, ISO dates (`YYYY-MM-DD`), and null rules. | Vague prompts like *"extract all fields carefully"*. |
+| **TS 4.2 Few-Shot Examples** | Realistic examples of messy receipts, discounts, and handwritten notes. | Using only tidy synthetic examples that ignore real-world layout quirks. |
+| **TS 4.3 Structured Output** | `tool_use` / `output_config.format`, nullable optional fields, `"other"` enums. | Asking for markdown JSON in text, or making optional fields required strings. |
+| **TS 4.4 Validation & Retries** | Code checks totals; 3-part retry for math errors; fast-fail on absent facts. | Blindly resending the same prompt, or retrying when data is missing from the page. |
+| **TS 4.5 Message Batches** | Backlogs split into batches (max 100k items / 256 MB) with `custom_id`. | Putting live interactive uploads into a 24-hour batch job. |
+| **TS 5.5 Stratified Audits** | Confidence routing + continuous 5–10% stratified sampling across vendors/types. | Disabling human review because the overall accuracy average is 98%. |
 
 ---
 
-## 5. Step-by-Step Worked Production Example
+## 5. Realistic Walkthrough (End-to-End Example)
 
-**Production Scenario:** An enterprise accounts payable system processes international commercial freight invoices. Invoices arrive as unstructured text extracts. The system must extract vendor, invoice number, purchase order number, line items, subtotal, tax, and total amount, handling missing attributes and foreign currencies without hallucination.
+**Scenario:** An accounts payable pipeline extracts fields from international freight invoices.
 
-### Step 1: Resilient JSON Schema Design
-The schema defines nullable attributes for values that may be missing, and enums with an `"other"` fallback for expense categories.
-```json
-{
-  "name": "extract_invoice",
-  "description": "Extract structured transaction data from an accounts payable invoice.",
-  "input_schema": {
-    "type": "object",
-    "properties": {
-      "vendor_name": { "type": "string" },
-      "invoice_number": { "type": "string" },
-      "purchase_order_number": { "type": ["string", "null"] },
-      "invoice_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-      "currency": { "type": "string", "maxLength": 3 },
-      "line_items": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "description": { "type": "string" },
-            "quantity": { "type": "number" },
-            "unit_price": { "type": "number" },
-            "total_amount": { "type": "number" }
-          },
-          "required": ["description", "quantity", "unit_price", "total_amount"]
-        }
-      },
-      "subtotal": { "type": "number" },
-      "tax_amount": { "type": "number" },
-      "total_amount": { "type": "number" },
-      "category": {
-        "type": "string",
-        "enum": ["freight", "customs", "warehousing", "fuel_surcharge", "other", "unclear"]
-      },
-      "category_other_description": { "type": ["string", "null"] }
-    },
-    "required": [
-      "vendor_name",
-      "invoice_number",
-      "purchase_order_number",
-      "invoice_date",
-      "currency",
-      "line_items",
-      "subtotal",
-      "tax_amount",
-      "total_amount",
-      "category"
-    ]
-  }
-}
-```
-
-### Step 2: Extraction Invocation
-The request targets `claude-haiku-4-5` with forced tool execution and no Extended Thinking:
-```json
-{
-  "model": "claude-haiku-4-5",
-  "tools": [ { "name": "extract_invoice", ... } ],
-  "tool_choice": { "type": "tool", "name": "extract_invoice" },
-  "messages": [
-    {
-      "role": "user",
-      "content": "Extract the freight invoice data:\n\nVENDOR: Nordic Maritime Express\nINV #: NME-98214\nDATE: Oct 24, 2026\nCURRENCY: EUR\n\nItems:\n1. Container Drayage 40ft: 800.00\n2. Port Terminal Handling: 250.00\n\nSubtotal: 1050.00\nVAT (10%): 105.00\nTotal Due: 1155.00\nNOTE: No PO reference provided by carrier."
-    }
-  ]
-}
-```
-
-### Step 3: Layer 1 & Layer 2 Validation Execution
-1. **Model Output Received:**
-   ```json
-   {
-     "vendor_name": "Nordic Maritime Express",
-     "invoice_number": "NME-98214",
-     "purchase_order_number": null,
-     "invoice_date": "2026-10-24",
-     "currency": "EUR",
-     "line_items": [
-       { "description": "Container Drayage 40ft", "quantity": 1, "unit_price": 800.00, "total_amount": 800.00 },
-       { "description": "Port Terminal Handling", "quantity": 1, "unit_price": 250.00, "total_amount": 250.00 }
-     ],
-     "subtotal": 1050.00,
-     "tax_amount": 105.00,
-     "total_amount": 1155.00,
-     "category": "freight",
-     "category_other_description": null
-   }
-   ```
-2. **Layer 1 Check (Schema Syntax):**
-   * All required keys present. `purchase_order_number` is `null`, which conforms to `["string", "null"]`. Date matches `^\d{4}-\d{2}-\d{2}$`. Enum `"freight"` is valid. **PASS**.
-3. **Layer 2 Check (Semantic Business Logic):**
-   * Line items sum: `800.00 + 250.00 = 1050.00`. Matches `subtotal`. **PASS**.
-   * Math invariant: `subtotal (1050.00) + tax_amount (105.00) = 1155.00`. Matches `total_amount`. **PASS**.
-   * Foreign currency check: `EUR` is on supported settlement currency list. **PASS**.
-
-### Step 4: Closed-Loop Retry Simulation (When Math Fails)
-Suppose a secondary invoice states: Subtotal `100.00`, Tax `10.00`, but Total `125.00`.
-1. Deterministic validation code triggers:
-   `AssertionError: subtotal (100.00) + tax (10.00) != total (125.00). Difference = 15.00.`
-2. The orchestrator checks if the document contains line items or discounts that account for the discrepancy.
-3. The retry request is constructed:
-   ```json
-   [
-     { "role": "user", "content": "<original document text>" },
-     { "role": "assistant", "content": [ { "type": "tool_use", "name": "extract_invoice", "input": { ... } } ] },
-     {
-       "role": "user",
-       "content": [
-         {
-           "type": "tool_result",
-           "tool_use_id": "toolu_01...",
-           "content": "Semantic Validation Error: Calculated total (subtotal 100.00 + tax 10.00 = 110.00) does not match extracted total 125.00. Please re-read the invoice to verify whether an additional shipping charge of 15.00 was listed as a line item."
-         }
-       ]
-     }
-   ]
-   ```
-4. The model corrects its extraction by adding the missing `"Hazardous Cargo Surcharge: 15.00"` line item.
-
-### Step 5: Confidence Routing & Stratified Audits
-* Calibrated confidence score: `0.96` (clean OCR, zero math discrepancies, known vendor ID).
-* Action: **Auto-committed** directly to ERP.
-* Audit Engine: Document falls into the random 5% stratified audit pool for "Nordic Maritime Express" and "freight" category to guarantee long-term human calibration.
+1. **Design a Hallucination-Safe Schema (`EXTRACTION_SCHEMA`):**
+   `tax_id` / `purchase_order_number` are declared `{"type": ["string", "null"]}`, and `expense_category` allows `["travel", "software", "office", "other", "unclear"]` with a companion `other_category_detail`.
+2. **Call Extraction Without Thinking (`build_extraction_request`):**
+   Calls `claude-haiku-4-5` with `tool_choice: {"type": "tool", "name": "extract_invoice"}` and **no** `thinking` or `temperature` conflict.
+3. **Run Deterministic Checks (`validate_payload`):**
+   - *Case A (Fixable Math Error):* First turn returns `subtotal: 100.0`, `tax: 10.0`, `total: 100.0`. Python flags `100 + 10 != 100`. The retry sends the original text, the bad JSON, and the exact math mismatch. Turn 2 corrects `total` to `110.0`.
+   - *Case B (Physically Absent Field):* A cash coffee receipt says `"Total $4.50. Paid cash."` with no Tax ID anywhere. Validation sees `tax_id` is `None` and `"tax"` / `"vat"` does not appear in the source text, so `is_retry_eligible` returns `False` immediately—preventing a retry from inventing a fake Tax ID.
+4. **Route & Audit (`route_by_confidence`):**
+   A clean `0.96` confidence invoice goes to `STRAIGHT_THROUGH` auto-save—except `10%` of high-confidence extractions (`AUDIT_RATE = 0.10`) are randomly routed to `STRATIFIED_AUDIT` so silent template drift is caught early.
 
 ---
 
-## 6. Exam-Style Practice Questions
+## 6. Practice Questions (Try Before Peeking!)
 
-### Question 1
-An engineering team is building an automated legal extraction service. Downstream relational databases frequently crash because the LLM occasionally returns explanatory conversational text (e.g., *"Here is the extracted agreement details:"*) surrounding the JSON payload, and occasionally generates unquoted property keys. Which architectural change guarantees 100% syntactically valid JSON extraction without conversational formatting?
+### Q1. Guaranteeing Valid JSON Syntax
+An automated legal extraction pipeline frequently crashes because Claude sometimes adds intro text like *"Here is the extracted JSON:"* before the payload. What guarantees 100% valid JSON output?
 
-* A) Prepend a strong system instruction: *"You are an API endpoint. You MUST respond with 100% strictly valid JSON only. Never include markdown fences or conversational preambles."*
-* B) Implement a post-processing regex pipeline that searches for the first `{` and last `}` and passes the substring through a JSON parser with a retry loop.
-* C) Lower the model temperature to `0.0` and append `"Output JSON:"` as a prefilled assistant message turn.
-* D) Configure the API call using Native Constrained Decoding with a JSON schema (`output_config.format`) or Tool Use with a forced schema tool (`tool_choice: {"type": "tool", "name": "..."}`).
+- **A)** Add *"You MUST respond with valid JSON only, no markdown"* to the system prompt.
+- **B)** Write a regex script that slices from the first `{` to the last `}`.
+- **C)** Set temperature to `0.0` and prefill `"Output JSON:"`.
+- **D)** Use Native Constrained Decoding (`output_config.format`) or `tool_use` with forced `tool_choice: {"type": "tool", "name": "..."}`.
 
-#### Answer: D
-* **Why D is Correct:** Native Constrained Decoding and forced Tool Use constrain token generation at the logits level during inference. The decoding algorithm only samples tokens that conform to the JSON schema grammar, mathematically preventing markdown backticks, conversational preamble, and malformed syntax before output leaves the model.
-* **Distractor Breakdown:**
-  * **Option A is Incorrect:** Natural language prompt begging is probabilistic. Even with strict instructions, complex or ambiguous documents can trigger conversational preambles or syntax anomalies.
-  * **Option B is Incorrect:** Regex substring extraction is brittle; it fails on nested structures, unescaped quotes within document text, and invalid JSON grammar.
-  * **Option C is Incorrect:** Setting temperature to 0.0 decreases token entropy but does not constrain output grammar. Assistant prefilling is deprecated or unsupported in modern structured endpoints compared to native schema constraints.
-* **Anti-Pattern Alert:** Never rely on prompt instructions to guarantee machine-readable serialization syntax when native grammar constraints are available.
+<details>
+<summary>Show Answer & Explanation</summary>
 
----
+**Correct Answer:** D
 
-### Question 2
-An enterprise invoice processing pipeline encounters documents where the "Purchase Order Number" (PO#) is frequently omitted by the vendor. In testing, the extraction system consistently invents realistic-looking PO numbers (e.g., `"PO-991204"`) for invoices that have no purchase order anywhere on the page. Inspection reveals the JSON schema defines `"purchase_order_number": {"type": "string"}` in the `required` list. What is the root cause and the most robust architectural fix?
+- **A is wrong:** Prompt instructions are probabilistic and still occasionally produce conversational wrappers.
+- **B is wrong:** Regex slicing breaks on nested braces or quotes inside extracted text.
+- **C is wrong:** Lowering temperature does not enforce JSON grammar.
+- **D is right:** Schema-constrained decoding and forced `tool_use` enforce valid JSON structure at token generation time.
 
-* A) The model temperature is too high; set temperature to `0.0` and add *"Do not invent PO numbers"* to the prompt.
-* B) The schema enforces a mandatory string type; update the schema to declare the field nullable (`type: ["string", "null"]`) or remove it from the `required` array.
-* C) The prompt lacks few-shot examples; add three few-shot examples showing invoices with missing PO numbers.
-* D) Implement a post-extraction verification agent that searches the raw document OCR text for the extracted PO number and deletes it if not found.
-
-#### Answer: B
-* **Why B is Correct:** When an attribute is marked as `required` with `type: "string"`, the constrained decoding engine or tool-use grammar forces the model to produce characters matching that type. Because `null` is grammatically disallowed by the schema, the model is compelled to fabricate a string to satisfy structural validation. Making the field nullable (`type: ["string", "null"]`) allows the model to output `null` honestly when the attribute is absent.
-* **Distractor Breakdown:**
-  * **Option A is Incorrect:** Prompting *"do not invent"* directly conflicts with the grammar rule requiring a string. When prompt instructions conflict with schema constraints, grammar constraints win or cause parsing crashes.
-  * **Option B is the Root Fix.**
-  * **Option C is Incorrect:** Few-shot examples cannot override a schema constraint that strictly disallows `null`.
-  * **Option D is Incorrect:** Adding a secondary verification agent is an expensive, high-latency band-aid that treats the symptom rather than fixing the broken schema definition.
-* **Anti-Pattern Alert:** The Forced Required Field Hallucination Trap. Never mark an attribute as mandatory if real-world source documents can omit it.
+</details>
 
 ---
 
-### Question 3
-A developer is configuring an extraction pipeline for complex hospital patient intake forms. Because the forms contain dense, handwritten margin notes and complex clinical history, the developer enables Extended Thinking (`budget_tokens: 4000`) and forces structured extraction using `tool_choice: {"type": "tool", "name": "extract_intake"}`. Upon executing the request against the Claude API, the request fails immediately with an HTTP 400 Client Error. What is the architectural reason for this failure and how should it be resolved?
+### Q2. Stopping Fabricated Purchase Order Numbers
+Vendors often leave off Purchase Order (PO) numbers, yet the extraction pipeline keeps inventing realistic strings like `"PO-991204"` on invoices that have no PO number at all. The schema defines `"purchase_order_number": {"type": "string"}` inside `required`. What fixes this?
 
-* A) Extended Thinking is only supported on `claude-haiku-4-5`; the developer must downgrade the model.
-* B) Forced tool choice (`type: "tool"` or `"any"`) is incompatible with Extended Thinking in the API specification; the developer must set `tool_choice: {"type": "auto"}` or separate reasoning and extraction into a two-pass pipeline.
-* C) Extended Thinking requires `temperature` to be explicitly set to `1.0`; the developer omitted the temperature parameter.
-* D) Hospital intake forms exceed the maximum context window of Claude models; the document must be chunked into 500-token snippets.
+- **A)** Lower temperature to `0.0` and add *"Never invent PO numbers"* to the prompt.
+- **B)** Change the schema to `"type": ["string", "null"]` (or remove it from `required`) and explain in the field description to return `null` when absent.
+- **C)** Add three few-shot examples showing invoices without PO numbers.
+- **D)** Add a second agent afterward to search OCR text and erase missing PO numbers.
 
-#### Answer: B
-* **Why B is Correct:** In the Claude API specification, Extended Thinking cannot be combined with forced tool choice (`{"type": "tool", ...}` or `{"type": "any"}`). Forcing a tool immediately constrains the generation logits to tool emission, precluding the open-ended token reasoning required by Extended Thinking, resulting in an HTTP 400 error. The solution is either to use `tool_choice: {"type": "auto"}` (allowing thinking before voluntary tool execution) or to implement a two-pass pipeline (Pass 1: reasoning with Sonnet; Pass 2: extraction with Haiku and forced tool choice).
-* **Distractor Breakdown:**
-  * **Option A is Incorrect:** Extended Thinking is primarily used on `claude-sonnet-4-5` for deep reasoning; it is not restricted to Haiku.
-  * **Option C is Incorrect:** When Extended Thinking is enabled, providing `temperature` is explicitly rejected with HTTP 400 (temperature must be omitted).
-  * **Option D is Incorrect:** Claude 4.5 models feature a 200,000+ token context window, easily accommodating complete multi-page medical forms.
-* **Anti-Pattern Alert:** Extended Thinking + Forced Tool Conflict. Always remember: `thinking` requires `tool_choice: "auto"` or `"none"`, and `temperature` must be completely omitted.
+<details>
+<summary>Show Answer & Explanation</summary>
 
----
+**Correct Answer:** B
 
-### Question 4
-An expense management extraction system uses an enum to classify receipts into corporate accounting buckets: `category: {"type": "string", "enum": ["airfare", "lodging", "meals", "ground_transport"]}`. Recently, employees submitted receipts for "conference registration fees" and "client gifts". The extraction pipeline began throwing schema validation errors and misclassifying client gifts as "meals". How should the schema and prompt be redesigned to handle evolving business categories robustly?
+- **A is wrong:** When the schema forbids `null`, grammar rules override prompt warnings and force a string to be generated.
+- **B is right:** Making the field nullable removes the structural pressure that forced the model to invent a string.
+- **C is wrong:** Few-shot examples cannot override a strict schema that disallows `null`.
+- **D is wrong:** Adding a second agent patches the symptom instead of fixing the broken schema.
 
-* A) Change `category` to an unconstrained free-text string and instruct the model to write whatever category seems appropriate.
-* B) Expand the enum to include `"other"` and `"unclear"`, and add a companion nullable field `"category_other_detail": {"type": ["string", "null"]}`.
-* C) Instruct the model in the prompt to pick the closest existing category whenever a new category appears.
-* D) Reject all receipts that do not match the four existing categories and route them to executive security review.
-
-#### Answer: B
-* **Why B is Correct:** In production extraction systems, closed enums without fallbacks cause two major failure modes: validation rejection crashes when the model refuses to guess, or hallucinated misclassifications when the model is forced to choose the nearest incorrect enum value (e.g., labeling a gift as "meals"). Providing `"other"` and `"unclear"` with a descriptive companion string maintains strict typing while capturing long-tail categories cleanly.
-* **Distractor Breakdown:**
-  * **Option A is Incorrect:** Reverting to free text eliminates categorical consistency, making automated ledger posting and downstream database aggregation impossible.
-  * **Option C is Incorrect:** Forcing the model to pick the "closest" value produces corrupt accounting records (misallocating gifts or registration fees to travel/meals).
-  * **Option D is Incorrect:** Rejecting legitimate business expenses creates unnecessary administrative friction and operational gridlock.
-* **Anti-Pattern Alert:** Closed Enum Rigidity. Always provide an explicit `"other"` / `"unclear"` escape hatch in enum schemas to capture out-of-distribution real-world data.
+</details>
 
 ---
 
-### Question 5
-A document extraction system parses utility bills. The JSON schema validation passes, but deterministic code validation reveals an invariant failure: `subtotal (\$120.00) + taxes (\$15.00) != total_amount (\$150.00)`. Investigation shows the document contained a "\$15.00 Late Fee" that the model overlooked. How should the automated retry mechanism be architected to resolve this error reliably?
+### Q3. Fixing HTTP 400 When Combining Thinking and Forced Tools
+Hospital intake forms contain messy handwritten notes, so a developer turns on Extended Thinking (`budget_tokens: 4000`) together with `tool_choice: {"type": "tool", "name": "extract_intake"}`. The API immediately rejects every call with HTTP `400`. Why, and how should it be fixed?
 
-* A) Resend the original prompt and document text to the model with an increased temperature to encourage exploratory generation.
-* B) Send a new message containing only the error text: *"The totals did not balance. Try again."*
-* C) Construct a multi-turn conversation providing the original document, the model's faulty JSON output, and a precise error message stating: *"Validation Error: subtotal (120.00) + taxes (15.00) = 135.00, which does not equal total_amount (150.00). Please re-read the document for additional fees or credits."*
-* D) Immediately route the document to a human operator, because any schema-compliant output that fails semantic math indicates a corrupted model state that cannot be fixed via prompting.
+- **A)** Extended Thinking works only on `claude-haiku-4-5`.
+- **B)** Forced `tool_choice` (`"tool"` or `"any"`) cannot be combined with Extended Thinking; switch to `tool_choice: {"type": "auto"}` or split into a two-pass pipeline (Pass 1 Sonnet thinking, Pass 2 Haiku forced tool).
+- **C)** Extended Thinking requires `temperature: 1.0`, which was omitted.
+- **D)** The forms exceed the context window and must be split into 500-token chunks.
 
-#### Answer: C
-* **Why C is Correct:** Effective closed-loop error correction requires three essential pieces of context: the ground-truth source document, the model's previous attempt, and the exact deterministic math delta. This provides the LLM with the precise signal required to locate the discrepancy (the missing \$15.00 fee) and correct its output without repeating the error.
-* **Distractor Breakdown:**
-  * **Option A is Incorrect:** Resending the exact same prompt without error feedback simply repeats the mistake. Increasing temperature increases variance and hallucination risk.
-  * **Option B is Incorrect:** A vague message without the prior response or specific math discrepancy gives the model insufficient context to determine what failed or where to look.
-  * **Option D is Incorrect:** Minor calculation or line-item omission errors are frequently and efficiently fixed in a single bounded retry turn (max 1–2 retries), avoiding expensive human intervention.
-* **Anti-Pattern Alert:** The Blind Retry Trap. Retrying without targeted, deterministic error feedback burns tokens and reproduces identical failure modes.
+<details>
+<summary>Show Answer & Explanation</summary>
 
----
+**Correct Answer:** B
 
-### Question 6
-An organization must extract structured records from 80,000 archived historical land deed documents over the weekend. The data is needed on Tuesday morning for a regulatory audit. The extraction pipeline requires high throughput, budget efficiency, and reliable auditability. In preliminary testing on 200 documents, the system achieved 98.2% aggregate field accuracy. Which architectural approach best satisfies the operational requirements?
+- **A is wrong:** Extended Thinking is supported on `claude-sonnet-4-5` as well.
+- **B is right:** Forced tool choice conflicts with open-ended thinking tokens; use `tool_choice: "auto"` or separate reasoning and schema formatting into two passes.
+- **C is wrong:** Passing `temperature` while `thinking` is enabled actually *triggers* an HTTP `400` error (`temperature` must be omitted).
+- **D is wrong:** Multi-page forms easily fit inside Claude's 200k+ token window.
 
-* A) Deploy a pool of 100 concurrent workers querying the Real-Time Messages API (`/v1/messages`), and eliminate human review entirely since 98.2% accuracy exceeds the 95% audit threshold.
-* B) Submit the documents using the Message Batches API (`/v1/messages/batches`) with unique `custom_id` parameters, and implement a stratified human review queue sampling 5% of records across deed types, eras, and counties.
-* C) Concatenate all 80,000 documents into a series of massive 200,000-token prompts using Claude Sonnet 4.5, extracting 50 documents per prompt to minimize request overhead.
-* D) Route all 80,000 documents through the Message Batches API, but hold all records in quarantine until a human reviewer manually inspects every document that took more than 5 seconds to process.
-
-#### Answer: B
-* **Why B is Correct:** The Message Batches API provides a 50% discount on input and output tokens and is designed specifically for non-blocking asynchronous processing with an SLA up to 24 hours. The `custom_id` allows deterministic mapping between source document IDs and batch results. Furthermore, eliminating human review based on aggregate accuracy is an exam trap: aggregate accuracy masks localized failure modes (e.g., 99.9% on typed deeds, but 40% on handwritten 19th-century deeds). Implementing a **stratified sample** ensures robust governance across all document cohorts.
-* **Distractor Breakdown:**
-  * **Option A is Incorrect:** Real-Time Messages API costs 2x more than Batches API, risks rate-limit throttling (HTTP 429) across 100 concurrent workers, and eliminating human review based on aggregate metrics violates governance standards.
-  * **Option C is Incorrect:** Packing multiple documents into a single prompt causes severe context dilution, cross-document hallucination, and truncation risks.
-  * **Option D is Incorrect:** In the Batches API, execution time per item is not surfaced or correlated with accuracy; holding all documents defeats the purpose of automated batch extraction.
-* **Anti-Pattern Alert:** The Aggregate Accuracy Fallacy. Never eliminate human review based on an overall percentage; always enforce stratified auditing across sub-distributions.
+</details>
 
 ---
 
-## 7. Self-Check Mastery Rubric
+### Q4. Handling Unexpected Expense Categories
+An expense schema enforces `category: {"type": "string", "enum": ["airfare", "lodging", "meals", "ground_transport"]}`. Employees begin submitting receipts for *"conference fees"* and *"client gifts"*, causing schema errors and mislabeled meals. How should the schema be updated?
 
-Before sitting for the CCAR-F exam, verify that you can explain each invariant without hesitation:
+- **A)** Change `category` to an unconstrained free-text string.
+- **B)** Add `"other"` and `"unclear"` to the enum, plus a nullable companion field `"category_other_detail": {"type": ["string", "null"]}`.
+- **C)** Tell Claude in the prompt to pick whichever of the 4 existing categories feels closest.
+- **D)** Reject all receipts outside those 4 categories and send them to security review.
 
-* [ ] **Constrained Decoding vs Prompting:** I can articulate why native grammar-level JSON constraints or tool-use schemas are mandatory for structured extraction, and why prompt instructions alone are insufficient.
-* [ ] **Extended Thinking Restrictions:** I know that Extended Thinking rejects `temperature`, `top_p`, `top_k`, and forced tool choice (`"any"` or specific tool names) with HTTP 400.
-* [ ] **Nullable Schema Protection:** I always declare optional or missing document fields as nullable (`type: ["string", "null"]`) to prevent the model from inventing data.
-* [ ] **Enum Resilience:** I include `"other"` and `"unclear"` in categorical enums alongside a free-text companion field to accommodate real-world variance.
-* [ ] **Closed-Loop Retry Contract:** I know that error correction retries must include the original document, the previous faulty output, and the specific deterministic error message.
-* [ ] **Batches API Economics & SLA:** I understand that the Message Batches API yields a 50% cost reduction for non-urgent tasks (≤ 24h SLA) and uses `custom_id` for request correlation.
-* [ ] **Stratified Quality Audits:** I understand why aggregate accuracy numbers are misleading, and how stratified sampling protects against skewed sub-cohort failures.
+<details>
+<summary>Show Answer & Explanation</summary>
+
+**Correct Answer:** B
+
+- **A is wrong:** Free text breaks consistent accounting categories and reporting.
+- **B is right:** Adding `"other"` / `"unclear"` plus a detail field handles novel receipts cleanly without corrupting existing categories.
+- **C is wrong:** Forcing a gift into `"meals"` produces wrong accounting entries.
+- **D is wrong:** Blocking valid business expenses creates unnecessary operational friction.
+
+</details>
 
 ---
 
-### Related Practice Question Bank References
-* **Domain 4 (Prompting & Structured Output):**
-  * [Set 7 (Structured Outputs & Prompting): Q1–30](../../practice_exam_bank_300/set_07_domain3_structured_outputs_prompting.md)
-  * [Set 8 (Tool Schemas & Error Handling): Q1–30](../../practice_exam_bank_300/set_08_domain4_tool_schemas_error_handling.md)
-* **Domain 3 (Cost Optimization & Batch Processing):**
-  * [Set 6 (Prompt Caching & Economics): Q1–30](../../practice_exam_bank_300/set_06_domain3_prompt_caching_economics.md)
-* **Domain 5 (Governance & Reliability):**
-  * [Set 10 (Governance & Safety / Risk): Q1–30](../../practice_exam_bank_300/set_10_domain5_governance_safety_risk.md)
+### Q5. Designing Effective Math Retries
+Deterministic validation catches a math error on a utility bill: `subtotal ($120.00) + taxes ($15.00) != total ($150.00)` because a `$15.00 Late Fee` was missed. How should the retry work?
 
-**Exam-Day Memory Hook:** *"Schema for shape, deterministic code for truth, nullable for missing, Batches for backlog, stratified audits for trust."*
+- **A)** Re-send the original prompt at higher temperature.
+- **B)** Send a short follow-up saying only: *"The totals did not balance. Try again."*
+- **C)** Send a multi-turn retry containing the original document, the faulty JSON output, and the exact mismatch (`120.00 + 15.00 = 135.00 != 150.00`) asking Claude to check for missed fees or credits.
+- **D)** Never retry math errors; send every mismatch straight to a human.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
+**Correct Answer:** C
+
+- **A is wrong:** Resending the exact same prompt repeats the error, and higher temperature adds randomness.
+- **B is wrong:** Without the original document and exact error delta, Claude cannot see what was missed.
+- **C is right:** Closed-loop feedback with all three pieces lets Claude locate the missing `$15.00` line item in one bounded retry.
+- **D is wrong:** A bounded retry resolves missed line items cheaply before escalating to humans.
+
+</details>
+
+---
+
+### Q6. Processing an 80,000-Document Backlog Over a Weekend
+An organization needs to extract records from 80,000 archived land deeds over the weekend for a Tuesday audit. Pilot tests on 200 deeds showed `98.2%` overall accuracy. What architecture is best?
+
+- **A)** Run 100 concurrent workers on the Real-Time API and turn off human review because `98.2%` beats `95%`.
+- **B)** Submit jobs via the **Message Batches API** (`/v1/messages/batches`) with unique `custom_id` keys, and keep a **5–10% stratified human audit** across deed types, eras, and counties.
+- **C)** Pack 50 deeds into each 200,000-token prompt to cut request count.
+- **D)** Use Batches API, but send every deed that took longer than 5 seconds to human review.
+
+<details>
+<summary>Show Answer & Explanation</summary>
+
+**Correct Answer:** B
+
+- **A is wrong:** Real-Time costs twice as much as Batches, and dropping human review based on one overall average hides pockets of failure (like handwritten 19th-century deeds).
+- **B is right:** Weekend backlogs fit the 24-hour Batches window (50% off, `custom_id` tracking), and stratified sampling catches cohort-specific failures.
+- **C is wrong:** Packing 50 documents per prompt causes cross-document mix-ups and truncation.
+- **D is wrong:** Per-item latency in Batches is not exposed or correlated with extraction accuracy.
+
+</details>
+
+---
+
+## 7. Hands-On Lab, Self-Check & Memory Hook
+
+- **Inspect the code:** Read [`simulation.py`](simulation.py) to see `EXTRACTION_SCHEMA`, `build_extraction_request`, `validate_against_schema`, `is_retry_eligible`, and `StructuredExtractionPipeline`.
+- **Run the interactive lab:** Open [`scenario_workbench.ipynb`](scenario_workbench.ipynb) and run all cells offline.
+- **Run the unit tests (WSL Ubuntu-26.04):**
+  ```bash
+  uv run pytest scenarios/scenario_6_structured_data_extraction/test_scenario_6_simulation.py
+  ```
+
+### Self-Check Checklist
+- [ ] I know what a JSON schema guarantees (syntax and types) and what it does not (truth and math).
+- [ ] I declare optional or absent-prone fields as nullable (`["string", "null"]`) and include `"other"` / `"unclear"` in enums.
+- [ ] I know when a retry helps (fixable math/format error with 3-part feedback) vs. hurts (fact missing from the page).
+- [ ] I know why Extended Thinking + forced `tool_choice` returns HTTP `400` and how a two-pass pipeline solves it.
+- [ ] I know why a 5–10% stratified audit stays active even when overall accuracy exceeds 98%.
+
+**Exam-Day Memory Hook:** *"Schema for shape, code for truth, null for missing, Batches for backlog, stratified audits for trust."*
+
+**Related Practice Bank Sets:**
+- [Set 7 (Structured Outputs & Prompting): Q1–30](../../practice_exam_bank_300/set_07_domain3_structured_outputs_prompting.md)
+- [Set 8 (Tool Schemas & Error Handling): Q1–30](../../practice_exam_bank_300/set_08_domain4_tool_schemas_error_handling.md)
+- [Set 6 (Prompt Caching & Economics): Q1–30](../../practice_exam_bank_300/set_06_domain3_prompt_caching_economics.md)
+- [Set 10 (Governance & Safety / Risk): Q1–30](../../practice_exam_bank_300/set_10_domain5_governance_safety_risk.md)
+
+---
+
+[← Scenario 5](../scenario_5_continuous_integration/SCENARIO_GUIDE.md) · [Scenarios Overview](../README.md) · [Next: 60-Question Practice Exam →](../MASTER_SCENARIO_PRACTICE.md)

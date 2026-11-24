@@ -1,16 +1,33 @@
-# Official Exam Scenarios Master Guide
+# Production Scenarios Master Guide
 
-The **Claude Certified Architect – Foundations (CCAR-F)** exam consists of **60 multiple-choice questions in 120 minutes** (pacing benchmark: 2.0 minutes per question). On every exam form, **four of the six production scenarios below are chosen at random**, anchoring the majority of scenario-based questions. Passing score is **720 out of 1000** (scaled score).
+The **Claude Certified Architect – Foundations (CCAR-F)** exam includes **60 multiple-choice questions in 120 minutes** (about 2 minutes per question). Passing requires a scaled score of **720 out of 1000**.
 
-This master guide covers all six production scenarios, giving you the practical intuition needed to quickly spot root causes and eliminate tricky wrong answers during the exam.
+Instead of testing abstract trivia, almost every question is grounded in realistic engineering situations. On each exam, **four of the six production scenarios below are chosen at random**, and the questions ask you to diagnose what broke, pick the cleanest fix, and avoid common traps.
+
+This folder gives you a complete learning and practice path for all six scenarios—written in plain language first, backed by working offline simulations and practice quizzes.
 
 ---
 
-## 🧠 How to Solve Scenario Questions (5 Clear Steps)
+## How to Study Each Scenario (Step by Step)
 
-Every scenario on the exam tests whether you can spot the root cause of a failure instead of applying cosmetic prompt patches. Each scenario guide uses 5 clear steps:
+To get the most out of these materials without memorizing buzzwords, follow this sequence for each scenario:
 
-> **1. Simple Picture (Mental Model)** → **2. Architectural Why** → **3. Working Code / Schema** → **4. Exam Traps & Wrong Answers** → **5. Memory Hook**
+1. **Read `SCENARIO_GUIDE.md`** — Start with the plain-English overview and analogy, trace the architecture diagram, and read the core design rules so you understand *why* naive fixes fail.
+2. **Test Yourself Before Peeking** — Answer the 6 scenario questions in Section 6 on your own first, then expand each answer block to check your reasoning against the wrong options.
+3. **Run `scenario_workbench.ipynb` & Inspect `simulation.py`** — See the exact rules enforced in clean Python code and run the offline notebook cells to observe how the system behaves on happy paths and edge cases.
+4. **Take the Timed 60-Question Mock Exam** — Once you finish all six scenarios, work through [MASTER_SCENARIO_PRACTICE.md](MASTER_SCENARIO_PRACTICE.md) in two 60-minute halves and score yourself by domain.
+
+### What Every Scenario Guide Contains
+
+All six `SCENARIO_GUIDE.md` files follow the same 7-part structure (aligned with the repository's 5-step learning method: *Simple Picture → Why It Matters → Working Pattern → Exam Traps → Memory Hook*):
+
+1. **The Big Picture (In Plain English)** — What the system does, an everyday analogy, exam domains covered, and the top 3 mistakes to avoid.
+2. **How the System Works** — An architecture diagram and a plain-English walkthrough from input to output.
+3. **Core Design Rules** — The engineering rules behind the scenario, why shortcuts break, and a quick symptom-to-fix decision chart.
+4. **What the Exam Tests (Task Statement Map)** — How the official syllabus items appear in this scenario.
+5. **Realistic Walkthrough** — A full end-to-end example showing inputs, tool calls, decisions, and outputs.
+6. **Practice Questions (With Hidden Answers)** — 6 exam-style questions with collapsible answer explanations so you can practice active recall.
+7. **Hands-On Lab, Self-Check & Memory Hook** — Offline lab commands, a self-check list, and a one-line reminder for exam day.
 
 ```mermaid
 ---
@@ -18,21 +35,21 @@ config:
   htmlLabels: false
 ---
 flowchart TD
-    Exam["CCAR-F Exam Scenarios<br>(4 of 6 Chosen Randomly)"]
-    
-    subgraph CoreAgents ["Operational & Support Topologies"]
-        S1["Scenario 1: Customer Support Resolution<br>• Gate: 2FA & Auth Deadbolt<br>• D1, D2, D5 · SLA: &ge; 80% FCR, &lt; 2.5s"]
-        S3["Scenario 3: Multi-Agent Research System<br>• Topology: Hub-and-Spoke Spawning<br>• D1, D2, D5 · SLA: &lt; 20s, 100% Cited"]
+    Exam["CCAR-F Exam Scenarios<br>(4 of 6 Chosen at Random)"]
+
+    subgraph CoreAgents ["Customer & Research Agents"]
+        S1["1. Customer Support Agent<br>Hard safety checks before refunds<br>Domains 1, 2, 5 · Target: 80%+ resolved"]
+        S3["3. Multi-Agent Research<br>Coordinator and isolated workers<br>Domains 1, 2, 5 · Target: under 20s, cited"]
     end
 
-    subgraph DeveloperWorkflows ["Software Engineering & CI/CD"]
-        S2["Scenario 2: Code Generation with Claude Code<br>• Mode: Plan Mode & Scoped Rules<br>• D3, D5 · SLA: &lt; 40k tokens, 0 assumptions"]
-        S4["Scenario 4: Developer Productivity<br>• Discovery: Glob & Grep & Edit Fallback<br>• D1, D2, D3 · SLA: &lt; 15k exploration tokens"]
-        S5["Scenario 5: Claude Code for CI<br>• Automation: Headless -p & Two-Pass Review<br>• D3, D4 · SLA: &lt; 3m review, 0 hangs"]
+    subgraph DeveloperWorkflows ["Developer Tools & CI/CD"]
+        S2["2. Code Generation<br>Plan big edits, scope rules by folder<br>Domains 3, 5 · Target: clean refactors"]
+        S4["4. Developer Productivity<br>Find files first, edit safely<br>Domains 1, 2, 3 · Target: under 15k tokens"]
+        S5["5. CI/CD Code Review<br>Headless -p flag and two-pass checks<br>Domains 3, 4 · Target: under 3m, no hangs"]
     end
 
-    subgraph DataPipelines ["Structured Extraction & Calibration"]
-        S6["Scenario 6: Structured Data Extraction<br>• Reliability: Schema tool_use & Nullability<br>• D4, D5 · SLA: &ge; 85% STP, 0 hallucinations"]
+    subgraph DataPipelines ["Structured Data Extraction"]
+        S6["6. Structured Extraction<br>Strict JSON shape, allow null, validate math<br>Domains 4, 5 · Target: 85%+ automated"]
     end
 
     Exam --> CoreAgents
@@ -42,108 +59,101 @@ flowchart TD
 
 ---
 
-## 📊 The 6 Production Scenarios Comparative Matrix
+## The 6 Scenarios at a Glance
 
-| # | Scenario | Core Problem & Everyday Metaphor | Target Production SLA | Dominant Failure Mode | Deterministic CCAR-F Remedy | Top Distractor to Reject |
-|:---:|---|---|---|---|---|---|
-| **1** | **[Customer Support Agent](scenario_1_customer_support/SCENARIO_GUIDE.md)** | **Bank Vault Turnstile**: Guarding customer accounts and refunds with hard gates. | ≥ 80% FCR<br>< 2.5s turn latency | Prompt-only compliance allows unauthorized refunds when user presses urgently. | Programmatic prerequisite gate blocking `process_refund` until 2FA verified. | Adding emphatic warning prompts ("NEVER refund without verifying ID"). |
-| **2** | **[Code Generation](scenario_2_code_generation/SCENARIO_GUIDE.md)** | **Architect's Blueprint**: Blueprints before demolition; spackling drywall directly. | < 40k context tokens<br>0 rework iterations | Direct execution on 15-file refactor produces circular edits and breaking changes. | Plan Mode for architecture exploration; Interview Pattern for ambiguities. | Starting direct execution immediately; stuffing entire codebase in `CLAUDE.md`. |
-| **3** | **[Multi-Agent Research](scenario_3_multi_agent_research/SCENARIO_GUIDE.md)** | **Air Traffic Controller**: Tower coordinates isolated aircraft without pilot cross-talk. | < 20s turn latency<br>100% cited sources | Sequential turn-by-turn subagent spawning causes timeouts (> 80s). | Single-turn concurrent `Task` spawning; 100% subagent context isolation. | Allowing peer-to-peer subagent communication; averaging conflicting statistics. |
-| **4** | **[Developer Productivity](scenario_4_developer_productivity/SCENARIO_GUIDE.md)** | **Map, Magnifying Glass, Scalpel**: Find path, locate symbol, surgical edit. | < 15k exploration tokens<br>0 broken edits | Bulk-reading 300 files on turn 1 saturates context; non-unique edit collides. | Progressive discovery (`Glob` → `Grep` → `Read`); 3-stage `Edit` Fallback Protocol. | Repeatedly retrying failed `Edit` calls without expanding anchor text or falling back. |
-| **5** | **[Continuous Integration](scenario_5_continuous_integration/SCENARIO_GUIDE.md)** | **Automated Factory Robot**: Robot must never freeze waiting for human keyboard input. | < 3m PR review latency<br>0 runner hangs | Running `claude` without `-p` hangs CI runner indefinitely waiting for stdin. | Non-interactive `-p` flag; Two-Pass Review (Pass 1 per-file, Pass 2 integration). | Using Message Batches API for blocking PR review (24h turnaround window). |
-| **6** | **[Structured Extraction](scenario_6_structured_data_extraction/SCENARIO_GUIDE.md)** | **Strict Customs Declaration**: Checkboxes must allow "N/A" so travelers don't invent facts. | ≥ 85% Straight-Through Processing (STP)<br>0 fabricated facts | Required schema fields force Claude to hallucinate missing phone numbers or tax IDs. | Schema enforcement via `tool_use`; nullable fields (`["string", "null"]`); 10% stratified audit. | Asking model for markdown JSON; retrying extraction when fact is absent from document. |
-
----
-
-## 🏛️ Scenario Architectural Profiles
-
-### [Scenario 1: Customer Support Resolution Agent](scenario_1_customer_support/)
-- **Primary Domains**: Domain 1 (27%), Domain 2 (18%), Domain 5 (15%)
-- **The Physical Metaphor**: The **Bank Vault Turnstile**. Warning signs fail; only an electronic turnstile blocks access until the badge scans green.
-- **System Dynamics & Failure Modes**: E-commerce customers demand fast resolutions, but agents must never breach security. When angry customers bypass verification by impersonating executives, probabilistic system prompts degrade.
-- **Architectural Solution**:
-  1. Programmatic prerequisite gate in Python blocking `process_refund` until `get_customer` successfully authenticates.
-  2. Immediate escalation to human agents on explicit customer demand ("transfer me to a supervisor") without asking further diagnostic questions.
-  3. Immutable Case Facts layer keeping customer ID, order number, and refund amounts outside compacted history.
-  4. Trimming 55 raw CRM fields down to 4 essentials in a `PostToolUse` normalization hook.
-
-### [Scenario 2: Code Generation with Claude Code](scenario_2_code_generation/)
-- **Primary Domains**: Domain 3 (20%), Domain 5 (15%)
-- **The Physical Metaphor**: The **Architectural Blueprint**. When moving load-bearing walls across multiple floors, you draft blueprints before swinging a sledgehammer.
-- **System Dynamics & Failure Modes**: On small scripts, direct code editing is fast. On multi-service refactors touching 15+ files, direct edits cause circular regressions, broken imports, and context exhaustion.
-- **Architectural Solution**:
-  1. Enter **Plan Mode** to explore dependencies, trace call trees, and propose a file-by-file refactoring manifest.
-  2. Implement the **Interview Pattern**: ask targeted clarifying questions with concrete selectable options before writing code.
-  3. Scope conventions using `.claude/rules/*.md` with YAML `paths: ["**/*.test.tsx"]` rather than bloating root `CLAUDE.md`.
-  4. Execute discovery commands using custom skills configured with `context: fork` to protect main context.
-
-### [Scenario 3: Multi-Agent Research System](scenario_3_multi_agent_research/)
-- **Primary Domains**: Domain 1 (27%), Domain 2 (18%), Domain 5 (15%)
-- **The Physical Metaphor**: The **Air Traffic Control Tower**. The central tower coordinates takeoffs and landings; individual flights operate in strict isolation without open-channel chatter.
-- **System Dynamics & Failure Modes**: Researching market trends requires aggregating 10-K filings, earnings transcripts, and news sentiment. Sequential execution causes 90-second latencies; shared context causes cross-topic hallucination.
-- **Architectural Solution**:
-  1. Central Coordinator emits multiple `Task` calls in a **single turn**, triggering concurrent subagent runs.
-  2. Subagents execute with **100% context isolation**; parent context is explicitly injected into subagent prompts.
-  3. Differentiate between `VALID_EMPTY` (0 records found, no error) and `UPSTREAM_FAILURE` (API timeout, structured error).
-  4. Preserve conflicting metrics (\$1.2B vs \$1.5B) side-by-side with source citations and collection timestamps; never average conflicting statistics.
-
-### [Scenario 4: Developer Productivity with Claude](scenario_4_developer_productivity/)
-- **Primary Domains**: Domain 1 (27%), Domain 2 (18%), Domain 3 (20%)
-- **The Physical Metaphor**: The **Map, Magnifying Glass, and Scalpel**. The map (`Glob`) finds files; the magnifying glass (`Grep`) locates code symbols; the scalpel (`Edit`) alters lines surgically.
-- **System Dynamics & Failure Modes**: Developers exploring large repos waste 50k tokens reading full directories. When making surgical edits, duplicate code blocks cause `Edit` collisions.
-- **Architectural Solution**:
-  1. Progressive Discovery: run `Glob` to narrow paths → run `Grep` to locate function signatures → chunked `Read` around targets.
-  2. 3-Stage `Edit` Fallback Protocol: If surgical `Edit` fails due to non-unique anchor text, expand anchor context; if it fails again, fallback to `Read` + `Write` of the complete file.
-  3. Expose API catalogs and database schemas as read-only **MCP Resources** (`catalog://orders/schema`) to eliminate exploratory tool loops.
-
-### [Scenario 5: Claude Code for Continuous Integration](scenario_5_continuous_integration/)
-- **Primary Domains**: Domain 3 (20%), Domain 4 (20%)
-- **The Physical Metaphor**: The **Silent Factory Robot**. A quality-control robot on a manufacturing line must never stop and beep waiting for an operator to type "Y" on a keyboard.
-- **System Dynamics & Failure Modes**: Running Claude Code in GitHub Actions or GitLab CI often fails because the runner hangs indefinitely on interactive prompts. In single-pass reviews of large PRs, attention dilution causes missed bugs.
-- **Architectural Solution**:
-  1. Automated CI commands must pass `claude -p "..." --output-format json` to run non-interactively.
-  2. Implement **Two-Pass Review**: Pass 1 evaluates individual files in isolated subagents; Pass 2 audits cross-file interface contracts.
-  3. Prohibit the Message Batches API for blocking pre-merge PR gates (Batch API has a 24-hour window without latency SLAs).
-  4. Write concrete categorical rubrics with explicit **negative boundaries** to eliminate test false alarms.
-
-### [Scenario 6: Structured Data Extraction](scenario_6_structured_data_extraction/)
-- **Primary Domains**: Domain 4 (20%), Domain 5 (15%)
-- **The Physical Metaphor**: The **Strict Customs Declaration Form**. The traveler must be allowed to check "None" or "N/A" for secondary items; otherwise, they fabricate answers.
-- **System Dynamics & Failure Modes**: Document extraction pipelines parsing invoices and insurance claims hallucinate values when required schema properties are absent from source PDFs.
-- **Architectural Solution**:
-  1. Enforce schema compliance using `tool_use` (never parse raw markdown with regex).
-  2. Declare non-guaranteed attributes as **nullable** (`type: ["string", "null"]`) so Claude returns `null` instead of guessing.
-  3. Closed-Loop Validation: retry up to 2 times on arithmetic or formatting errors; **fast-fail immediately** when source facts are absent.
-  4. Calibrated Human Routing: automate high-confidence extractions, but audit **5–10% stratified random samples** across all document types to detect distribution drift.
+| # | Scenario | Everyday Analogy | What Usually Goes Wrong | The Reliable Engineering Fix | Tempting Wrong Answer |
+|:---:|---|---|---|---|---|
+| **1** | **[Customer Support](scenario_1_customer_support/SCENARIO_GUIDE.md)** | **A bank vault turnstile:** A polite sign does not stop someone; a locked gate that checks your badge does. | An urgent customer tricks the model into issuing a refund without verifying identity or over the dollar limit. | Enforce identity and refund limits in Python code before the payment tool can run; escalate on request. | Adding stronger wording to the system prompt (e.g., `"NEVER refund without ID"`). |
+| **2** | **[Code Generation](scenario_2_code_generation/SCENARIO_GUIDE.md)** | **Drawing blueprints before renovating:** You plan load-bearing changes before swinging a hammer. | Asking Claude to jump straight into editing 15 files causes broken imports, circular bugs, and forgotten rules. | Use Plan Mode for large changes, clarify ambiguities first, and keep rules in folder-scoped files. | Stuffing the entire team handbook into one giant `CLAUDE.md` file. |
+| **3** | **[Multi-Agent Research](scenario_3_multi_agent_research/SCENARIO_GUIDE.md)** | **An air traffic control tower:** The tower coordinates each plane separately; pilots do not chatter across channels. | Running subagents one after another makes the job time out, or subagents miss facts because they lack context. | Have the coordinator launch independent subagents in one turn, pass needed context in each prompt, and keep conflicting stats with citations. | Letting subagents message each other freely, or averaging conflicting numbers together. |
+| **4** | **[Developer Productivity](scenario_4_developer_productivity/SCENARIO_GUIDE.md)** | **Map, magnifying glass, and scalpel:** Find the right folder, locate the exact function, then make a clean edit. | Reading hundreds of files wastes the context window, and editing a common line like `return False` fails on duplicate matches. | Search in order (`Glob` → `Grep` → small `Read`); if `Edit` matches multiple lines, add surrounding lines or fall back to `Read` + `Write`. | Retrying the exact same failing `Edit` call or dumping whole directories into chat. |
+| **5** | **[CI/CD Code Review](scenario_5_continuous_integration/SCENARIO_GUIDE.md)** | **A factory quality-control robot:** It runs on its own and must never freeze waiting for a human to type "Y". | Running `claude` without `-p` hangs the CI runner forever, or a single pass over a huge PR misses cross-file bugs. | Run `claude -p` with JSON schema output, review in two passes (per-file, then cross-file), and exit non-zero on critical flaws. | Using the 24-hour Message Batches API for a blocking pre-merge check. |
+| **6** | **[Structured Extraction](scenario_6_structured_data_extraction/SCENARIO_GUIDE.md)** | **A customs form with an "N/A" box:** If a form forces an answer for an item you do not have, people guess. | Requiring a string for fields missing from an invoice (like a PO number) forces Claude to invent fake numbers. | Enforce JSON shape via `tool_use`, mark optional fields as nullable (`["string", "null"]`), verify math in code, and audit a 5–10% stratified sample. | Asking for markdown JSON in the prompt, or retrying when a fact is not in the document. |
 
 ---
 
-## 🛠️ Offline Verification & Practice Labs
+## Scenario Summaries
 
-Every scenario directory provides an isolated, zero-token test suite and executable simulation:
+### [Scenario 1: Customer Support Resolution Agent](scenario_1_customer_support/SCENARIO_GUIDE.md)
+- **Domains:** Domain 1 (27%), Domain 2 (18%), Domain 5 (15%)
+- **The Challenge:** Customers want fast help with orders and refunds, while the company must block unauthorized access and refunds above policy limits. Under pressure or clever wording, prompt rules alone eventually slip.
+- **What Good Looks Like:**
+  1. Check identity and refund limits (`$500` cap, `30-day` window) in deterministic code before `process_refund` can execute.
+  2. Hand off to a human immediately when the customer explicitly asks for one—without asking extra diagnostic questions first.
+  3. Keep key entities (customer ID, order ID, auth status) in a pinned **Case Facts** block outside summarized chat history.
+  4. Trim bloated CRM payloads (around 40 internal fields down to the 5 needed for the decision) in a `PostToolUse` hook.
+
+### [Scenario 2: Code Generation with Claude Code](scenario_2_code_generation/SCENARIO_GUIDE.md)
+- **Domains:** Domain 3 (20%), Domain 5 (15%)
+- **The Challenge:** Direct edits work well for a small, clear fix, but jumping straight into code on a 15-file refactor or an underspecified feature creates rework and wasted tokens.
+- **What Good Looks Like:**
+  1. Use **Plan Mode** to map dependencies and draft a step-by-step plan before touching files on multi-file changes.
+  2. Use the **Interview Pattern** to ask 2–3 targeted design questions when requirements are vague.
+  3. Keep root `CLAUDE.md` under 200 lines; place folder-specific conventions in `.claude/rules/*.md` with `paths:` filters.
+  4. Run noisy, multi-file discovery skills with `context: fork` so raw logs do not clutter your main session.
+
+### [Scenario 3: Multi-Agent Research System](scenario_3_multi_agent_research/SCENARIO_GUIDE.md)
+- **Domains:** Domain 1 (27%), Domain 2 (18%), Domain 5 (15%)
+- **The Challenge:** Researching a broad topic across filings, patents, and news takes too long if done one agent at a time, and subagents lose critical instructions if you assume they can read the coordinator's chat history.
+- **What Good Looks Like:**
+  1. Use a **Hub-and-Spoke** design where a central coordinator spawns independent subagents in parallel during a single turn.
+  2. Pass all needed entities, dates, and constraints explicitly in each subagent's prompt, because subagents start with a fresh, empty context.
+  3. Separate a valid empty search (`VALID_EMPTY`, zero hits found) from an outage (`UPSTREAM_FAILURE`, timeout or 503), and disclose partial coverage honestly.
+  4. Report conflicting numbers side by side with dates and sources—never average them into a synthetic middle number.
+
+### [Scenario 4: Developer Productivity with Claude](scenario_4_developer_productivity/SCENARIO_GUIDE.md)
+- **Domains:** Domain 1 (27%), Domain 2 (18%), Domain 3 (20%)
+- **The Challenge:** Large legacy codebases quickly overflow the context window if the agent reads whole directories, and surgical edits fail when short target snippets appear multiple times in a file.
+- **What Good Looks Like:**
+  1. Follow **Progressive Discovery**: `Glob` to find file paths → `Grep` to locate symbols → chunked `Read` (`offset` and `limit`) around matching lines.
+  2. Follow the **Edit Fallback Ladder**: if `Edit` fails on duplicate matches, expand the target text to include unique surrounding lines; if it still fails, `Read` the whole file and `Write` the clean replacement.
+  3. Put shared team MCP settings in `.mcp.json` using `${ENV_VAR}` placeholders (never raw secrets), and expose static docs/specs as **MCP Resources** rather than executable tools.
+
+### [Scenario 5: Claude Code for Continuous Integration](scenario_5_continuous_integration/SCENARIO_GUIDE.md)
+- **Domains:** Domain 3 (20%), Domain 4 (20%)
+- **The Challenge:** Automated PR pipelines stall if Claude waits for terminal input, miss cross-file bugs if a huge PR is checked in one pass, or flood PRs with nitpicks when instructions are vague.
+- **What Good Looks Like:**
+  1. Always run `claude -p "<prompt>" --output-format json --json-schema '<inline JSON>'` in CI so it finishes cleanly without waiting for keyboard input.
+  2. Run a **Two-Pass Review** (Pass 1 checks each file for local bugs; Pass 2 checks how changed files interact) in an independent session, never the session that wrote the code.
+  3. Use the **Real-Time API** for blocking pre-merge PR checks, and save the **Message Batches API** (50% cheaper, up to 24-hour turnaround) for overnight or weekly audits.
+  4. Write explicit **Report** and **Skip** rules (for example, ignoring mock keys in `tests/`) instead of vague advice like *"be conservative"*.
+
+### [Scenario 6: Structured Data Extraction](scenario_6_structured_data_extraction/SCENARIO_GUIDE.md)
+- **Domains:** Domain 4 (20%), Domain 5 (15%)
+- **The Challenge:** Pulling fields out of messy invoices, forms, and contracts leads to broken JSON if you rely on prompt instructions, and leads to made-up data if your schema marks optional fields as required.
+- **What Good Looks Like:**
+  1. Enforce JSON structure using `tool_use` (or native JSON schema constrained decoding), never regex parsing over markdown text.
+  2. Mark fields that may be missing from a document as **nullable** (`["string", "null"]`), and include `"other"` / `"unclear"` escape hatches in enums.
+  3. Run deterministic math and logic checks after extraction: retry up to 2–3 times with exact error feedback for fixable math errors, but **stop immediately** if the fact is missing from the source document.
+  4. Route low-confidence items to humans, and keep auditing a **5–10% stratified random sample** across document types and vendors even when overall accuracy looks high.
+
+---
+
+## Offline Practice Labs & Verification
+
+Every scenario folder contains four files so you can read, experiment, and verify everything offline at zero API cost:
+
+- `SCENARIO_GUIDE.md`: Complete study guide, architecture diagram, worked example, and 6 practice questions.
+- `simulation.py`: Deterministic Python implementation of the scenario's rules, gates, and edge cases.
+- `scenario_workbench.ipynb`: Interactive Jupyter notebook that walks through the simulation step by step.
+- `test_scenario_N_simulation.py`: Offline `pytest` unit tests checking every rule.
 
 ```bash
-# Run all scenario simulations offline (zero API cost):
+# Run all scenario simulation tests offline in WSL Ubuntu-26.04 (zero API cost):
 uv run pytest scenarios/ -q
 
-# Run specific scenario tests:
+# Run a single scenario's test suite:
 uv run pytest scenarios/scenario_1_customer_support/test_scenario_1_simulation.py
 uv run pytest scenarios/scenario_3_multi_agent_research/test_scenario_3_simulation.py
 ```
 
-### Lab Artifacts per Scenario
-- `SCENARIO_GUIDE.md`: Executive summary, visual architecture, thinking protocol, worked examples, 6 exam-style questions, and self-check.
-- `simulation.py`: Deterministic Python simulation of the scenario's state machines and failure handling.
-- `scenario_workbench.ipynb`: Interactive Jupyter notebook mirroring the simulation offline.
-- `test_scenario_N_simulation.py`: Unit tests validating offline safety and contract invariants.
-
 ---
 
-## 🔗 Master Navigation Hub
+## Related Study Hub
 
-- ⚡ [**Exam Refresher Cheat Sheet (`EXAM_REFRESHER.md`)**](../EXAM_REFRESHER.md): The 15 Golden Rules, rapid decision matrix, and distractor traps.
-- 📋 [**Exam Blueprint (`EXAM_BLUEPRINT.md`)**](../EXAM_BLUEPRINT.md): 5-domain syllabus, exam weighting, and 27 task statements matrix.
-- 🎯 [**Master Scenario Practice (`scenarios/MASTER_SCENARIO_PRACTICE.md`)**](MASTER_SCENARIO_PRACTICE.md): Complete 60-question authentic diagnostic practice exam.
-- ✅ [**Progress Tracker (`PROGRESS.md`)**](../PROGRESS.md): 27 task statements and 6 scenario checklist.
-- 🏠 [**Root README (`README.md`)**](../README.md): Main repository hub and zero-token offline test suite.
-- 🛡️ [**Execution Policy (`EXECUTION_POLICY.md`)**](../EXECUTION_POLICY.md): Zero-token testing and live execution standards.
+- [Exam Refresher Cheat Sheet (`EXAM_REFRESHER.md`)](../EXAM_REFRESHER.md) — The 15 golden rules and quick decision tables.
+- [Exam Blueprint (`EXAM_BLUEPRINT.md`)](../EXAM_BLUEPRINT.md) — Full 5-domain syllabus and 27 task statements.
+- [Master Scenario Practice (`MASTER_SCENARIO_PRACTICE.md`)](MASTER_SCENARIO_PRACTICE.md) — Complete 60-question timed practice exam with decision trees and scorecard.
+- [Progress Tracker (`PROGRESS.md`)](../PROGRESS.md) — Track your readiness across all 27 task statements and 6 scenarios.
+- [Root README (`README.md`)](../README.md) — Repository overview and offline test commands.
+- [Execution Policy (`EXECUTION_POLICY.md`)](../EXECUTION_POLICY.md) — Offline testing and live execution rules.
