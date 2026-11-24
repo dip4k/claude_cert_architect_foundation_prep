@@ -10,7 +10,7 @@ Domain 5 represents **15%** of the **Claude Certified Architect – Foundations 
 
 ## 🧠 How to Master Domain 5 (5 Clear Steps)
 
-$$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architecture)} \longrightarrow \text{3. Working Code / Schema} \longrightarrow \text{4. Exam Traps \& Wrong Answers} \longrightarrow \text{5. Memory Hook}$$
+> **1. Simple Picture (Mental Model)** → **2. Architectural Why** → **3. Working Code / Schema** → **4. Exam Traps & Wrong Answers** → **5. Memory Hook**
 
 ```mermaid
 ---

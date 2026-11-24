@@ -47,9 +47,9 @@ Each result has the same `custom_id` and a `result.type` of `succeeded`, `errore
 
 **c. SLA maths.** A document may arrive just after a submission. It waits up to one **submission interval**, then up to the **24-hour window**:
 
-$$\text{worst case} = \text{interval} + 24\text{h} + \text{margin}$$
+> `Worst Case = Interval + 24h + Margin`
 
-For a 30-hour SLA: the interval can be at most \$30 - 24 = 6$ h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
+For a 30-hour SLA: the interval can be at most \`30 − 24 = 6` h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
 
 **d. Failures.** Resubmit only the `errored` or `expired` `custom_id`s. If a document was too large, split it into chunks, with new ids such as `doc-002-chunk1of3`, and map them back to `doc-002`.
 
@@ -121,7 +121,7 @@ for result in client.messages.batches.results(batch.id):
 
 - **Anthropic Message Batches API**: An asynchronous batch processing endpoint offering a 50% discount on input and output tokens with a completion turnaround window of up to 24 hours.
 - **Request Correlation (`custom_id`)**: A developer-assigned unique identifier (1–64 characters: alphanumeric, `_`, `-`) mapped 1:1 between submission requests and asynchronous response items.
-- **Batch SLA Submission Interval**: The maximum scheduled window for accumulating and submitting batch jobs to ensure total turnaround satisfies customer SLA constraints ($\text{Submit Interval} = \text{Target SLA} - 24\text{h} - \text{buffer}$).
+- **Batch SLA Submission Interval**: The maximum scheduled window for accumulating and submitting batch jobs to ensure total turnaround satisfies customer SLA constraints (`Submit Interval = Target SLA − 24h − Buffer`).
 - **Single-Turn Batch Constraint**: An architectural limitation where batches cannot pause to execute mid-request client tools, making the API suitable only for single-turn extraction or classification.
 - **Selective Resubmission**: An operational error-handling standard where only `errored` or `expired` items are re-queued in subsequent batches, avoiding paying twice for successful requests.
 - **Document Chunking Protocol**: Splitting an oversized payload into smaller sub-requests (such as `doc-01-chunk1of3`) to fit within token boundaries while maintaining lineage tracking.

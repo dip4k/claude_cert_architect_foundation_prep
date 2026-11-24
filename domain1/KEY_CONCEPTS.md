@@ -219,7 +219,7 @@ Subagents running unconstrained loops can quickly exhaust team rate limits or AP
 - The coordinator runtime must impose strict `max_turns` (e.g. 5) and `max_tokens` per subagent execution.
 - If a subagent hits its turn or token threshold without finishing, it must return a partial findings object with status `"INCOMPLETE"` rather than hanging or recursively re-triggering itself.
 - Total system token consumption is calculated as:
-  $$\text{Total Tokens} = \text{Tokens}_{\text{coordinator}} + \sum_{i=1}^N \text{Tokens}_{\text{subagent}_i}$$
+  > `Total Tokens = Tokens_coordinator + Σ(Tokens_subagent_i)`
 
 #### 6. The Recursive Subagent Spawning Anti-Pattern
 - **The Anti-Pattern**: Allowing subagents to recursively spawn their own sub-subagents (Hierarchical Depth > 2).
@@ -238,12 +238,12 @@ In the Claude Agent SDK and Claude Code, subagents are spawned via a dedicated b
 
 #### 2. Parallel Subagent Spawning in a Single Turn
 A critical latency optimization tested heavily on the exam:
-- **Anti-Pattern (Sequential)**: Turn 1 spawns Subagent A -> waits for result -> Turn 2 spawns Subagent B -> waits for result. Total latency: $T_A + T_B + 2 \times T_{\text{overhead}}$.
+- **Anti-Pattern (Sequential)**: Turn 1 spawns Subagent A -> waits for result -> Turn 2 spawns Subagent B -> waits for result. Total latency: `T_A + T_B + 2 × T_overhead`.
 - **Production Standard (Concurrent Parallel)**: The coordinator emits multiple `Task` tool calls in a **single turn** (single assistant response).
   - The runtime orchestrator intercepts all `Task` blocks simultaneously.
   - Spawns concurrent execution threads/tasks for Subagent A, Subagent B, and Subagent C.
   - Returns all `tool_result` blocks together in the subsequent turn.
-  - Latency: $\max(T_A, T_B, T_C) + T_{\text{overhead}}$ (about the slowest subagent instead of the sum).
+  - Latency: `max(T_A, T_B, T_C) + T_overhead` (about the slowest subagent instead of the sum).
 
 ```mermaid
 sequenceDiagram
@@ -422,7 +422,7 @@ flowchart TD
 
 | Review Pass | Execution Scope | Primary Invariants Audited | Context & Token Strategy | Typical Defects Caught |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pass 1: Local Per-File** | Individual modified file (isolated) | Syntax, null safety, local exception handling, unit tests | Isolated lean context ($\sim 2\text{k}$ tokens per instance) | Unhandled null dereferences, off-by-one loops, missing local try/catch |
+| **Pass 1: Local Per-File** | Individual modified file (isolated) | Syntax, null safety, local exception handling, unit tests | Isolated lean context (~2k tokens per instance) | Unhandled null dereferences, off-by-one loops, missing local try/catch |
 | **Pass 2: System Integration** | Cross-file contracts and public interfaces | Breaking public interface changes, deleted exported methods, distributed state | Ingests Pass 1 manifests + interfaces only (prevents attention dilution) | Caller-callee type mismatches, breaking API deletions, auth bypass between microservices |
 
 
@@ -537,7 +537,7 @@ How should the architect refactor the coordinator's invocation pattern to minimi
 
 **Correct Answer**: **B**  
 **Architectural Rationale**:  
-Option B is correct. In the Claude Agent SDK and multi-agent design patterns, emitting multiple tool call blocks (such as `Task`) in a single assistant turn enables the orchestration runtime to execute all independent subagent workloads concurrently in parallel. This reduces total latency from the sum of all tasks ($\sum T_i$) to approximately the longest single subtask ($\max(T_i)$), without violating context isolation.  
+Option B is correct. In the Claude Agent SDK and multi-agent design patterns, emitting multiple tool call blocks (such as `Task`) in a single assistant turn enables the orchestration runtime to execute all independent subagent workloads concurrently in parallel. This reduces total latency from the sum of all tasks (Σ T_i) to approximately the longest single subtask (max(T_i)), without violating context isolation.  
 - *Distractor Analysis*:  
   - Option A is incorrect because running everything in a single monolithic prompt causes severe attention dilution, token context bloating, and reduced analytical precision.  
   - Option C is incorrect because subagents have strictly isolated contexts by architectural design; shared memory between subagents does not exist and would introduce race conditions.  

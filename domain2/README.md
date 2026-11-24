@@ -14,7 +14,7 @@ While Domain 1 covers how Claude loops and orchestrates subagents, Domain 2 gove
 
 Every task statement in Domain 2 follows 5 clear steps:
 
-$$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architecture)} \longrightarrow \text{3. Working Code / Schema} \longrightarrow \text{4. Exam Traps \& Wrong Answers} \longrightarrow \text{5. Memory Hook}$$
+> **1. Simple Picture (Mental Model)** → **2. Architectural Why** → **3. Working Code / Schema** → **4. Exam Traps & Wrong Answers** → **5. Memory Hook**
 
 ```mermaid
 ---
@@ -38,7 +38,7 @@ flowchart LR
 | **ts_2_2** | **MCP Structured Errors** | **Emergency Room Triage Tag** | Shouting "Patient sick!" gives doctors zero signal; triage tags indicate if condition is minor, critical, or contagious. | **Structured Error Contract**: `isError: true`, category (`transient`, `validation`, `business`), and `isRetryable` ([ts_2_2](ts_2_2_mcp_structured_errors/README.md)). |
 | **ts_2_3** | **Tool Distribution & Choice** | **Specialist's Toolbelt** | A carpenter carrying 18 heavy tools drops items and moves slowly; carrying 4-5 focused tools ensures precision. | **Least Privilege**: 4–5 scoped tools per role; configure `tool_choice` (`auto`, `any`, forced) deliberately ([ts_2_3](ts_2_3_tool_distribution_and_choice/README.md)). |
 | **ts_2_4** | **MCP Server Integration** | **Library Card Catalog vs Opening Every Book** | Walking every library aisle to see what books exist wastes hours; checking the card catalog takes 10 seconds. | **MCP Resources**: Read-only static URIs (`catalog://orders/schema`) providing zero-turn context ([ts_2_4](ts_2_4_mcp_server_integration/README.md)). |
-| **ts_2_5** | **Built-in Tools Selection** | **Map, Magnifying Glass, and Scalpel** | Scalpel (`Edit`) without a map (`Glob`) cuts blind; reading 300 files upfront floods the operating table. | **Progressive Discovery**: `Glob` (paths) $\to$ `Grep` (symbols) $\to$ `Read`; surgical `Edit` with fallback ([ts_2_5](ts_2_5_builtin_tools_usage/README.md)). |
+| **ts_2_5** | **Built-in Tools Selection** | **Map, Magnifying Glass, and Scalpel** | Scalpel (`Edit`) without a map (`Glob`) cuts blind; reading 300 files upfront floods the operating table. | **Progressive Discovery**: `Glob` (paths) → `Grep` (symbols) → `Read`; surgical `Edit` with fallback ([ts_2_5](ts_2_5_builtin_tools_usage/README.md)). |
 
 ---
 

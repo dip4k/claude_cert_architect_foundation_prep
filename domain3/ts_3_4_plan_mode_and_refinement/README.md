@@ -116,9 +116,9 @@ EOF
 
 **Walkthrough comparing tasks:**
 - **Task A (Multi-file / Ambiguous)**: "Split our billing monolith into three microservices. About 45 files are involved."
-  - Multiple valid designs, many files, high blast radius $\to$ **Plan mode** (draft blueprint, developer approves, execute staged steps).
+  - Multiple valid designs, many files, high blast radius → **Plan mode** (draft blueprint, developer approves, execute staged steps).
 - **Task B (Local / Unambiguous)**: "`NullPointerException` at `invoice.py:88`, stack trace attached."
-  - One file, known cause $\to$ **Direct execution** (read line 88, apply surgical fix, verify test suite passes).
+  - One file, known cause → **Direct execution** (read line 88, apply surgical fix, verify test suite passes).
 
 `main.py` encodes this: `evaluate_execution_mode(45, True, False, False)` returns plan mode with phases `plan mode: investigate and propose` then `direct execution: apply the plan`. `evaluate_execution_mode(1, False, True, True)` returns direct execution.
 

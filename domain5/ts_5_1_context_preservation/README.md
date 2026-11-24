@@ -30,7 +30,7 @@
 ## 📖 Concepts Explained
 
 ### 1. The Degradation Dynamics of Progressive Summarization
-In long-running conversational systems, context budgets eventually fill up. The most common naive mitigation is **progressive summarization**: periodically taking turns 1 through $N$ and prompting the model to write a summary paragraph.
+In long-running conversational systems, context budgets eventually fill up. The most common naive mitigation is **progressive summarization**: periodically taking turns 1 through N and prompting the model to write a summary paragraph.
 
 While progressive summarization preserves broad conversational themes, it catastrophically degrades **transactional precision**:
 - **Why Naive Summarization Destroys State**: When an LLM summarizes, it naturally turns hard, exact facts into casual **natural language prose** (conversational sentences like *"the user asked about an order they bought last week for about \$150"*).

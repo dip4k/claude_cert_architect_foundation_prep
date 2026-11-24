@@ -350,10 +350,10 @@ A standard trap in enterprise AI evaluation:
 
 | Ingestion State / Condition | Model Confidence | Financial / SLA Impact | Operational Routing Action | Architectural Rationale |
 | :--- | :---: | :---: | :--- | :--- |
-| **High Confidence Standard Form** | $\ge 95\%$ | Standard ($\le \$1,000$) | **Automated Straight-Through Processing (STP)** | High throughput, low-latency automated commit to database. |
-| **Stratified Random Sample** | $\ge 95\%$ | Standard ($\le \$1,000$) | **Route 5%–10% to Human QA Auditor** | Ongoing QA benchmark to detect silent hallucinations and concept drift. |
-| **Low Confidence / Ambiguous** | $< 95\%$ | Any | **Route to Human Exception Queue** | Mitigates errors on corrupted, low-contrast, or atypical documents. |
-| **High Financial Value Tier** | Any | High ($> \$1,000$) | **Mandatory Dual-Human Review Gate** | Enterprise risk policy: financial exposure overrides model self-confidence. |
+| **High Confidence Standard Form** | ≥ 95% | Standard (≤ \$1,000) | **Automated Straight-Through Processing (STP)** | High throughput, low-latency automated commit to database. |
+| **Stratified Random Sample** | ≥ 95% | Standard (≤ \$1,000) | **Route 5%–10% to Human QA Auditor** | Ongoing QA benchmark to detect silent hallucinations and concept drift. |
+| **Low Confidence / Ambiguous** | < 95% | Any | **Route to Human Exception Queue** | Mitigates errors on corrupted, low-contrast, or atypical documents. |
+| **High Financial Value Tier** | Any | High (> \$1,000) | **Mandatory Dual-Human Review Gate** | Enterprise risk policy: financial exposure overrides model self-confidence. |
 | **Unrecoverable Missing Fact** | N/A | Any | **Immediate Fast-Fail to Human Triage** | Closed-loop retries cannot fabricate facts physically absent from source. |
 
 ```mermaid

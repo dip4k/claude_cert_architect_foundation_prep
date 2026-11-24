@@ -48,7 +48,7 @@ When an extraction pipeline routes low-confidence items to human reviewers, high
 Models do not natively output calibrated probabilities. A model reporting 0.95 confidence on an extracted date might only be correct 70% of the time on that specific document format.
 - **Field-Level Granularity**: Request confidence scores on individual extracted fields, not a single global score for the entire page. A model might be 99% confident in the invoice date, but only 45% confident in the line-item tax rate.
 - **Empirical Calibration**: Run the extraction model across a labeled holdout validation set and plot reliability diagrams (accuracy vs confidence bins) to compute the **Expected Calibration Error (ECE)**. A segment is calibrated when items assigned 90% confidence achieve approximately 90% accuracy.
-- Calibrate review thresholds independently per field: financial totals require a strict $\ge 0.95$ threshold, while internal document descriptions may permit straight-through processing at $\ge 0.80$.
+- Calibrate review thresholds independently per field: financial totals require a strict ≥ 0.95 threshold, while internal document descriptions may permit straight-through processing at ≥ 0.80.
 
 ### 4. Triaging to Human Review
 Automated pipelines should route an extraction to human reviewers under three explicit conditions:

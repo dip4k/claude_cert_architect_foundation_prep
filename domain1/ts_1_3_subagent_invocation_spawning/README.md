@@ -54,18 +54,19 @@ If a system prompt instructs the coordinator to delegate tasks, but `"Agent"` is
 
 ### 3. Latency Optimization: Single-Turn Parallel Spawning
 In distributed workflows, latency is dominated by sequential model round-trips. If a coordinator decomposes a research goal into three independent subtasks (e.g., investigating web documentation, auditing local test files, and reviewing commit history) and emits one `Agent` call per turn, total execution time is the cumulative sum of all subagent runtimes plus coordinator reasoning overhead:
-$$\text{Latency}_{\text{sequential}} = \sum_{i=1}^N T_{\text{subagent}_i} + N \times T_{\text{coordinator}}$$
+> `Latency_sequential = Σ(T_subagent_i) + N × T_coordinator`
 
 Claude natively supports emitting **multiple `tool_use` blocks in a single assistant turn**. By prompting the coordinator to identify independent subtasks and emit all corresponding `Agent` calls concurrently, the host executes the subagents in parallel (e.g., via a `ThreadPoolExecutor` or `asyncio.gather`):
-$$\text{Latency}_{\text{parallel}} \approx \max_{i=1}^N (T_{\text{subagent}_i}) + T_{\text{coordinator}}$$
+> `Latency_parallel ≈ max(T_subagent_i) + T_coordinator`
+
 This yields a **50% to 70% reduction in end-to-end workflow latency**.
 
 > [!IMPORTANT]
-> **The Two-Turn Dual-Message Response Rule**: When Claude emits $N$ concurrent `tool_use` blocks in turn $K$, the host must execute all $N$ tools and return all $N$ matching `tool_result` blocks within a **single user response message** in turn $K+1$, strictly matching each `tool_use_id`. Returning partial results or interleaving assistant turns causes an HTTP 400 API protocol error.
+> **The Two-Turn Dual-Message Response Rule**: When Claude emits N concurrent `tool_use` blocks in turn K, the host must execute all N tools and return all N matching `tool_result` blocks within a **single user response message** in turn K+1, strictly matching each `tool_use_id`. Returning partial results or interleaving assistant turns causes an HTTP 400 API protocol error.
 
 ### 4. Stateless Context Delivery Contract
 Subagents do not inherit parent memory, conversation transcripts, or environment scratchpads. They operate as pure functions:
-$$\text{Input: Isolated Prompt} \longrightarrow \text{Execution: Tool Loop} \longrightarrow \text{Output: Structured Result}$$
+> **Input: Isolated Prompt** → **Execution: Tool Loop** → **Output: Structured Result**
 Architects must ensure the coordinator's generated prompt encapsulates every critical entity:
 - Specific identifiers (e.g., customer ID `CUST-88319`, order `ORD-2026-9912`, or exact file paths).
 - Quantitative constraints and thresholds (e.g., "only papers published after January 2025").

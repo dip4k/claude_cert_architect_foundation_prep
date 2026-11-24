@@ -118,9 +118,9 @@ Subagents report:
 | Headcount | 12,500 | 10-Q filing | 2024-10-15 | n/a | Payroll |
 
 **Synthesis result:**
-- **Q3 revenue:** same period, different values $\to$ **contested**. Show both with source and method. Never average.
-- **Inventory:** different periods $\to$ **temporal difference**, not a conflict. Present as a dated timeline.
-- **Headcount:** single verified source $\to$ **established**.
+- **Q3 revenue:** same period, different values → **contested**. Show both with source and method. Never average.
+- **Inventory:** different periods → **temporal difference**, not a conflict. Present as a dated timeline.
+- **Headcount:** single verified source → **established**.
 
 `ProvenanceSynthesizer` and `render_report()` in `main.py` produce exactly this.
 

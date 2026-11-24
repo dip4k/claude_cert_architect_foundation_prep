@@ -344,7 +344,7 @@ flowchart TD
 | :--- | :--- | :--- |
 | **Primary Invariant** | Local syntactic correctness, null safety, local exception handling | Cross-module API contracts, data model compatibility, security boundaries |
 | **Instance Isolation** | Isolated parallel Claude instances per file | Single independent Claude instance with clean conversational memory |
-| **Input Context** | Diff of single file + local test file ($\sim 2\text{k}$ tokens) | Aggregated `FileFinding` JSON + public interface signatures ($\sim 6\text{k}$ tokens) |
+| **Input Context** | Diff of single file + local test file (~2k tokens) | Aggregated `FileFinding` JSON + public interface signatures (~6k tokens) |
 | **Typical Defects Caught** | Unhandled null dereference, array index out of bounds, SQL string concat | Public method deletion, schema mismatch between caller/callee, auth token leak |
 | **Attentional Risk Avoided**| Monolithic review diluting attention across 15 files simultaneously | Model fixating on trivial style in file 1 while missing security flaw in file 14 |
 

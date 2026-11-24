@@ -12,7 +12,7 @@ Domain 1 is the largest domain on the **Claude Certified Architect – Foundatio
 
 To master agentic architecture, every task statement in Domain 1 is organized through 5 clear steps:
 
-$$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architecture)} \longrightarrow \text{3. Working Code / Schema} \longrightarrow \text{4. Exam Traps \& Wrong Answers} \longrightarrow \text{5. Memory Hook}$$
+> **1. Simple Picture (Mental Model)** → **2. Architectural Why** → **3. Working Code / Schema** → **4. Exam Traps & Wrong Answers** → **5. Memory Hook**
 
 ```mermaid
 ---
@@ -47,7 +47,7 @@ flowchart LR
 | Topology Pattern | Message Routing | Context Isolation | Failure Mode & Risk | CCAR-F Verdict |
 | :--- | :--- | :--- | :--- | :--- |
 | **Monolithic Agent** | Single agent calls all tools sequentially. | Zero isolation; single context accumulates all tokens. | Severe attention dilution; tool saturation; context bloat. | Reject for multi-step or multi-source research tasks. |
-| **Peer-to-Peer Mesh** | Subagents invoke and message each other directly. | Shared or gossiped memory buffers. | Combinatorial message explosion ($O(N^2)$); untraceable bugs; runaway loops. | **Strict Anti-Pattern on Exam**: Eliminate immediately. |
+| **Peer-to-Peer Mesh** | Subagents invoke and message each other directly. | Shared or gossiped memory buffers. | Combinatorial message explosion (O(N²)); untraceable bugs; runaway loops. | **Strict Anti-Pattern on Exam**: Eliminate immediately. |
 | **Hub-and-Spoke** | Central coordinator delegates to leaf subagents via `Task`. | **100% Context Isolation**: Subagents inherit zero parent history. | Coordinator decomposition bottleneck if subtasks are partitioned too narrowly. | **Gold Standard on Exam**: Single audit point, clean boundaries, concurrent execution. |
 
 ---
@@ -114,7 +114,7 @@ flowchart LR
 ## 🧪 Claude 4.5 Extended Thinking Compliance Notes
 
 - **Model Split**: Use `claude-sonnet-4-5` for the coordinator and complex synthesis; use `claude-haiku-4-5` for high-throughput, specialized leaf subagents.
-- **Thinking Configuration**: Enabled via `thinking={"type": "enabled", "budget_tokens": N}` with $N \ge 1024$ and $N < \text{max\_tokens}$.
+- **Thinking Configuration**: Enabled via `thinking={"type": "enabled", "budget_tokens": N}` with `N >= 1024` and `N < max_tokens`.
 - **Strict Parameter Constraints**:
   - **Never provide `temperature`, `top_k`, or `top_p`** when `thinking` is active (causes HTTP 400).
   - With extended thinking, set `tool_choice: "auto"` or `"none"`. Setting `tool_choice: "any"` or a forced named tool triggers HTTP 400.

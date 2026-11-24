@@ -49,7 +49,7 @@ When investigating a broad, open-ended question across an unfamiliar monorepo (e
 - Upon completion, the subagent returns a concise, structured 10-line executive summary (matching file paths, exported symbol names, and call contracts) to the coordinator. The coordinator retains a clean, uncluttered context for high-level decision-making.
 
 ### 4. Phase-Gated Summarization Before Subagent Hand-Off
-In multi-phase projects (e.g. Phase 1: Codebase Discovery $\to$ Phase 2: Refactoring Implementation):
+In multi-phase projects (e.g. Phase 1: Codebase Discovery → Phase 2: Refactoring Implementation):
 - Never pass Phase 1's raw conversational history into Phase 2 subagents.
 - The coordinator summarizes Phase 1's key findings into a structured architectural baseline, injecting only this verified summary into the initial prompts of Phase 2 subagents.
 

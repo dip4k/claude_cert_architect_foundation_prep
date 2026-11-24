@@ -13,6 +13,6 @@ Evaluate candidate responses across core dimensions (1–10 points each):
 
 ## Scoring Scale:
 - **50–60**: Principal / Lead Architect (Ready to pass CCAR-F with 900+ score).
-- **42–49**: Senior AI Engineer / Architect (Passing range $\ge 720/1000$).
+- **42–49**: Senior AI Engineer / Architect (Passing range ≥ 720/1000).
 - **30–41**: Mid-Level Developer (Needs focused remediation on Domain 1 & 5).
 - **< 30**: Fundamental review required (Focus on 15 Golden Rules).

@@ -435,7 +435,7 @@ When tracing how a function is used across an enterprise application (e.g. `char
 7. **Zero-Turn Cataloging via MCP Resources (`TS 2.4`)**:  
    Expose static and semi-static metadata (database schemas, issue catalogs, architecture standards) as read-only **MCP Resources**. This eliminates costly exploratory tool turns and grounds reasoning before the first action.
 8. **Progressive Codebase Discovery Funnel (`TS 2.5`)**:  
-   Always discover codebases incrementally: `Glob` (paths) $\to$ `Grep` (symbols) $\to$ `Read` (targeted lines) $\to$ `Edit` (surgical modifications). Never read entire repositories into context upfront.
+   Always discover codebases incrementally: `Glob` (paths) → `Grep` (symbols) → `Read` (targeted lines) → `Edit` (surgical modifications). Never read entire repositories into context upfront.
 
 ---
 
