@@ -72,7 +72,8 @@ A `tool_result` without the assistant `tool_use` before it is rejected with HTTP
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Fixed `range()` Iteration & Text Matching)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Fixed `range()` Iteration & Text Matching)*
 ```python
 # BROKEN: Hardcodes turn loops, checks text strings for completion, and ignores stop_reason
 for turn in range(5):
@@ -85,7 +86,8 @@ for turn in range(5):
     # Anti-pattern 4: Forgetting to append the assistant message before appending tool results (HTTP 400!)
 ```
 
-### ✅ Valid Example (Production Pattern: State Machine on `stop_reason` with Two-Message Contract)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: State Machine on `stop_reason` with Two-Message Contract)*
 ```python
 # CORRECT: Deterministic stop_reason routing with bidirectional dual-message append
 while iterations < MAX_ITERATIONS:

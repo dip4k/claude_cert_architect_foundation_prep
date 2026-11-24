@@ -12,7 +12,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** A robot with nobody at the keyboard. Without `-p`, Claude waits for someone to press Enter forever. `-p` means "answer once and leave". Findings should come as a **form** (JSON) the robot can read, not a **letter** it must guess at. And the one who wrote the code should not grade it.
 
@@ -88,7 +88,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Missing -p Flag & Exit 0 on Critical Defects)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Missing -p Flag & Exit 0 on Critical Defects)*
 ```bash
 # BROKEN 1: Invoking Claude Code without -p in GitHub Actions / GitLab CI
 claude "Review this PR diff"
@@ -100,7 +101,8 @@ python -c 'print("CRITICAL SECURITY VULNERABILITY FOUND"); sys.exit(0)'
 # What happens: CI job shows a green checkmark! Merge button is unblocked, and vulnerability deploys to prod!
 ```
 
-### ✅ Valid Example (Production Pattern: Non-Interactive -p with Strict Schema & Exit 1 Gating)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Non-Interactive -p with Strict Schema & Exit 1 Gating)*
 ```bash
 # CORRECT: Headless execution with structured JSON output and inline schema
 claude -p "Review this PR diff against CLAUDE.md criteria" \
@@ -151,7 +153,7 @@ Report only NEW issues or prior findings that are still unaddressed. Avoid dupli
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: The CI job that hangs
 
@@ -188,7 +190,7 @@ The Message Batches API saves 50% but can take up to 24 hours with no latency SL
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 5: CI).** A GitHub Actions step runs `claude "Review this PR for security issues"` and stays "Running" until the timeout. What is the fix?
 

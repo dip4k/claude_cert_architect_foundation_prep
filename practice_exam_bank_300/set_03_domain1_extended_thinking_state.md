@@ -304,7 +304,7 @@ An agent calls `execute_wire_transfer(amount=10000, recipient="acct_456")`. The 
 Network timeouts during write operations leave state uncertain: did the remote server fail before processing the request, or did it process the request and fail while returning the response? In financial or non-reversible operations, tools must use idempotency keys. When the agent retries the call, the remote system recognizes the key, prevents duplicate execution, and returns the existing status.
 
 **Why other options are incorrect:**
-- **A)** Retrying without idempotency results in double debiting ($20,000 lost).
+- **A)** Retrying without idempotency results in double debiting (\$20,000 lost).
 - **C)** Refusing transfers defeats the purpose of the financial agent.
 - **D)** Diverting funds to escrow without authorization violates banking protocols.
 

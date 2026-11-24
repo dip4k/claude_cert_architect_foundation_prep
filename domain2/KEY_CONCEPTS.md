@@ -158,7 +158,7 @@ To allow Claude to make intelligent, autonomous recovery decisions, tool errors 
 |---|---|:---:|---|
 | **`transient`** | Network timeout, 503 service unavailable, lock contention | `true` | Retry with exponential backoff; up to local retry budget (max 2 attempts). |
 | **`validation`** | Malformed argument, missing prefix (e.g. `'10492'` instead of `'CUST-10492'`) | `false` | Inspect schema requirements, reformat input parameter, and retry with corrected syntax. |
-| **`business`** | Policy violation (e.g., refund > $500, return window > 30 days expired) | `false` | **Do not retry**. Explain company policy politely to the user or trigger human escalation. |
+| **`business`** | Policy violation (e.g., refund > \$500, return window > 30 days expired) | `false` | **Do not retry**. Explain company policy politely to the user or trigger human escalation. |
 | **`permission`** | Auth token expired, unauthorized resource access, missing tenant scope | `false` | **Do not retry**. Halt automated execution and escalate to administrator or human agent. |
 
 #### 3. Distinguishing Access Failures from Valid Empty Sets

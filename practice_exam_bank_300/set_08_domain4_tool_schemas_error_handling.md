@@ -204,7 +204,7 @@ LLMs are error-correcting reasoners. When an error message is opaque ("Internal 
 ---
 
 ### Q224. Idempotent Tool Design in Financial Workflows
-An agent calls `submit_payment(account_id="acc_99", amount=500)`. The network connection between the agent and the bank gateway drops before the acknowledgment arrives. If the agent retries the call, how does an `idempotency_key` prevent charging the customer $1,000?
+An agent calls `submit_payment(account_id="acc_99", amount=500)`. The network connection between the agent and the bank gateway drops before the acknowledgment arrives. If the agent retries the call, how does an `idempotency_key` prevent charging the customer \$1,000?
 
 **A)** The idempotency key sets the customer's balance to 0.
 **B)** The bank's API checks if the unique `idempotency_key` has already been processed within the last 24 hours; if found, it returns the existing transaction receipt without executing a second debit.

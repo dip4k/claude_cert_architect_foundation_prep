@@ -63,7 +63,8 @@ Use it when you do not know the work until you start, for example "add tests to 
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Single Mega-Prompt Over 14 Files)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Single Mega-Prompt Over 14 Files)*
 ```python
 # BROKEN: Dumping 14 changed PR files into one massive review prompt
 all_diffs = "\n".join([read_file_diff(f) for f in pr_files])  # 65,000 tokens!
@@ -80,7 +81,8 @@ response = client.messages.create(messages=[{"role": "user", "content": review_p
 # 3. Flaky depth: Some files get 10 comments, while others get zero scrutiny.
 ```
 
-### ✅ Valid Example (Production Pattern: Two-Pass Decomposition & Adaptive Planning)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Two-Pass Decomposition & Adaptive Planning)*
 ```python
 # CORRECT: Pass 1 inspects each file locally; Pass 2 inspects cross-file integration contracts
 

@@ -708,7 +708,7 @@ When tasks and context are repeatedly re-summarized and passed down deep multi-t
 ---
 
 ### Q64. The "Omniscient Coordinator" Anti-Pattern
-An engineer designs a coordinator that contains all 40 database schemas, all 200 API endpoint specifications, all corporate policy manuals, and 30 tool definitions in its system prompt. The coordinator runs slowly, costs $1.50 per turn, and frequently hallucinates tool parameters. What is this anti-pattern called?
+An engineer designs a coordinator that contains all 40 database schemas, all 200 API endpoint specifications, all corporate policy manuals, and 30 tool definitions in its system prompt. The coordinator runs slowly, costs \$1.50 per turn, and frequently hallucinates tool parameters. What is this anti-pattern called?
 
 **A)** The Omniscient Coordinator Anti-Pattern.
 **B)** Circuit Breaker Pattern.

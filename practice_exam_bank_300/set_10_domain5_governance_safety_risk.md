@@ -158,7 +158,7 @@ An enterprise legal firm deploys a multi-agent contract analysis system. The com
 ---
 
 ### Q283. Programmatic Circuit Breakers: Consecutive Failure Limits
-An automated PR review agent encounters an unhandled syntax error in a legacy test runner. The agent runs the test, gets the error, attempts to fix it by adding a print statement, runs the test again, fails again, and repeats this cycle 40 times, consuming $50 in API tokens. What architectural guard was missing?
+An automated PR review agent encounters an unhandled syntax error in a legacy test runner. The agent runs the test, gets the error, attempts to fix it by adding a print statement, runs the test again, fails again, and repeats this cycle 40 times, consuming \$50 in API tokens. What architectural guard was missing?
 
 **A)** The agent needed more memory.
 **B)** Programmatic Circuit Breaker: A client-side counter that tracks consecutive failed tool attempts and automatically trips (halting execution and alerting a human) after a predefined threshold (e.g. 3 consecutive failures on the same tool).
@@ -434,10 +434,10 @@ Risk assessment dictates architectural deployment:
 ---
 
 ### Q296. Managing Quota Burn in Autonomous Loops
-An agent runs in an infinite loop due to a tool error, making 1,200 API calls in 15 minutes and exhausting the company's daily $500 API credit budget. What client-side financial governor should have been implemented?
+An agent runs in an infinite loop due to a tool error, making 1,200 API calls in 15 minutes and exhausting the company's daily \$500 API credit budget. What client-side financial governor should have been implemented?
 
 **A)** The company should have purchased unlimited credits.
-**B)** Client-Side Financial Budget Clamping: The orchestrator tracks cumulative dollar spend in real time for each session; once a hard budget ceiling (e.g. $2.00 per user session) is breached, the orchestrator immediately terminates the loop and alerts the monitoring system.
+**B)** Client-Side Financial Budget Clamping: The orchestrator tracks cumulative dollar spend in real time for each session; once a hard budget ceiling (e.g. \$2.00 per user session) is breached, the orchestrator immediately terminates the loop and alerts the monitoring system.
 **C)** Let the agent run until the bank calls.
 **D)** API calls should be billed to employee paychecks.
 

@@ -77,7 +77,8 @@ In [main.py](main.py), the `SessionManager` class implements these exact state t
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Blind Resumption After Major Rebase)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Blind Resumption After Major Rebase)*
 ```bash
 # BROKEN: Resuming a 50-turn session after 40 commits were rebased out-of-band
 claude --resume legacy_db_analysis "Now implement the new connection pool"
@@ -88,7 +89,8 @@ claude --resume legacy_db_analysis "Now implement the new connection pool"
 # 3. Context bloat: 80% of prior turns describe architecture that was rewritten or abandoned.
 ```
 
-### ✅ Valid Example (Production Pattern: Fork for Parallel Branches & Manifest Ingestion After Drifts)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Fork for Parallel Branches & Manifest Ingestion After Drifts)*
 ```bash
 # SCENARIO A: Comparing two competing ORMs from a shared baseline analysis
 # Fork session twice so exploration in Fork A never contaminates Fork B:

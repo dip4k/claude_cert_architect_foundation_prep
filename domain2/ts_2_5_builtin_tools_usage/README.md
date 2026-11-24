@@ -94,7 +94,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Bulk Reading Everything & Wholesale File Overwrite)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Bulk Reading Everything & Wholesale File Overwrite)*
 ```python
 # BROKEN 1: Reading 200 files upfront when searching for a tax function
 all_files = glob.glob("**/*.py")
@@ -107,7 +108,8 @@ for f in all_files:
 # Result: If the model truncates output or hallucinates, untouched legacy methods and comments are erased!
 ```
 
-### ✅ Valid Example (Production Pattern: Progressive Discovery & Surgical Edit Fallback Protocol)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Progressive Discovery & Surgical Edit Fallback Protocol)*
 ```python
 # CORRECT 1: Progressive Discovery Pipeline (Glob -> Grep -> Chunked Read -> Surgical Edit)
 # Step 1: Locate candidate files using path globbing

@@ -49,7 +49,8 @@ When production metrics show that a specific review category (e.g. "speculative 
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Vague Prompt & Alert Fatigue)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Vague Prompt & Alert Fatigue)*
 ```text
 # BROKEN: Asking for "conservative" review without concrete rules
 System Prompt:
@@ -65,7 +66,8 @@ Why it fails in production:
 - Developers suffer alert fatigue and click "Dismiss all", causing the real SQL injection to slip into production.
 ```
 
-### ✅ Valid Example (Production Pattern: Explicit Criteria, Negative Boundaries & Severity Rules)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Explicit Criteria, Negative Boundaries & Severity Rules)*
 ```text
 # CORRECT: Categorical criteria, explicit negative skip boundaries, and code-level definitions
 System Prompt:

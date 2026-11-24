@@ -26,7 +26,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. Structured error context
 A failure should carry four things:
@@ -56,7 +56,8 @@ The final report says which sources answered and which did not. Readers can then
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Empty-as-Success & Aborting Workflow on 1 Failure)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Empty-as-Success & Aborting Workflow on 1 Failure)*
 ```python
 # BROKEN 1: Returning empty array [] on network timeout
 try:
@@ -72,7 +73,8 @@ except Exception as e:
     raise RuntimeError("Research workflow aborted due to news failure!")  # Wastes 4 successful searches!
 ```
 
-### ✅ Valid Example (Production Pattern: Structured Error Context & Coverage Annotations)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Structured Error Context & Coverage Annotations)*
 ```python
 # CORRECT 1: Distinguishing Failure from Valid Empty
 # When sensor/API fails:

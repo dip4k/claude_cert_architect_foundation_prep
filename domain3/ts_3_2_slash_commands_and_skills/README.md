@@ -12,7 +12,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** A slash command is a **shortcut button** on the shared remote. A skill is a **recipe card** that can be cooked in a separate kitchen (`context: fork`) so the mess stays out of your main kitchen. Buttons and cards in the repo are shared. Ones in your home folder are yours.
 
@@ -86,7 +86,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Running Noisy Exploration Skills in Main Session)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Running Noisy Exploration Skills in Main Session)*
 ```yaml
 # BROKEN: Custom skill defined without context: fork and unrestricted tools
 ---
@@ -102,7 +103,8 @@ What happens in production:
 2. Attention dilution: Subsequent coding turns suffer degraded performance and forget prior user instructions.
 3. No safety restriction: The skill has permission to execute arbitrary shell commands.
 
-### ✅ Valid Example (Production Pattern: Scoped Skills with `context: fork` & `allowed-tools`)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Scoped Skills with `context: fork` & `allowed-tools`)*
 ```yaml
 # CORRECT: Isolated execution via context: fork and least-privilege tool whitelist
 ---
@@ -136,7 +138,7 @@ The `main.py` here parses these real files (`load_skills_from_dir`) and classifi
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Team command in the home folder
 
@@ -180,7 +182,7 @@ An "always" rule in a skill is a trap: the skill might never be invoked. A rare 
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 2: Code Generation).** Your team wants every developer to have the same `/review` command. Where should it be created?
 

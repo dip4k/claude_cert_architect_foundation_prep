@@ -94,7 +94,8 @@ Keeping metadata in dedicated fields ensures that when the coordinator synthesiz
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Sequential Turn Spawning & Assumed Memory)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Sequential Turn Spawning & Assumed Memory)*
 ```python
 # BROKEN: Calling subagents sequentially over multiple turns, assuming they share context
 # Turn 1:
@@ -111,7 +112,8 @@ response_1 = client.messages.create(
 # Latency: 8s + 8s = 16 seconds!
 ```
 
-### ✅ Valid Example (Production Pattern: Concurrent Spawning & Explicit Context Delivery)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Concurrent Spawning & Explicit Context Delivery)*
 ```python
 # CORRECT: Spawning multiple subagents in a single turn with self-contained prompts
 # Turn 1: Claude emits BOTH Task/Agent tool calls in ONE response:

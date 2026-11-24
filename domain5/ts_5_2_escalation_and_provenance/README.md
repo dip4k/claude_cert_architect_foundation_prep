@@ -29,7 +29,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. Three Legitimate Triggers for Human Escalation
 In autonomous customer operations, an agent should escalate to a human representative under exactly three deterministic conditions:
@@ -57,7 +57,8 @@ Engineering teams frequently attempt to solve escalation calibration by adding i
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Interrogating Customers & Guessing on Ambiguity)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Interrogating Customers & Guessing on Ambiguity)*
 ```text
 # BROKEN 1: Probing and interrogating when a customer demands a supervisor
 Customer: "Your bot failed twice. Transfer me to a human supervisor right now!"
@@ -70,7 +71,8 @@ Agent Action: Arbitrarily selects David Miller in TX because they had the most r
 Why it fails: Severe privacy violation! The agent updates the wrong customer's address and exposes personal data!
 ```
 
-### ✅ Valid Example (Production Pattern: Immediate Hand-off & Disambiguation Request)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Immediate Hand-off & Disambiguation Request)*
 ```python
 # CORRECT 1: Immediate Hand-off on Explicit Request
 def handle_customer_message(user_input: str, state: ConversationState):

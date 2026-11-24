@@ -36,7 +36,7 @@ A uniform `"Operation failed"` hides the cause. The agent cannot tell a timeout 
 |---|---|---|---|
 | `transient` | Timeout, outage, rate limit | `true` | Retry the same call, with a limit |
 | `validation` | Bad format, missing field | `false` | Fix the input, then call again |
-| `business` | Rule such as refund over $500 | `false` | Do not retry. Explain kindly or escalate |
+| `business` | Rule such as refund over \$500 | `false` | Do not retry. Explain kindly or escalate |
 | `permission` | Caller not allowed | `false` | Do not retry. Stop or escalate |
 
 Every error carries a **human-readable message** that the agent can pass on. For business rules, write it in customer-friendly words.
@@ -98,7 +98,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Generic String Errors & Treating Empty as Error)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Generic String Errors & Treating Empty as Error)*
 ```json
 // BROKEN 1: Returning vague plain-text error string
 {
@@ -117,7 +118,8 @@ flowchart TD
 // causes subagents to retry queries against healthy databases and report false outages!
 ```
 
-### ✅ Valid Example (Production Pattern: Structured Error Taxonomy & Valid Empty Result)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Structured Error Taxonomy & Valid Empty Result)*
 ```json
 // CORRECT 1: Structured Business Rule Error (Non-retryable)
 {
@@ -146,8 +148,8 @@ flowchart TD
 ```
 
 **Walkthrough:**
-1. Customer requests a $750 refund. The agent calls `process_refund`.
-2. Tool checks policy: automated limit is $500.
+1. Customer requests a \$750 refund. The agent calls `process_refund`.
+2. Tool checks policy: automated limit is \$500.
 3. Tool returns structured error with `errorCategory: "business"` and `isRetryable: false`.
 4. Agent reads category: does **not** retry; invokes `escalate_to_human` with case facts.
 5. Customer receives clear explanation: *"This amount exceeds automated limits and has been transferred to a supervisor."*
@@ -221,7 +223,7 @@ Open [`ts_2_2_mcp_structured_errors.ipynb`](ts_2_2_mcp_structured_errors.ipynb).
 
 ## 📝 Exam-Style Practice Questions
 
-**Q1.** A refund tool returns `{"isError": true, "message": "Operation failed"}` when a $900 refund exceeds the limit. The agent retries three times. What change fixes this?
+**Q1.** A refund tool returns `{"isError": true, "message": "Operation failed"}` when a \$900 refund exceeds the limit. The agent retries three times. What change fixes this?
 - A. Raise the retry limit so one retry succeeds.
 - B. Return `errorCategory: "business"`, `isRetryable: false` and a clear policy message.
 - C. Remove `isError` so the agent treats it as text.

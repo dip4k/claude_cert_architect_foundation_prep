@@ -56,7 +56,8 @@ Do **not** use it to silently drop findings. This matches TS 4.1: model confiden
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Author Self-Review & Single Mega-Prompt)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Author Self-Review & Single Mega-Prompt)*
 ```python
 # BROKEN: Asking the same generator session to review its own generated code
 generator_messages = [
@@ -73,7 +74,8 @@ Why it fails in production:
 2. Attention dilution: Dumping 20 modified files into a single prompt causes cross-file contract bugs (caller using 'auth_token' while callee expects 'bearer_token') to be completely missed.
 ```
 
-### ✅ Valid Example (Production Pattern: Clean-Context Independent Two-Pass Review)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Clean-Context Independent Two-Pass Review)*
 ```python
 # CORRECT: Independent Claude instance + Two-Pass architecture
 

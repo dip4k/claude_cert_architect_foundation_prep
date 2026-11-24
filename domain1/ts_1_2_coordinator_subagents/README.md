@@ -77,7 +77,8 @@ In [main.py](main.py), the `MultiAgentCoordinator` encapsulates this architectur
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Peer-to-Peer Mesh & Shared Mutable History)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Peer-to-Peer Mesh & Shared Mutable History)*
 ```python
 # BROKEN: Subagents talk directly to each other and share one huge conversation history
 shared_history = [{"role": "user", "content": "Research AI impact on creative industries"}]
@@ -90,7 +91,8 @@ shared_history.append({"role": "assistant", "content": subagent_a_response.conte
 # Result: Circular inquiry loops, exploding token costs, and untraceable citations!
 ```
 
-### ✅ Valid Example (Production Pattern: Hub-and-Spoke with Context Isolation & Gap Auditing)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Hub-and-Spoke with Context Isolation & Gap Auditing)*
 ```python
 # CORRECT: Central coordinator dispatches isolated work slices and verifies coverage
 coordinator_prompt = "Research Claude Agent SDK and MCP tool error patterns."

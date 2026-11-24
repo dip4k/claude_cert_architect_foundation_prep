@@ -32,7 +32,7 @@ flowchart LR
 | # | Topic | The Golden Rule | Code Anchor | Wrong Answer to Reject |
 | :---: | :--- | :--- | :---: | :--- |
 | **1** | **Loop Control** | `response.stop_reason == "end_turn"` is the **only true signal** that the agent is done. Continue the loop whenever `stop_reason == "tool_use"`. | [TS 1.1](domain1/ts_1_1_multi_tool_agent_loop/main.py) | Reading text looking for phrases like `"I am finished"` or using a loop counter as the stopping signal. |
-| **2** | **Safety Gates** | Hard business rules (ID checks, refunds > $500) must run as **real code gates or SDK hooks (`PreToolUse`)**, not polite prompt instructions. | [TS 1.4](domain1/ts_1_4_prerequisite_enforcement/main.py)<br>[TS 1.5](domain1/ts_1_5_sdk_hooks/main.py) | Relying only on prompt warnings ("be careful to verify"); prompts fail probabilistically. |
+| **2** | **Safety Gates** | Hard business rules (ID checks, refunds > \$500) must run as **real code gates or SDK hooks (`PreToolUse`)**, not polite prompt instructions. | [TS 1.4](domain1/ts_1_4_prerequisite_enforcement/main.py)<br>[TS 1.5](domain1/ts_1_5_sdk_hooks/main.py) | Relying only on prompt warnings ("be careful to verify"); prompts fail probabilistically. |
 | **3** | **Subagent Isolation** | Subagents start with **zero memory and an empty context**. You must pass all needed facts and IDs directly in their prompt. | [TS 1.2](domain1/ts_1_2_coordinator_subagents/main.py) | Assuming subagents inherit the main conversation history or share global memory. |
 | **4** | **Spawning Subagents** | Emit **multiple `Task` tool calls in a single turn** so subagents run concurrently in parallel (saving 40–60% waiting time). | [TS 1.3](domain1/ts_1_3_subagent_invocation_spawning/main.py) | Calling subagents one by one across separate back-and-forth turns. |
 | **5** | **Tool Selection** | Fix misrouting by writing **rich tool descriptions with formats, examples, and negative boundaries ("Do NOT use for X")**. | [TS 2.1](domain2/ts_2_1_tool_interface_design/main.py) | Building a separate ML routing model, adding 10 few-shot prompts, or merging tools into one giant function. |
@@ -132,7 +132,7 @@ flowchart TD
 | **Subagent search times out on an external database query** | Coordinator receives empty result and treats it like zero data | Subagent returns **structured error metadata** (`failureType`, `attemptedQuery`) ([TS 5.3](domain5/ts_5_3_error_propagation_coverage/main.py)) | Returning an empty list marked as successful; crashing the whole pipeline |
 | **Customer says: "Let me talk to a real human right now"** | Agent interrogates customer with more diagnostic questions | **Transfer immediately to a human** with zero further diagnostic questions ([TS 5.2](domain5/ts_5_2_escalation_and_provenance/main.py)) | Asking two more questions to try to solve it first; analyzing sentiment |
 | **Search returns two accounts with the exact same name** | Ambiguous database match | **Ask user for a clarifying detail** (phone number, account ID, ZIP code) ([TS 5.2](domain5/ts_5_2_escalation_and_provenance/main.py)) | Picking the most recently active account; picking the first record |
-| **Two credible sources report conflicting revenue ($1.2B vs $1.5B)** | Synthesis agent averages them into $1.35B | **Keep both numbers side-by-side with source names and dates** ([TS 5.6](domain5/ts_5_6_provenance_and_uncertainty/main.py)) | Averaging into $1.35B; throwing away the older report |
+| **Two credible sources report conflicting revenue (\$1.2B vs \$1.5B)** | Synthesis agent averages them into \$1.35B | **Keep both numbers side-by-side with source names and dates** ([TS 5.6](domain5/ts_5_6_provenance_and_uncertainty/main.py)) | Averaging into \$1.35B; throwing away the older report |
 | **Long coding session makes Claude forget classes found 30 turns ago** | Context degradation / lost-in-the-middle effect | Keep **scratchpad files** for key discoveries and use `/compact` ([TS 5.4](domain5/ts_5_4_scratchpads_and_human_review/main.py)) | Re-reading all repository files on every turn; starting completely from scratch |
 | **Team rules must apply to `**/*.test.tsx` across 30 folders** | Giant `CLAUDE.md` wastes tokens on every non-test file | Create **`.claude/rules/tests.md` with YAML `paths: ["**/*.test.tsx"]`** ([TS 3.3](domain3/ts_3_3_path_specific_rules/main.py)) | Putting copy-pasted `CLAUDE.md` files in all 30 subdirectories |
 | **Refactoring 40 files with complex architectural dependencies** | Editing immediately causes broken imports and rework | Enter **Plan Mode** to explore dependencies and agree on design first ([TS 3.4](domain3/ts_3_4_plan_mode_and_refinement/main.py)) | Diving into direct editing immediately |
@@ -152,7 +152,7 @@ The exam questions are written with 7 recurring traps designed to catch people w
 - **The Real Fix**: **Two-pass prompt chaining**: Pass 1 reviews each file individually; Pass 2 reviews how they connect.
 
 ### 2. The "Prompt Warning" Trap
-- **The Tempting Choice**: "Add bold capitalized instructions: 'YOU MUST NEVER ISSUE A REFUND OVER $500 WITHOUT AN AGENT'."
+- **The Tempting Choice**: "Add bold capitalized instructions: 'YOU MUST NEVER ISSUE A REFUND OVER \$500 WITHOUT AN AGENT'."
 - **Why It Sounds Good**: It takes 5 seconds to write and needs zero code changes.
 - **Why It Fails in Production**: Prompts are probabilistic. Under edge cases or user pressure, LLMs inevitably breach prompt rules.
 - **The Real Fix**: **Programmatic code gate** or SDK `PreToolUse` hook running in deterministic code.
@@ -242,7 +242,7 @@ elif response.stop_reason == "end_turn":
     return response.content
 ```
 - **Parallel Subagents ([TS 1.3](domain1/ts_1_3_subagent_invocation_spawning/main.py))**: Coordinator emits multiple `Task` blocks in one turn. Coordinator environment must whitelist `"Task"` in `allowedTools`.
-- **SDK Hooks ([TS 1.5](domain1/ts_1_5_sdk_hooks/main.py))**: `PreToolUse` for security checks (halting refunds > $500); `PostToolUse` for trimming bloated payloads before returning to Claude.
+- **SDK Hooks ([TS 1.5](domain1/ts_1_5_sdk_hooks/main.py))**: `PreToolUse` for security checks (halting refunds > \$500); `PostToolUse` for trimming bloated payloads before returning to Claude.
 
 ---
 

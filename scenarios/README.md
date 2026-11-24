@@ -85,7 +85,7 @@ flowchart TD
   1. Central Coordinator emits multiple `Task` calls in a **single turn**, triggering concurrent subagent runs.
   2. Subagents execute with **100% context isolation**; parent context is explicitly injected into subagent prompts.
   3. Differentiate between `VALID_EMPTY` (0 records found, no error) and `UPSTREAM_FAILURE` (API timeout, structured error).
-  4. Preserve conflicting metrics ($1.2B vs $1.5B) side-by-side with source citations and collection timestamps; never average conflicting statistics.
+  4. Preserve conflicting metrics (\$1.2B vs \$1.5B) side-by-side with source citations and collection timestamps; never average conflicting statistics.
 
 ### [Scenario 4: Developer Productivity with Claude](scenario_4_developer_productivity/)
 - **Primary Domains**: Domain 1 (27%), Domain 2 (18%), Domain 3 (20%)
@@ -141,9 +141,9 @@ uv run pytest scenarios/scenario_3_multi_agent_research/test_scenario_3_simulati
 
 ## 🔗 Master Navigation Hub
 
-- ⚡ [**Exam Refresher Cheat Sheet (`EXAM_REFRESHER.md`)**](EXAM_REFRESHER.md): The 15 Golden Rules, rapid decision matrix, and distractor traps.
-- 📋 [**Exam Blueprint (`EXAM_BLUEPRINT.md`)**](EXAM_BLUEPRINT.md): 5-domain syllabus, exam weighting, and 27 task statements matrix.
-- 🎯 [**Master Scenario Practice (`scenarios/MASTER_SCENARIO_PRACTICE.md`)**](scenarios/MASTER_SCENARIO_PRACTICE.md): Complete 60-question authentic diagnostic practice exam.
-- ✅ [**Progress Tracker (`PROGRESS.md`)**](PROGRESS.md): 27 task statements and 6 scenario checklist.
-- 🏠 [**Root README (`README.md`)**](README.md): Main repository hub and zero-token offline test suite.
-- 🛡️ [**Execution Policy (`EXECUTION_POLICY.md`)**](EXECUTION_POLICY.md): Zero-token testing and live execution standards.
+- ⚡ [**Exam Refresher Cheat Sheet (`EXAM_REFRESHER.md`)**](../EXAM_REFRESHER.md): The 15 Golden Rules, rapid decision matrix, and distractor traps.
+- 📋 [**Exam Blueprint (`EXAM_BLUEPRINT.md`)**](../EXAM_BLUEPRINT.md): 5-domain syllabus, exam weighting, and 27 task statements matrix.
+- 🎯 [**Master Scenario Practice (`scenarios/MASTER_SCENARIO_PRACTICE.md`)**](MASTER_SCENARIO_PRACTICE.md): Complete 60-question authentic diagnostic practice exam.
+- ✅ [**Progress Tracker (`PROGRESS.md`)**](../PROGRESS.md): 27 task statements and 6 scenario checklist.
+- 🏠 [**Root README (`README.md`)**](../README.md): Main repository hub and zero-token offline test suite.
+- 🛡️ [**Execution Policy (`EXECUTION_POLICY.md`)**](../EXECUTION_POLICY.md): Zero-token testing and live execution standards.

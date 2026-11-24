@@ -120,7 +120,7 @@ After running, you can analyze the results using replay_trail():
 Users should monitor their API usage at:
 https://console.anthropic.com/account/usage
 
-Each execution of `stop_reason/main.py` costs ~$0.001-0.01 depending on:
+Each execution of `stop_reason/main.py` costs ~\$0.001-0.01 depending on:
 - Number of turns in the agentic loop
 - Length of prompts and responses
 - Number of tool calls

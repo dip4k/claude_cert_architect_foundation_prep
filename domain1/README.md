@@ -103,7 +103,7 @@ flowchart LR
 5. **Emit Parallel Subagents in a Single Turn (TS 1.3)**:  
    Coordinator environments must whitelist `"Task"` in `allowedTools`. To run subagents concurrently, emit multiple `Task` calls in a single coordinator response turn, cutting turn latency by 40–60%.
 6. **Programmatic Gates Over Probabilistic Prompts (TS 1.4, 1.5)**:  
-   Business, compliance, and financial thresholds (> $500) must be enforced in application code or SDK hooks (`PreToolUse`). System prompts have a non-zero failure rate under user manipulation or ambiguity.
+   Business, compliance, and financial thresholds (> \$500) must be enforced in application code or SDK hooks (`PreToolUse`). System prompts have a non-zero failure rate under user manipulation or ambiguity.
 7. **Two Passes for Large Code Reviews (TS 1.6)**:  
    Evaluating 10+ files in a single prompt induces attention dilution. Implement Two-Pass Prompt Chaining: Pass 1 executes isolated per-file reviews; Pass 2 reviews cross-file interface contracts.
 8. **Reset Stale Sessions After Codebase Drift (TS 1.7)**:  

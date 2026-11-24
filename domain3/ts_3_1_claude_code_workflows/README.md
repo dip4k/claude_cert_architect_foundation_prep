@@ -11,7 +11,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** Posters on walls. The poster in the school hallway (project `CLAUDE.md`) is seen by everyone. The sticky note in your own diary (`~/.claude/CLAUDE.md`) is only seen by you. A poster on one classroom door (directory `CLAUDE.md`) applies in that room only.
 
@@ -24,7 +24,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### Why it matters
 If your standards live only in your home folder, your teammates and the CI job never see them. Claude then behaves differently for each person.
@@ -85,7 +85,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Storing Team Rules in User-Level ~/.claude/CLAUDE.md)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Storing Team Rules in User-Level ~/.claude/CLAUDE.md)*
 ```markdown
 # BROKEN: Developer Ana adds team code-formatting and commit-signing rules to her personal user file:
 # ~/.claude/CLAUDE.md (on Ana's MacBook):
@@ -100,7 +101,8 @@ What happens:
 4. In headless CI (`claude -p`), ~/.claude/CLAUDE.md does not exist, so automated runs fail team conventions.
 ```
 
-### ✅ Valid Example (Production Pattern: Project-Scoped Root CLAUDE.md with Modular Topic Rules)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Project-Scoped Root CLAUDE.md with Modular Topic Rules)*
 ```markdown
 # CORRECT: Committed to Git at repository root
 # ./CLAUDE.md (Shared with all teammates and CI runners):
@@ -132,7 +134,7 @@ The `main.py` in this folder checks this on repository files (`resolve_claude_md
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Team standards saved at user level
 
@@ -174,7 +176,7 @@ When Claude "ignores" an instruction, the cause is usually that the file was nev
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 2: Code Generation).** A new developer clones the repo. Their Claude Code ignores the team's commit-message and test conventions. A senior developer's Claude Code follows them. What is the most likely cause?
 

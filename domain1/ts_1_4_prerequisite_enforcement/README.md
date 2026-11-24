@@ -76,7 +76,8 @@ A message like *"refund order 991, update my address, and where is my other parc
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Relying on System Prompt to Enforce Financial Policies)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Relying on System Prompt to Enforce Financial Policies)*
 ```python
 # BROKEN: Enforcing financial and authentication rules via prompt text
 system_prompt = """
@@ -93,7 +94,8 @@ CRITICAL POLICY:
 # The backend payment API executes the unauthorized charge. Money is lost permanently!
 ```
 
-### ✅ Valid Example (Production Pattern: Programmatic Prerequisite Gate in Code)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Programmatic Prerequisite Gate in Code)*
 ```python
 # CORRECT: Deterministic Python gate enforces prerequisite state machine before tool execution
 def execute_tool(tool_name: str, tool_input: dict, state: WorkflowState) -> dict:
@@ -246,7 +248,7 @@ The human often has no access to the conversation, so the summary must stand alo
 - C) Add a routing classifier that sends refund requests to a specialised agent.
 - D) Add a programmatic prerequisite that blocks `process_refund` until `get_customer` has returned a verified customer ID.
 
-**Q2.** An agent escalates a $750 refund to a human who has no access to the chat. What should the handoff contain?
+**Q2.** An agent escalates a \$750 refund to a human who has no access to the chat. What should the handoff contain?
 
 - A) Only the phrase "customer needs help".
 - B) A structured summary: customer ID, root cause, refund amount, and recommended action.

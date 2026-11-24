@@ -49,7 +49,7 @@ Each result has the same `custom_id` and a `result.type` of `succeeded`, `errore
 
 $$\text{worst case} = \text{interval} + 24\text{h} + \text{margin}$$
 
-For a 30-hour SLA: the interval can be at most $30 - 24 = 6$ h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
+For a 30-hour SLA: the interval can be at most \$30 - 24 = 6$ h. Leave a 2-hour margin for resubmitting failures and collecting results, and you submit **every 4 hours**. (`max_submit_interval_hours(30, 24, 2) == 4`.)
 
 **d. Failures.** Resubmit only the `errored` or `expired` `custom_id`s. If a document was too large, split it into chunks, with new ids such as `doc-002-chunk1of3`, and map them back to `doc-002`.
 
@@ -59,7 +59,8 @@ For a 30-hour SLA: the interval can be at most $30 - 24 = 6$ h. Leave a 2-hour m
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Batch API for Blocking PR Gate or Multi-Turn Tools)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Batch API for Blocking PR Gate or Multi-Turn Tools)*
 ```python
 # BROKEN: Using Message Batches API for pre-merge PR review checks
 # Developer opens a PR and waits for CI check to pass before merging:
@@ -79,7 +80,8 @@ Why it fails in production:
 2. No mid-batch tool calls: If Claude returns a tool_use block, the batch cannot run the tool and feed results back. Multi-turn workflows fail inside a single batch request.
 ```
 
-### ✅ Valid Example (Production Pattern: Async Overnight Audits with SLA Scheduling & custom_id)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Async Overnight Audits with SLA Scheduling & custom_id)*
 ```python
 # CORRECT: Routing non-blocking workloads to Batches (50% discount) with custom_id correlation
 # Workload: Weekly architecture audit across 40,000 files, or nightly backfill

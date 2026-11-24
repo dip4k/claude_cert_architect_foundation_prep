@@ -91,7 +91,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Monolithic Agent with 18 Tools & Forced Tool + Thinking)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Monolithic Agent with 18 Tools & Forced Tool + Thinking)*
 ```python
 # BROKEN 1: Overloading a single synthesis agent with 18 disparate tools
 synthesis_tools = [
@@ -110,7 +111,8 @@ request = {
 }
 ```
 
-### ✅ Valid Example (Production Pattern: Least-Privilege Scoped Roles & Dynamic tool_choice)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Least-Privilege Scoped Roles & Dynamic tool_choice)*
 ```python
 # CORRECT 1: Scoped tool sets adhering to the 4-5 tool attention budget
 COORDINATOR_TOOLS = [delegate_task, ask_user, escalate_to_human]       # 3 tools

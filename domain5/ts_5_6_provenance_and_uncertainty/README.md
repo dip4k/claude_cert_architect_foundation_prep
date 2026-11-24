@@ -29,7 +29,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. The Provenance Loss Trap in Multi-Source Summarization
 When an orchestration system ingests research from multiple subagents, standard text summarization acts as a destructive compression algorithm:
@@ -66,7 +66,8 @@ Avoid converting all findings into uniform paragraphs of text:
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Averaging Conflicting Numbers & Omitting Dates)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Averaging Conflicting Numbers & Omitting Dates)*
 ```text
 # BROKEN 1: Averaging conflicting numbers into a fake mean
 Source 1 (Oct 1 Preliminary Press Release): Revenue = $1.2B
@@ -82,7 +83,8 @@ Synthesizer Output: "CONTRADICTION DETECTED: Sources disagree on company headcou
 Why it fails: Omitting collection timestamps turns normal organizational growth into false contradictions!
 ```
 
-### ✅ Valid Example (Production Pattern: Claim-to-Source Mapping & Side-by-Side Attribution)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Claim-to-Source Mapping & Side-by-Side Attribution)*
 ```markdown
 # CORRECT: Preserving both statistics with dates, methodology, and direct citations
 
@@ -109,8 +111,8 @@ Subagents report:
 
 | Metric | Value | Source | Pub. date | Period | Method |
 |---|---|---|---|---|---|
-| Q3 revenue | $1.2B | Press wire | 2024-10-01 | 2024-Q3 | Preliminary |
-| Q3 revenue | $1.4B | 10-Q filing | 2024-10-15 | 2024-Q3 | Audited |
+| Q3 revenue | \$1.2B | Press wire | 2024-10-01 | 2024-Q3 | Preliminary |
+| Q3 revenue | \$1.4B | 10-Q filing | 2024-10-15 | 2024-Q3 | Audited |
 | Inventory | 50,000 units | Report A | 2025-06-30 | 2025-06 | Warehouse count |
 | Inventory | 12,000 units | Report B | 2026-09-30 | 2026-09 | Warehouse count |
 | Headcount | 12,500 | 10-Q filing | 2024-10-15 | n/a | Payroll |
@@ -159,7 +161,7 @@ flowchart TD
 
 ### Trap 1: Averaging or silently choosing between two sources
 
-**Exam scenario**: Source A (Gartner) says the 2025 market is $12.1B. Source B (IDC) says $9.8B.
+**Exam scenario**: Source A (Gartner) says the 2025 market is \$12.1B. Source B (IDC) says \$9.8B.
 
 ```text
 ANTI-PATTERN: "The market is about $11B."   (a number neither source reported)
@@ -213,7 +215,7 @@ Financial figures go in a table, news in prose, technical findings in a list. Fo
 - C. Report both values, each attributed to its source, and note any known method difference.
 - D. Omit the metric.
 
-**Q2 (Scenario 3).** A report says revenue was $800M (published 2024) and $950M (published 2026). The synthesiser flags a "conflict". What was missed?
+**Q2 (Scenario 3).** A report says revenue was \$800M (published 2024) and \$950M (published 2026). The synthesiser flags a "conflict". What was missed?
 
 - A. Nothing; this is a real contradiction.
 - B. The dates and periods; the values may describe different years.

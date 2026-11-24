@@ -67,7 +67,8 @@ Never send `temperature` with thinking. Leave `top_k`/`top_p` unset. In a tool l
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: "Return ONLY JSON" in Plain Text Prompt)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: "Return ONLY JSON" in Plain Text Prompt)*
 ```text
 # BROKEN: Asking for JSON in prompt prose with non-nullable required fields
 Prompt: "Extract invoice details as raw JSON. Return ONLY valid JSON, no markdown backticks!"
@@ -91,7 +92,8 @@ Why it fails in production:
 3. Semantic blind spot: The prompt didn't verify line-item math in code (240 + 50 = 290 != 300).
 ```
 
-### ✅ Valid Example (Production Pattern: Tool Use Schema with Nullable Fields & Math Verification)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Tool Use Schema with Nullable Fields & Math Verification)*
 ```python
 # CORRECT: JSON schema via tool_use + nullable fields + code validation
 EXTRACTION_TOOL = {

@@ -57,7 +57,7 @@ $$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architec
 | **D2** | **Tool Interface Design** | **Kitchen Drawer Labels** | A drawer labeled "stuff" causes mixed utensils; a label "dinner forks, NOT knives" prevents misrouting. | **Rich Tool Descriptions**: Explicit input formats, example queries, edge cases, and boundary statements ([TS 2.1](domain2/ts_2_1_tool_interface_design/main.py)). |
 | **D3** | **Headless CI/CD Automation** | **Automated Factory Robot** | A robot that halts mid-assembly waiting for an operator to hit Enter stalls the entire factory line. | **Non-Interactive `-p` Flag**: Pass `claude -p "..." --output-format json` to eliminate terminal stdin hangs ([TS 3.6](domain3/ts_3_6_cicd_pipeline_automation/main.py)). |
 | **D4** | **Structured Output & Extraction** | **Strict Customs Declaration Form** | If a customs form has no "N/A" checkbox, travelers invent plausible details to avoid leaving blanks. | **Nullable Schema Fields**: Declare optional fields as `["string", "null"]` via `tool_use` to stop hallucinations ([TS 4.3](domain4/ts_4_3_structured_output_tool_use/main.py)). |
-| **D5** | **Context Window Preservation** | **Executive Briefing Folder** | As notes get summarized over weeks, vital account numbers and dollar figures degrade into vague prose. | **Immutable Case Facts Layer**: Pin transactional facts outside the compacted conversation history ([TS 5.1](domain5/ts_5_1_context_preservation/main.py)). |
+| **D5** | **Context Window Preservation** | **Bank Vault Ledger vs Storyteller** | As chat gets summarized into casual conversational prose sentences, exact account numbers and dollar amounts are erased. | **Immutable Case Facts Layer**: Pin exact database keys and transactional numbers in a structured state block outside the compacted conversation history ([TS 5.1](domain5/ts_5_1_context_preservation/main.py)). |
 
 ---
 
@@ -65,7 +65,7 @@ $$\text{1. Simple Picture} \longrightarrow \text{2. Why It Matters (The Architec
 
 To guarantee predictable budgets, zero accidental billing, and reproducible testing:
 - ❌ **Automated Execution Prohibited**: Never execute scripts or test harnesses that make automated live Anthropic API calls (`client.messages.create()`, live API keys).
-- ✅ **100% Zero-Token Offline Testing**: All 247 unit tests (`pytest tests/ scenarios/`) run entirely offline using deterministic mocks (`lib.mock_claude`).
+- ✅ **100% Zero-Token Offline Testing**: All 291 unit tests (`pytest tests/ scenarios/`) run entirely offline using deterministic mocks (`lib.mock_claude`).
 - 👤 **Manual Live Practice Only**: Candidates execute live scripts manually in their WSL Ubuntu terminal when testing with real API credentials:
   ```bash
   uv run domain1/ts_1_1_multi_tool_agent_loop/main.py

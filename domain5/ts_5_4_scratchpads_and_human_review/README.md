@@ -28,7 +28,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. The Context Degradation Phenomenon in Large Codebase Exploration
 When an autonomous agent explores a large enterprise codebase over an extended session (e.g. 40+ turns of reading files, grepping symbols, and inspecting logs), the model's effective attention degrades:
@@ -66,7 +66,8 @@ Inside Claude Code, developers running long interactive exploration sessions can
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: "Remind the Model" & Rerunning Everything After Crashes)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: "Remind the Model" & Rerunning Everything After Crashes)*
 ```text
 # BROKEN 1: "Remind the model" prompt hacks during long sessions
 Turn 40: Claude forgets that the database was MySQL and generates PostgreSQL code.
@@ -79,7 +80,8 @@ Crash at subtask 9 of 10: Process dies with no disk checkpoints.
 Action: Restarting the coordinator re-runs all 10 subagents from turn 1, wasting $150 in API tokens!
 ```
 
-### ✅ Valid Example (Production Pattern: External Scratchpad & Coordinator Crash Manifest)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: External Scratchpad & Coordinator Crash Manifest)*
 ```python
 # CORRECT 1: Persistent Scratchpad File (scratchpad.md)
 # Turn 6: Agent discovers database engine and logs immutable fact to disk:

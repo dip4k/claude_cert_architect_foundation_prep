@@ -67,7 +67,7 @@ Don't do these:
 - `practice/*/main.py` (if they use the Claude API)
 - Any custom script using `anthropic.AsyncAnthropic` or `anthropic.Anthropic`
 
-**Cost:** ~$0.001-0.01 per run (depends on prompts and turns)
+**Cost:** ~\$0.001-0.01 per run (depends on prompts and turns)
 **Execution:** Manual in terminal ONLY
 
 ## Before Running Any Script
@@ -111,9 +111,9 @@ After running scripts, check your usage:
 
 | Model | Input | Output |
 |-------|-------|--------|
-| Claude Opus 5 | ~$15/M tokens | ~$45/M tokens |
-| Claude Sonnet 5 | ~$3/M tokens | ~$15/M tokens |
-| Claude Haiku 4.5 | ~$0.80/M tokens | ~$4/M tokens |
+| Claude Opus 5 | ~\$15/M tokens | ~\$45/M tokens |
+| Claude Sonnet 5 | ~\$3/M tokens | ~\$15/M tokens |
+| Claude Haiku 4.5 | ~\$0.80/M tokens | ~\$4/M tokens |
 
 *Check https://www.anthropic.com/pricing for current pricing*
 

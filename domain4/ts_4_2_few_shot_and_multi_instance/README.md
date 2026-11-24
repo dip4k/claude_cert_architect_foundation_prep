@@ -48,7 +48,8 @@ A common misconception is that more examples always improve accuracy. In product
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: 10 Identical Examples Without Reasons)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: 10 Identical Examples Without Reasons)*
 ```text
 # BROKEN: Floods the prompt with repetitive, easy examples and no reasoning
 Prompt:
@@ -64,7 +65,8 @@ Why it fails in production:
 3. No reasoning: When given an ambiguous case like "Invoice page crashes on download", Claude flips a coin because it never learned whether crashes in billing count as billing or bug.
 ```
 
-### ✅ Valid Example (Production Pattern: 2–4 Diverse Examples with Reasons)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: 2–4 Diverse Examples with Reasons)*
 ```text
 # CORRECT: 2-4 targeted examples on tricky boundaries with explicit "Why" notes
 <examples>

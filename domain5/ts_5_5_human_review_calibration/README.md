@@ -27,7 +27,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. Simpson's Paradox: Why Aggregate Metrics Deceive Leadership
 In high-volume document automation and data extraction systems, reporting aggregate accuracy (e.g. *"Our extraction pipeline achieves 97.5% accuracy overall!"*) creates a dangerous illusion of production readiness.
@@ -60,7 +60,8 @@ Automated pipelines should route an extraction to human reviewers under three ex
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Approving Straight-Through Automation on 97% Aggregate Accuracy)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Approving Straight-Through Automation on 97% Aggregate Accuracy)*
 ```python
 # BROKEN: Disabling human review across all documents based on 97.5% aggregate accuracy
 overall_accuracy = evaluate_accuracy(50000_sample_invoices)  # 97.5% overall!
@@ -74,7 +75,8 @@ What happens in production (Simpson's Paradox):
 - Thousands of corrupted customs declarations bypass human review and corrupt ERP databases!
 ```
 
-### ✅ Valid Example (Production Pattern: Per-Segment Calibration & Continuous Stratified Audits)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Per-Segment Calibration & Continuous Stratified Audits)*
 ```python
 # CORRECT: Evaluate per segment, calibrate ECE, and mandate continuous 5-10% stratified sampling
 def route_for_review(extraction: ExtractedDocument) -> str:

@@ -105,7 +105,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Hardcoded Secrets in Git & Multi-Turn Schema Probing)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Hardcoded Secrets in Git & Multi-Turn Schema Probing)*
 ```json
 // BROKEN 1: Hardcoding plaintext credentials into committed repository file (.mcp.json)
 {
@@ -124,7 +125,8 @@ flowchart TD
 // Result: Consumes 30,000 tokens of command output just to learn what database tables exist!
 ```
 
-### ✅ Valid Example (Production Pattern: Environment Expansion & Zero-Turn MCP Resources)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Environment Expansion & Zero-Turn MCP Resources)*
 ```json
 // CORRECT 1: Project-level .mcp.json using ${ENV_VAR} substitution
 {

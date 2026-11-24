@@ -85,7 +85,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Vague, Overlapping One-Line Tool Descriptions)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Vague, Overlapping One-Line Tool Descriptions)*
 ```python
 # BROKEN: Minimal one-line descriptions with zero boundaries or format specifications
 tools = [
@@ -106,7 +107,8 @@ tools = [
 # The customer lookup fails or returns the wrong data, derailing the support turn!
 ```
 
-### ✅ Valid Example (Production Pattern: 5-Part Description with Negative Boundaries)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: 5-Part Description with Negative Boundaries)*
 ```python
 # CORRECT: Rich description with purpose, input format, sample queries, edge cases, and boundaries
 tools = [

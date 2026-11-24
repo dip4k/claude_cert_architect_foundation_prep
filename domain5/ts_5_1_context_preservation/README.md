@@ -15,7 +15,7 @@
 
 ## 🧒 Explain Like I'm 13
 
-**The picture:** A telephone game. If each person re-tells the story in their own words, "$47.83" slowly becomes "about fifty". Keep a **facts card** on the desk that is never retold, and let only the rest of the chat be summarised. Also, do not copy a 47-field form into your notes when you only need 4 boxes.
+**The picture:** A telephone game. If each person re-tells the story in their own words, "\$47.83" slowly becomes "about fifty". Keep a **facts card** on the desk that is never retold, and let only the rest of the chat be summarised. Also, do not copy a 47-field form into your notes when you only need 4 boxes.
 
 **In plain steps:**
 1. Put IDs, amounts and dates in a facts block and send it with every request.
@@ -23,26 +23,38 @@
 3. Key points first, headers on sections, question at the end.
 4. Always send the full (managed) history. The API remembers nothing.
 
-**Tiny example:** After 30 turns, "refund about $50" in a summary versus `item_price: 47.83` on the facts card.
+**Tiny example:** After 30 turns, "refund about \$50" in a summary versus `item_price: 47.83` on the facts card.
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. The Degradation Dynamics of Progressive Summarization
 In long-running conversational systems, context budgets eventually fill up. The most common naive mitigation is **progressive summarization**: periodically taking turns 1 through $N$ and prompting the model to write a summary paragraph.
 
 While progressive summarization preserves broad conversational themes, it catastrophically degrades **transactional precision**:
+- **Why Naive Summarization Destroys State**: When an LLM summarizes, it naturally turns hard, exact facts into casual **natural language prose** (conversational sentences like *"the user asked about an order they bought last week for about \$150"*).
 - Exact numeric quantities (\$149.99) are rounded or converted into vague approximations ("about \$150").
-- Precise timestamps and order numbers (`ORD-2026-9921`) evaporate.
-- Critical customer expectations ("I need this replacement before Friday's flight") are discarded as stylistic filler.
-- Within 20 turns, the agent cannot issue refunds or update accounts because the underlying factual grounding has been completely wiped.
+- Precise timestamps, tracking numbers, and database keys (`ORD-2026-9921`, `1Z999`) evaporate.
+- Critical constraints verified by backend logic (e.g. `is_2fa_verified = True`) are forgotten.
+- Within 20 turns, the agent cannot execute tool calls like `process_refund(order_id=...)` because the ground truth was erased. When forced to provide required tool parameters, Claude might hallucinate a fake ID (`"ORD-12345"`), causing database corruption!
+
+```mermaid
+---
+config:
+  htmlLabels: false
+---
+flowchart LR
+    Turn1["Turn 1:<br>Order ORD-9921, \$149.99"] --> Sum1["Turn 10 Summary:<br>'Order issue for ~\$150'"]
+    Sum1 --> Sum2["Turn 20 Summary:<br>'User asked about an order'"]
+    Sum2 --> Failure["Turn 25 Tool Call:<br>Order ID erased -> Hallucination!"]
+```
 
 ### 2. The Dedicated "Case Facts" Architectural Layer
 To prevent transactional amnesia, enterprise architectures decouple **session history** from **authoritative entities** by maintaining a dedicated, immutable **Case Facts Layer**:
-- When transactional entities (customer IDs, order numbers, dollar amounts, tracking numbers, customer constraints) are first mentioned or returned by backend tools, the application runtime extracts them into an isolated structured data store.
+- When transactional entities (customer IDs, order numbers, dollar amounts, tracking numbers, customer constraints) are first mentioned or returned by backend tools, the application runtime extracts them into an isolated structured data store (JSON / dictionary).
 - On every subsequent turn, the application runtime renders this Case Facts block at the very top of the system prompt, completely outside the reach of conversational summarization.
-- Even if turns 1 through 30 are compressed into a 3-sentence summary, the Case Facts block guarantees that Claude always sees exact, uncorrupted identifiers.
+- Even if turns 1 through 30 are compressed into a 3-sentence narrative summary, the Case Facts block guarantees that Claude always sees 100% exact, uncorrupted identifiers.
 
 ### 3. Early Tool Trimming via `PostToolUse` Hooks
 Enterprise backend tools (like SAP, Salesforce, or order management databases) frequently return massive database dumps containing 40+ attributes per entity—internal shard IDs, database revision timestamps, employee shift logs, and raw network routing metadata.
@@ -66,7 +78,8 @@ When specialized subagents (e.g. Web Search or Document Analysis subagents) comp
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Progressive Summarization Washing Away Numbers)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Progressive Summarization Washing Away Numbers)*
 ```text
 # BROKEN: Repeatedly summarizing older turns directly into conversational memory
 Turn 1: "Customer ID CUST-9921, Order ORD-2026-9921, Amount $149.99 paid on 2026-09-28 via FedEx 1Z999."
@@ -74,12 +87,13 @@ Turn 6 Summary:  "Customer asked for a refund on a recent charge."
 Turn 12 Summary: "User requested assistance with an order."
 
 What happens in production:
-1. Exact transactional numbers (order ID, dollar amount, date) vanish into vague natural prose.
-2. At Turn 14, when Claude calls `process_refund`, it has to guess or hallucinate the order ID!
+1. Exact transactional identifiers (order ID, dollar amount, date) vanish into casual natural language prose, destroying the structured state required by backend APIs.
+2. At Turn 14, when Claude calls `process_refund(order_id=...)`, the ground truth is gone, causing Claude to fail or hallucinate a fake order ID!
 3. Tool payloads (47 raw CRM fields, 1,800 tokens each turn) flood context and trigger attention dilution.
 ```
 
-### ✅ Valid Example (Production Pattern: Immutable Case Facts Layer & PostToolUse Trimming)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Immutable Case Facts Layer & PostToolUse Trimming)*
 ```python
 # CORRECT: Extract immutable facts into a pinned layer outside the summarized narrative
 
@@ -109,7 +123,7 @@ def trim_crm_payload(raw_crm: dict) -> dict:
 ```
 
 **Walkthrough:**
-Customer writes on turn 1: *"Refund ORD-2026-9921. I paid $149.99 on 2026-09-28."*
+Customer writes on turn 1: *"Refund ORD-2026-9921. I paid \$149.99 on 2026-09-28."*
 
 | Step | What happens | Result |
 |---|---|---|
@@ -156,7 +170,7 @@ flowchart TD
 
 ### Trap 1: Summarising harder to keep exact values
 
-**Exam scenario**: After 30 turns, the support agent says the refund is "about $50" and the order was "last week". Turn 3 had `$47.83` and order `ORD-2026-9912` placed `2026-10-14`.
+**Exam scenario**: After 30 turns, the support agent says the refund is "about \$50" and the order was "last week". Turn 3 had `$47.83` and order `ORD-2026-9912` placed `2026-10-14`.
 
 Progressive summarisation rewrites facts in prose each time, and exact numbers erode. Asking the summary to "keep numbers" helps a little and still fails over many rounds.
 

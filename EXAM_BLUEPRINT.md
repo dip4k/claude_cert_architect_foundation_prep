@@ -15,7 +15,7 @@
 | **Time Allowed** | 120 minutes | Pacing benchmark of exactly **2.0 minutes per question**. |
 | **Passing Score** | **720 / 1000** (Scaled Score) | Scaled across exam forms to balance difficulty across scenarios. |
 | **Exam Structure** | **4 scenarios drawn randomly from a bank of 6** | Every item is anchored to realistic customer production problems and SLAs. |
-| **Delivery & Cost** | Online Proctored or Test Center ($125 USD) | Administered via Pearson VUE; every question requires a selected answer before advancing. |
+| **Delivery & Cost** | Online Proctored or Test Center (\$125 USD) | Administered via Pearson VUE; every question requires a selected answer before advancing. |
 | **Recertification** | 12-month validity period | Keeps architects up to date with new Claude Agent SDK and MCP releases. |
 
 ### 🎯 Candidate Competencies: The Systems Architect Shift

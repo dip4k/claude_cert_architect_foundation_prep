@@ -111,7 +111,7 @@ flowchart TD
 > **SLA Scheduling Formula (TS 4.5 Exam Standard)**:  
 > When managing customer SLAs with the Message Batches API:  
 > $$\text{Target SLA} - \text{Max Batch Processing Window (24h)} = \text{Maximum Accumulation Window}$$  
-> *Example*: To guarantee a **30-hour customer SLA** with up to 24-hour batch turnaround, the ingestion pipeline must accumulate and flush requests in **4-hour submission windows** ($4\text{h} + 24\text{h} = 28\text{h} \le 30\text{h}$).  
+> *Example*: To guarantee a **30-hour customer SLA** with up to 24-hour batch turnaround, the ingestion pipeline must accumulate and flush requests in **4-hour submission windows** (\$4\text{h} + 24\text{h} = 28\text{h} \le 30\text{h}$).  
 > *Architectural Limitation*: The Message Batches API does **NOT** support mid-request multi-turn tool calling. It cannot pause a batch item, wait for client-side tool execution, and resume. Use Message Batches strictly for single-turn extraction, classification, or generation tasks.
 
 ### Decision Tree 3: Handling Missing Document Attributes (Domain 4 & Scenario 6)

@@ -12,7 +12,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** Renovating a house needs a blueprint first. Changing a light bulb does not. **Plan mode** is the blueprint step. **Direct execution** is just doing it. An **Explore subagent** is a scout who walks the neighbourhood and brings back a short report instead of you carrying every brick home.
 
@@ -26,7 +26,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. Architectural Risk and Blast Radius Assessment
 When an engineer asks Claude Code to modify software, the primary architectural decision is choosing between **Plan Mode** and **Direct Execution Mode**. Making the wrong choice creates severe operational consequences:
@@ -81,7 +81,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Immediate Direct Execution on 45-File Refactor)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Immediate Direct Execution on 45-File Refactor)*
 ```bash
 # BROKEN: Direct execution on a complex multi-file architectural migration
 claude "Migrate our monolith billing system to 3 microservices"
@@ -93,7 +94,8 @@ What happens:
 4. The codebase is broken, git status has 45 dirty files, and the developer must run git reset --hard!
 ```
 
-### ✅ Valid Example (Production Pattern: Plan Mode Blueprint Approval & Staged Direct Execution)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Plan Mode Blueprint Approval & Staged Direct Execution)*
 ```bash
 # CORRECT: Plan Mode for discovery and blueprinting; Direct Execution for applying approved steps
 
@@ -122,7 +124,7 @@ EOF
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Direct execution for an architectural change
 
@@ -158,7 +160,7 @@ Using plan for everything wastes time. Using direct for everything risks expensi
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 2: Code Generation).** You must restructure a monolith into microservices. The change spans many files and has several valid designs. Which workflow fits?
 

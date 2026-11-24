@@ -30,7 +30,7 @@ flowchart LR
 
 | Task Statement | Topic | Everyday Physical Metaphor | Why Naive Approaches Fail | Correct Architectural Pattern |
 | :--- | :--- | :--- | :--- | :--- |
-| **TS 5.1** | **Context Preservation** | **Executive Briefing Folder** | As a meeting goes on, oral summaries turn "$142.50 on March 12" into "a recent charge"; details vanish. | **Case Facts Block Outside Summary**: Store transactional IDs, amounts, and dates in a dedicated top-level block passed alongside history ([TS 5.1](ts_5_1_context_preservation/README.md)). |
+| **TS 5.1** | **Context Preservation** | **Executive Briefing Folder** | As a meeting goes on, oral summaries turn "\$142.50 on March 12" into "a recent charge"; details vanish. | **Case Facts Block Outside Summary**: Store transactional IDs, amounts, and dates in a dedicated top-level block passed alongside history ([TS 5.1](ts_5_1_context_preservation/README.md)). |
 | **TS 5.2** | **Escalation & Ambiguity** | **Floor Manager Escalation** | Guessing customer intent from vague sentiment leads to arguing or acting on the wrong customer account. | **Rule-Based Triggers & Disambiguation**: Hand off immediately on explicit human request; ask for more IDs on multi-match ([TS 5.2](ts_5_2_escalation_and_provenance/README.md)). |
 | **TS 5.3** | **Multi-Agent Errors** | **Weather Station Telemetry** | Reporting "0 mm rainfall" when the sensor was unplugged misleads forecasters into thinking it was sunny. | **Failure vs Valid Empty + Coverage Notes**: Return structured error type and query; annotate coverage gaps in synthesis ([TS 5.3](ts_5_3_error_propagation_coverage/README.md)). |
 | **TS 5.4** | **Large Codebases** | **Detective's Caseboard** | Relying on mental memory during a 20-file investigation leads to confabulation and lost filenames. | **Scratchpad Files & `/compact`**: Write intermediate discoveries to disk; use subagents for deep dives and manifests for recovery ([TS 5.4](ts_5_4_scratchpads_and_human_review/README.md)). |
@@ -154,7 +154,7 @@ flowchart TD
 ## Domain 5 Golden Rules
 
 1. **Exact facts live outside the summary (TS 5.1)**:  
-   Progressive summarisation turns "$142.50 on 12 March" into "a recent charge". Keep a persistent **case facts** block (ids, amounts, dates, stated expectations) in every prompt, outside summarised history. Pass the complete history rather than a lossy recap.
+   Progressive summarisation turns "\$142.50 on 12 March" into "a recent charge". Keep a persistent **case facts** block (ids, amounts, dates, stated expectations) in every prompt, outside summarised history. Pass the complete history rather than a lossy recap.
 2. **Trim before it enters context (TS 5.1)**:  
    Reduce a 40+ field tool result to the few fields needed (a `PostToolUse` step). Put key findings first and use section headers to counter "lost in the middle". Subagents return structured data (facts, citations, dates), not reasoning chains.
 3. **Escalate on explicit criteria, not proxies (TS 5.2)**:  

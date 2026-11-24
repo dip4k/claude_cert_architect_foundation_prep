@@ -12,7 +12,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** Teaching a friend a card game. "Play carefully" does not help. Showing two example rounds does. Handing them the answer key (tests) lets them check themselves. And before cooking a birthday dinner you ask what they like (the interview) instead of guessing.
 
@@ -26,7 +26,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### Why it matters
 Saying "be more precise" changes nothing. Claude needs a concrete target to hit.
@@ -76,7 +76,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Guessing Vague Requirements & Prose Adjectives)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Guessing Vague Requirements & Prose Adjectives)*
 ```text
 # BROKEN 1: Prompt engineering with vague adjectives
 User: "The date parsing is buggy. Please be more careful and precise this time!"
@@ -89,7 +90,8 @@ Developer: "We don't use Redis! We use AWS DynamoDB with in-memory caching!"
 # Result: Wasted engineering time and 500 lines of throwaway code.
 ```
 
-### ✅ Valid Example (Production Pattern: The Interview Pattern & Test-Driven Feedback)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: The Interview Pattern & Test-Driven Feedback)*
 ```text
 # CORRECT 1: The Interview Pattern (Present 2-3 options with trade-offs on ambiguous specs)
 User: "Add rate limiting to our API."
@@ -122,7 +124,7 @@ Feedback batching with `group_feedback` in `main.py`:
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: Adjectives instead of examples
 
@@ -168,7 +170,7 @@ Rule: interacting problems go together, independent problems go one at a time.
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 2: Code Generation).** You describe a log-formatting transformation in prose. Claude interprets it differently on each run, especially for missing values. What is the best next step?
 

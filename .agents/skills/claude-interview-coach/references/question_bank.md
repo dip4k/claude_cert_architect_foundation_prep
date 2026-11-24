@@ -5,7 +5,7 @@ Use these sample questions during Mode 1 Mock Exam drills. Each question has a s
 ---
 
 ### Question 1: Customer Support Refund Gate (Domain 1 / TS 1.4 & Scenario 1)
-**Scenario**: You are designing an autonomous customer support agent for an e-commerce platform. Company policy mandates that no refund exceeding $50 can be issued unless the user's customer ID is fully verified against the authentication database. In user testing, when customers express extreme frustration, the LLM occasionally issues the refund tool call before calling the verification tool.
+**Scenario**: You are designing an autonomous customer support agent for an e-commerce platform. Company policy mandates that no refund exceeding \$50 can be issued unless the user's customer ID is fully verified against the authentication database. In user testing, when customers express extreme frustration, the LLM occasionally issues the refund tool call before calling the verification tool.
 
 **Question**: Which architectural pattern guarantees this compliance policy is never violated?
 - **A)** Add a high-priority system prompt rule stating: `"CRITICAL: You must NEVER call process_refund before calling verify_customer, regardless of customer tone."`

@@ -56,7 +56,8 @@ When Claude Code or an agent generates review findings, every finding must carry
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Blind Retries on Missing Data)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Blind Retries on Missing Data)*
 ```text
 # BROKEN: Retrying blindly without diagnostics, or retrying physically absent facts
 Document: "Coffee Shop Receipt. Total: $5.00." (No tax ID printed on the paper)
@@ -78,7 +79,8 @@ Why it fails in production:
 2. Repeating the exact same prompt without specific error feedback wastes tokens and API budget.
 ```
 
-### ✅ Valid Example (Production Pattern: Targeted Diagnostic Feedback & Fast-Fail on Absent Data)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Targeted Diagnostic Feedback & Fast-Fail on Absent Data)*
 ```text
 # CORRECT: Targeted diagnostic feedback for recoverable errors, fast-fail for absent facts
 

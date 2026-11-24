@@ -11,7 +11,7 @@
 
 ---
 
-## Explain Like I'm 13
+## 🧒 Explain Like I'm 13
 
 **The picture:** "Whenever you wear a lab coat, also wear goggles." The rule follows the **clothing** (the file pattern), not the **room** (the folder). Test files live in many folders, but one rule can follow them all.
 
@@ -24,7 +24,7 @@
 
 ---
 
-## Concepts Explained
+## 📖 Concepts Explained
 
 ### 1. Token Economics and the Co-Location Problem
 In enterprise software development, modern architecture patterns frequently co-locate related files across hundreds of subdirectories. In a React or TypeScript monorepo, test files (`Button.test.tsx`), styling modules (`Button.module.css`), and components (`Button.tsx`) sit side-by-side in every folder.
@@ -98,7 +98,8 @@ flowchart TD
 
 ## 🧪 Worked Example
 
-### ❌ Invalid Example (Anti-Pattern: Directory CLAUDE.md for Multi-Folder Patterns)
+### ❌ Invalid Example (Anti-Pattern / What Breaks)
+*(Anti-Pattern: Directory CLAUDE.md for Multi-Folder Patterns)*
 ```text
 # BROKEN: Creating duplicate CLAUDE.md files across multiple folders for test rules
 my-repo/
@@ -112,7 +113,8 @@ Why it fails in production:
 3. Monolithic alternative: Putting all Jest, Go, Terraform, and Python rules in root CLAUDE.md wastes 15,000 tokens on every single turn.
 ```
 
-### ✅ Valid Example (Production Pattern: Path-Scoped Rules with YAML Glob Matching)
+### ✅ Valid Example (Production Pattern)
+*(Production Pattern: Path-Scoped Rules with YAML Glob Matching)*
 ```yaml
 # CORRECT: Centralized in .claude/rules/ with dynamic glob path-scoping
 # File: .claude/rules/testing.md
@@ -151,7 +153,7 @@ This repo uses the exact same pattern: `.claude/rules/python_quality.md` has `pa
 
 ---
 
-## Exam Traps and Correct Patterns
+## ⚠️ Exam Traps and Correct Patterns
 
 ### Trap 1: A `CLAUDE.md` in every folder for a cross-cutting convention
 
@@ -197,7 +199,7 @@ A rule with no `paths:` loads always, so it is not conditional at all.
 
 ---
 
-## Exam-Style Practice Questions
+## 📝 Exam-Style Practice Questions
 
 **Q1 (Scenario 2: Code Generation).** Test files sit next to source files across the whole repo (`*.test.tsx`). You want test conventions applied when editing tests, and not otherwise. What is the best approach?
 
