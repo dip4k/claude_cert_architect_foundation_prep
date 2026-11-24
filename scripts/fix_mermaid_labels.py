@@ -41,10 +41,9 @@ def main() -> None:
         text = p.read_bytes().decode("utf-8")
         new = LEGACY_MD.sub(r"config:\1  htmlLabels: false", text)
         new = LEGACY_NB.sub("", new).replace('"    htmlLabels: false\\n",', '"  htmlLabels: false\\n",')
-        if "htmlLabels: false" not in new:
-            nl = "\r\n" if "\r\n" in new else "\n"
-            lines, n = (add_md if p.suffix == ".md" else add_nb)(new.split(nl))
-            new = nl.join(lines) if n else new
+        nl = "\r\n" if "\r\n" in new else "\n"
+        lines, n = (add_md if p.suffix == ".md" else add_nb)(new.split(nl))
+        new = nl.join(lines) if n else new
         if new != text:
             p.write_bytes(new.encode("utf-8"))
             changed += 1

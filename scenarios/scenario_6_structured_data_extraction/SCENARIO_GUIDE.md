@@ -30,16 +30,20 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Doc["Unstructured Document<br>(PDF / Scanned Form / OCR)"] --> Router{"Ingestion Workload SLA?"}
 
-    Router -->|"Real-Time (< 5s)"| RT["Real-Time Messages API<br>(claude-haiku-4-5)"]
+    Router -->|"Real-Time (under 5s)"| RT["Real-Time Messages API<br>(claude-haiku-4-5)"]
     Router -->|"Backlog (≤ 24h)"| Batch["Message Batches API<br>(50% Discount, custom_id)"]
 
     RT & Batch --> Engine["Extraction Engine<br>JSON Schema / Tool Choice<br>(Nullable absent fields,<br>'other'/'unclear' enums)"]
 
     Engine --> Gate1{"Layer 1: Syntax Gate<br>Valid JSON & types?"}
-    Gate1 -->|"Syntax Fail"| FixSyntax{"Fixable Syntax?<br>(Retries < 2)"}
+    Gate1 -->|"Syntax Fail"| FixSyntax{"Fixable Syntax?<br>(Retries under 2)"}
     FixSyntax -->|"Yes"| Retry1["Targeted Syntax Retry<br>(Pass doc + invalid output)"]
     FixSyntax -->|"No / Max"| Human["Human Review Queue"]
 
@@ -50,7 +54,7 @@ flowchart TD
     Gate2 -->|"Pass"| Conf{"Layer 3: Router<br>Calibrated Confidence?"}
     Conf -->|"High (≥ 0.90)"| Auto["Auto-Commit to ERP<br>+ Stratified Audit (5%)"]
     Conf -->|"Medium (0.75-0.89)"| Spot["Spot-Check Queue (20%)"]
-    Conf -->|"Low (< 0.75)"| Human
+    Conf -->|"Low (under 0.75)"| Human
 ```
 
 ---
@@ -95,6 +99,10 @@ Follow this architectural decision sequence on the CCAR-F exam:
    * Even when confidence scores exceed 0.90 and auto-commit is enabled, maintain continuous **stratified sampling** (3–5% random sample) segmented by vendor, document format, and language to detect model drift.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q{"What is the<br>extraction challenge?"} -->|"Malformed JSON output"| ToolChoice["Enforce JSON Schema via<br>Constrained Decoding or Tool"]
     Q -->|"Missing field hallucinated"| Nullable["Mark fields nullable/optional<br>Add 'unclear' to enum"]

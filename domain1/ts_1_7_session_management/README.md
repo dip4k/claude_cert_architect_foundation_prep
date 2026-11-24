@@ -35,23 +35,43 @@ Work spans days. On Monday Claude read `db/conn.py` and saw a pool size of 5. On
 
 ## 📖 Concepts Explained
 
-### 1. Resume (`--resume <session-name>`)
-Use it when earlier tool results are still true. If a few files changed, **say so**. In [main.py](main.py), `SessionManager.resume(name, changed_files=[...])` appends a user message that lists the changed files and asks the session to re-read them before relying on earlier output. With no changes, it adds nothing.
+### 1. The Context Stale-State Problem
+Large engineering workflows do not happen in a single, instantaneous API turn. Real-world tasks span days, multiple git branches, and team collaboration.
+Consider this failure sequence:
+1. On Monday, Claude Code explores a codebase and reads `db/connection.py`, noting that the database connection pool size is 5.
+2. On Tuesday, a team engineer refactors the database layer, migrating from synchronous SQLAlchemy to async asyncpg, renaming connection parameters, and moving pooling logic into `config/database.py`.
+3. On Wednesday, you return to your terminal and resume Monday's session.
+4. If you simply resume without notifying the session, **Claude still believes `db/connection.py` exists in its old state**. When instructed to *"add connection pooling retry logic"*, Claude emits surgical `Edit` calls targeting lines and symbols that no longer exist on disk, producing corrupted patches, hallucinated imports, or catastrophic build failures.
 
-### 2. Fork (`fork_session`)
-Use it to compare approaches. Branch A and Branch B both start from the same analysis. Edits in A never leak into B. In [main.py](main.py), `SessionState.fork` deep-copies the messages and records the parent session id, so the parent and each fork stay independent.
+In conversational agents, **past tool outputs in conversation history are frozen snapshots of time**. When reality moves, those snapshots become toxic misinformation.
 
-### 3. Fresh session with a structured summary
-Use it when many tool results are stale, for example after a big merge. Write down what is still **verified** (decisions, confirmed facts, what changed), then start a new session with that summary and the new instruction. `SessionManager.resume_with_injected_summary` does this: the new session contains only the summary and the current task, never the old stale tool output.
+### 2. The Three State Management Strategies Compared
 
-### 4. How to choose
+| Strategy | Mechanics | Best Used When | Architectural Trade-Off |
+|---|---|---|---|
+| **Deterministic Resume (`--resume <name>`)** | Restores the exact prior conversation history, system prompt, and tool results without alteration. | Short breaks (hours/overnight) where the filesystem and external state are **identical**. | Fast and zero-context-overhead, but fatal if underlying files changed. |
+| **Differential Resume with Changed-Files Notice** | Resumes the conversation history but immediately injects a synthetic user turn listing specific modified files. | A small, localized set of files (1–3 files) were touched. | Preserves architectural reasoning while explicitly instructing Claude to invalidate cached file reads. |
+| **Session Forking (`fork_session`)** | Deep-copies the existing conversation history into two independent branches (Branch A and Branch B) sharing an identical lineage root. | Exploring alternative architectural implementations (e.g., comparing Prisma vs Asyncpg) from a common analysis baseline. | Prevents cross-contamination between experimental branches. Changes in Fork A never leak into Fork B. |
+| **Fresh Session with Structured Summary Manifest** | Discards raw transcripts and stale tool outputs entirely. Starts a pristine session initialized with an immutable Markdown summary of verified decisions. | Large upstream git merges, significant time gaps, or major refactors where 80%+ of prior tool outputs are stale. | Eliminates token bloat and stale hallucinations; forces human/architect to explicitly curate the state of truth. |
 
-| Situation | Choose |
-|---|---|
-| Short break. Nothing changed | Resume |
-| A few files changed | Resume and name the changed files |
-| Compare two designs from one analysis | Fork |
-| Large changes or a long gap. Results stale | New session with a structured summary |
+### 3. Deep-Dive: When to Fork vs. When to Summarize
+A classic exam dilemma tests the boundary between `fork_session` and a fresh session with an injected summary:
+- **Choose `fork_session`** when you have completed a time-consuming baseline analysis (e.g., spending 30 turns mapping AST dependencies) and now need to implement two competing approaches to compare benchmarks. The baseline analysis remains 100% valid for both branches.
+- **Choose Fresh Session with Structured Summary** when the working tree has drifted. Resuming a 50-turn conversation when 40 upstream commits were merged floods the context with thousands of tokens of obsolete code snippets. The correct pattern is to extract verified architectural decisions into a Markdown summary:
+  ```markdown
+  # Architecture Migration State Manifest
+  - **Decision**: Migrate to asyncpg connection pool.
+  - **Confirmed Facts**: 45 legacy sync models identified in `models/legacy/`.
+  - **Modifications**: `db/connection.py` deleted; pool config moved to `config/database.py`.
+  - **Current Directive**: Implement async health-check endpoint.
+  ```
+  Starting a fresh session with this concise summary cuts context usage by 85% while guaranteeing zero hallucinated legacy dependencies.
+
+### 4. Implementation in This Repository
+In [main.py](main.py), the `SessionManager` class implements these exact state transitions:
+- `SessionManager.resume(name, changed_files=[...])` inspects the delta list. If files changed, it automatically appends a targeted invalidation prompt instructing the agent to re-read those specific files before executing edits.
+- `SessionState.fork(new_name)` performs a deep copy of the message history and links the child session to the parent session UUID.
+- `SessionManager.resume_with_injected_summary(name, summary, new_instruction)` purges obsolete conversation turns, seeding the new context with the verified summary and current directive.
 
 ---
 
@@ -84,6 +104,10 @@ Each choice matches how much of the old context is still true.
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Base["Baseline session<br>(analysis done)"] --> Choice{"What changed?"}
 

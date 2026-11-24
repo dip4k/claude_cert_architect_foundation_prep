@@ -102,6 +102,10 @@ none_deref        3 findings, 0 dismissed ->  0%  -> keep
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Extract["Extraction"] --> Validate{"Validate in code"}
     Validate -->|"valid"| Accept["Accept"]

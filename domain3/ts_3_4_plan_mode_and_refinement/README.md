@@ -65,6 +65,10 @@ The industry-standard production workflow combines both modes:
 ## Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Task["New task"] --> Size{"Large, multi-file,<br>or several designs?"}
     Size -->|"Yes"| Plan["Plan mode<br>Explore subagent investigates"]

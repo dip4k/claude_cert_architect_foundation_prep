@@ -75,6 +75,10 @@
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Coord["Coordinator<br>claude-sonnet-4-5<br>delegate_task, ask_user,<br>escalate_to_human"]
     Coord --> Search["Search agent<br>claude-haiku-4-5<br>web_search, load_doc,<br>extract_metadata"]

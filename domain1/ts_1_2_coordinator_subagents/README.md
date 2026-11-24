@@ -35,19 +35,43 @@ A single agent that searches, reads documents, and writes the report in one conv
 
 ## 📖 Concepts Explained
 
-### 1. How it works
+### 1. The Cognitive Mechanics of Multi-Agent Systems
+When an agent attempts to execute an entire research pipeline alone—formulating queries, navigating dozens of search results, reading complex documents, and writing an overarching synthesis—it experiences severe **attention saturation**. The prompt becomes cluttered with raw HTML snippets, navigational breadcrumbs, and abandoned dead-end queries. In transformer architectures, attention weights spread thinner as token counts grow (the "lost-in-the-middle" phenomenon), causing the model to forget its initial research objectives, conflate distinct sources, and produce shallow or hallucinated summaries.
 
-1. **Decompose broadly.** Split the request so all major areas are covered. A topic like "AI in creative industries" needs music, writing, film, design, and visual arts. Not only one of them.
-2. **Partition scope.** Give each subagent a different slice (a sub-topic, a date range, a source set). Overlap wastes tokens.
-3. **Select dynamically.** A simple lookup may need one subagent, or none. A broad research request needs several.
-4. **Isolate context.** A subagent gets its own system prompt, its task inputs, and its tools. Nothing else. If subagent B needs A's findings, the coordinator copies them into B's prompt.
-5. **Refine.** Ask a synthesis step what is missing. If gaps exist, send targeted follow-up tasks, then synthesise again.
-6. **Return.** Only after coverage is acceptable does the coordinator answer the user.
+Decomposing the problem into specialized subagents solves this cognitive bottleneck:
+- **Focused Attention Span**: Each subagent performs one task with a pristine context window containing only the facts necessary for its specific assignment.
+- **Cognitive Specialization**: A search agent has web-browsing tools and instructions optimized for retrieval; an analysis agent has file-parsing tools; a synthesis agent has strict citation and conflict-detection instructions.
+- **Linear Token Economics**: By isolating exploration within ephemeral subagent contexts and passing only distilled findings back to the coordinator, the primary conversation window grows linearly rather than quadratically.
 
-### 2. In this repo
-[main.py](main.py) exposes three coordinator tools: `delegate_web_search`, `delegate_doc_analysis`, `evaluate_synthesis`. Each one calls a local subagent class (`WebSearchSubagent`, `DocumentAnalysisSubagent`, `SynthesisSubagent`) that receives only its arguments. `MultiAgentCoordinator.dispatch_tool` is the single route for every call, and `accumulated_findings` holds the results. `SynthesisSubagent` returns `coverage_sufficient` and `missing_topics`, which drive the refinement loop. The Agent SDK `Task` tool version of spawning is in [TS 1.3](../ts_1_3_subagent_invocation_spawning/README.md).
+### 2. Multi-Agent Topologies: Why Hub-and-Spoke Wins
+In multi-agent architecture design, three primary topological patterns emerge:
 
-`max_turns=5` is a **safety cap**. The loop ends on `stop_reason == "end_turn"`. Other stop reasons are handled explicitly, and unknown ones raise `LoopStopped`.
+| Topology | Mechanics | Strengths | Fatal Flaws (Exam Anti-Patterns) |
+|---|---|---|---|
+| **Monolithic Single-Agent** | One agent executes every tool call sequentially in a single conversation history. | Simple to implement, zero coordination overhead. | Suffers from context saturation, attention dilution, quadratic token costs, and high latency. |
+| **Peer-to-Peer Mesh** | Subagents communicate directly with one another without centralized routing. | Decentralized, flexible routing. | **Completely unauditable**. Subagents enter recursive request loops, token spend spirals out of control, and errors cascade unchecked. |
+| **Hub-and-Spoke (Standard)** | A central **coordinator (hub)** manages task decomposition, assigns isolated work slices to **subagents (spokes)**, audits coverage, and synthesizes output. | Central audit trail, strict cost bounds, clear accountability, and deterministic gap remediation. | Coordinator becomes a single point of failure if decomposition is overly narrow. |
+
+> [!IMPORTANT]
+> **Core Architectural Invariant**: In the Claude Agent SDK and CCAR-F syllabus, **all inter-agent communication must flow through the central coordinator**. Subagents must never call peer subagents directly, nor share mutable global memory.
+
+### 3. The 6-Step Orchestration Lifecycle
+Production multi-agent research systems execute a rigorous six-phase lifecycle:
+
+1. **Broad Decomposition**: The coordinator analyzes the user request and maps the required domain breadth. If the topic is *"The Impact of AI on Creative Industries"*, a comprehensive decomposition must encompass visual arts, literature, musical composition, and film production—not merely one prominent subcategory.
+2. **Scope Partitioning**: The coordinator assigns strictly non-overlapping slices to subagents (partitioned by domain, source set, or time horizon). Overlapping task assignments waste valuable inference tokens on redundant searches.
+3. **Dynamic Routing by Query Complexity**: Not every query justifies spawning a team of subagents. Simple factual lookups (*"What is the return policy window?"*) should be answered directly or via a single lightweight tool call. Broad, open-ended investigations trigger multi-agent fanning out.
+4. **Strict Context Isolation**: Subagents begin with an entirely clean slate. They receive their dedicated system prompt, task-specific parameters, and restricted toolset. They inherit **zero conversation history** from the coordinator or other subagents. If Subagent B requires facts discovered by Subagent A, the coordinator explicitly extracts, validates, and injects those facts into Subagent B's invocation prompt.
+5. **Iterative Refinement & Gap Auditing**: Rather than immediately presenting raw findings to the user, the coordinator invokes an evaluation step (`evaluate_synthesis`) to audit coverage against the initial topic blueprint. If a coverage gap is detected (e.g., missing data on music production), the coordinator dispatches targeted follow-up tasks to fill the void.
+6. **Unified Synthesis & Attribution**: Once coverage meets criteria, the coordinator compiles the structured findings into a cohesive narrative, preserving citations, dates, and conflicting perspectives.
+
+### 4. Implementation in This Repository
+In [main.py](main.py), the `MultiAgentCoordinator` encapsulates this architecture:
+- Three coordinator tools are declared: `delegate_web_search`, `delegate_doc_analysis`, and `evaluate_synthesis`.
+- Each delegation instantiates an isolated subagent class (`WebSearchSubagent`, `DocumentAnalysisSubagent`, `SynthesisSubagent`) receiving only its designated query parameters.
+- `MultiAgentCoordinator.dispatch_tool` serves as the centralized, audited gateway for all tool invocations, storing structured results in `accumulated_findings`.
+- `SynthesisSubagent` returns deterministic evaluation metadata (`coverage_sufficient: bool` and `missing_topics: list[str]`), driving the coordinator's automated refinement loop.
+- `max_turns=5` serves as an emergency safety cap; normal completion terminates deterministically when Claude emits `response.stop_reason == "end_turn"`.
 
 ---
 
@@ -83,6 +107,10 @@ The gap was found by an explicit check, then fixed by a **targeted** follow-up. 
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     User["User request"] --> Coord["Coordinator<br>(claude-sonnet-4-5)"]
     Coord --> Decide{"Query complexity<br>and scope"}

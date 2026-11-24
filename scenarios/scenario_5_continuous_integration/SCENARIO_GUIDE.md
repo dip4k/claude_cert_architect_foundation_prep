@@ -18,6 +18,10 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     PR["Pull Request Event"] --> Runner["Headless CI Runner<br>(GitHub Actions / GitLab)"]
     Runner --> Exec["Headless CLI Launch<br>claude -p --bare<br>--output-format json<br>--json-schema schema.json"]
@@ -61,6 +65,10 @@ Follow this decision sequence on the CCAR-F exam:
    * Step 2 (Execute): Resumes the approved plan using `claude --resume <session_id>`.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q{"What is the<br>CI requirement?"} -->|"PR gate blocks merge"| RealTime["Use Real-Time API with<br>-p and exit codes"]
     Q -->|"Overnight audit"| BatchAPI["Use Message Batches API<br>(50% token discount)"]

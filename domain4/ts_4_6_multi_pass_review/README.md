@@ -97,6 +97,10 @@ In [main.py](main.py) the mock client scripts the model replies, so the tests pr
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Gen["Generator session<br>code + its reasoning"] --> Code["Code artifacts only"]
     Code --> A["Pass 1: auth_api.py<br>fresh instance"]

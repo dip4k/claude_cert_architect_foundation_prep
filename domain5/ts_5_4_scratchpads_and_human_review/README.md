@@ -93,6 +93,10 @@ Inside Claude Code, developers running long interactive exploration sessions can
 ## Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Main["Main session / coordinator"] --> P1["Phase 1: Explore subagents"]
     P1 --> S1["Compact summaries<br>(files, classes, lines)"]

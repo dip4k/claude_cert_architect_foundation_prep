@@ -18,11 +18,15 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Dev["Developer Prompt"] --> Scope{"Scope & Ambiguity Check<br>How many files touched?"}
 
     Scope -->|"1 File, Clear Bug"| Direct["Direct Execution Mode<br>(Edit tool with unique anchor)"]
-    Scope -->|">= 3 Files or Schema"| Plan["Plan Mode (Shift+Tab)<br>(Read-only exploration)"]
+    Scope -->|"3+ Files or Schema"| Plan["Plan Mode (Shift+Tab)<br>(Read-only exploration)"]
     Scope -->|"Ambiguous Design"| Interview["The Interview Pattern<br>(Clarify trade-offs first)"]
 
     Interview --> Direct
@@ -34,7 +38,7 @@ flowchart TD
     Review -->|"Changes Requested"| Plan
 
     Direct --> Ctx["Dynamic Context Assembly"]
-    Ctx --> Root["Root CLAUDE.md<br>(Universal commands, <200 lines)"]
+    Ctx --> Root["Root CLAUDE.md<br>(Universal commands, under 200 lines)"]
     Ctx --> Rules[".claude/rules/*.md<br>(Path-scoped glob rules)"]
     Ctx --> Skills[".claude/skills/<br>(On-demand, context: fork)"]
 ```
@@ -61,6 +65,10 @@ Follow this decision sequence on the CCAR-F exam:
    * Run the skill or subagent with `context: fork` so intermediate file dumps stay in an isolated context and return only an executive summary to the main thread.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q{"What is the<br>task scenario?"} -->|"Rule applies only to infra/**"| PathRule["Create path-scoped rule<br>in .claude/rules/"]
     Q -->|"Shared team command"| ProjCmd["Commit command to<br>.claude/commands/"]

@@ -37,6 +37,10 @@ Some folder names mix topics. **Folder names stay unchanged** (tests import them
 ## Map of Ideas
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart LR
     subgraph Context ["Keep context accurate"]
         T51["TS 5.1<br>Case facts + trimming"]
@@ -99,6 +103,10 @@ flowchart LR
 ## Rapid Decision Matrix
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q1["Customer asks for a human?"] -->|"Yes"| A1["Escalate now (5.2)"]
     Q1 -->|"No"| Q2["Several customer matches?"]

@@ -81,6 +81,10 @@ Engineering teams frequently attempt to solve escalation calibration by adding i
 ## Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Msg["Customer message"] --> Human{"Asks for a human?"}
     Human -->|"Yes"| Esc1["Escalate now<br>(no investigation first)"]

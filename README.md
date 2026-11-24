@@ -1,11 +1,11 @@
 # Claude Certified Architect – Foundations (CCAR-F) Practice Repository
 
-[![Tests](https://img.shields.io/badge/pytest-115%20passed%20offline-brightgreen)](tests/)
+[![Tests](https://img.shields.io/badge/pytest-247%20passed%20offline-brightgreen)](tests/)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 [![Package Manager](https://img.shields.io/badge/uv-fast%20sync-purple)](https://astral.sh/uv)
 [![Exam](https://img.shields.io/badge/Claude%20Certified%20Architect-Foundations%20(720%2F1000)-orange)](EXAM_BLUEPRINT.md)
 
-Comprehensive hands-on practice repository for the **Claude Certified Architect – Foundations Certification** (passing score 720/1000). Features end-to-end implementations for **100% of the 5 Exam Domains (all 27 Task Statements)**, the **6 Official Production Scenarios**, and a **115-test zero-token offline test suite**.
+Comprehensive hands-on practice repository for the **Claude Certified Architect – Foundations Certification** (passing score 720/1000). Features end-to-end implementations for **100% of the 5 Exam Domains (all 27 Task Statements)**, the **6 Official Production Scenarios**, and a **247-test zero-token offline test suite**.
 
 ---
 
@@ -13,7 +13,7 @@ Comprehensive hands-on practice repository for the **Claude Certified Architect 
 
 To protect API budgets and prevent unintended token spend:
 - ❌ **Automated Execution Prohibited**: Never execute scripts or tools that make automated live Anthropic API calls.
-- ✅ **100% Zero-Token Offline Testing**: All 115 unit tests (`pytest tests/ scenarios/`) run entirely offline using deterministic mocks (`lib.mock_claude`).
+- ✅ **100% Zero-Token Offline Testing**: All 247 unit tests (`pytest tests/ scenarios/`) run entirely offline using deterministic mocks (`lib.mock_claude`).
 - 👤 **Manual Live Practice Only**: Candidates execute live scripts manually in their WSL Ubuntu terminal when testing with real API credentials:
   ```bash
   uv run domain1/ts_1_1_multi_tool_agent_loop/main.py
@@ -30,7 +30,7 @@ See [EXECUTION_POLICY.md](EXECUTION_POLICY.md) for complete safety guidelines.
 # 1. Install dependencies
 uv sync
 
-# 2. Run the complete offline unit test suite (115 tests, zero API tokens)
+# 2. Run the complete offline unit test suite (247 tests, zero API tokens)
 uv run pytest
 
 # 3. Format and lint checks
@@ -52,8 +52,12 @@ npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server
 ## 🏛️ Exam Content Domains (27 Task Statements)
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
-    CCAR["Claude Certified Architect<br>Foundations (CCAR-F)<br>Score: 720/1000 | 60 Qs | 120 Mins"]
+    CCAR["Claude Certified Architect<br>Foundations (CCAR-F)<br>Score: 720/1000 · 60 Qs · 120 Mins"]
     
     subgraph Core ["Core Architecture & Tooling"]
         D1["Domain 1: Agentic Loops (27%)<br>• stop_reason == 'end_turn'<br>• Hub-and-spoke topology<br>• SDK hooks"]
@@ -166,7 +170,7 @@ Dedicated hands-on sandbox for learning Anthropic API features and the **Model C
 ## 📚 Master Study & Exam Preparation References
 
 - 📋 [**Exam Blueprint (`EXAM_BLUEPRINT.md`)**](EXAM_BLUEPRINT.md): 5-domain syllabus, exam weighting, and 27 task statements matrix.
-- ⚡ [**Exam Refresher (`EXAM_REFRESHER.md`)**](EXAM_REFRESHER.md): The 10 Golden Architectural Rules and domain decision matrices.
+- ⚡ [**Exam Refresher (`EXAM_REFRESHER.md`)**](EXAM_REFRESHER.md): The 15 Golden Architectural Rules and domain decision matrices.
 - 🎯 [**Master Scenario Practice (`scenarios/MASTER_SCENARIO_PRACTICE.md`)**](scenarios/MASTER_SCENARIO_PRACTICE.md): 6-scenario decision trees, trade-offs, and 60-question diagnostic exam.
 - 📖 [**Official Scenarios Guide (`scenarios/README.md`)**](scenarios/README.md): Deep-dive walkthrough of the 6 production scenarios.
 - 🛡️ [**Execution Policy (`EXECUTION_POLICY.md`)**](EXECUTION_POLICY.md): Detailed API safety and zero-token testing standards.

@@ -18,6 +18,10 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     User["User Research Objective"] --> Coord["Coordinator Agent<br>(claude-sonnet-4-5)"]
     Coord --> Decomp{"Decomposition Check<br>All objectives mapped?"}
@@ -52,6 +56,10 @@ Follow this decision sequence on the CCAR-F exam:
 8. **Extended Thinking Continuity**: When extended thinking is enabled on the coordinator, the assistant's thinking blocks must be preserved with their cryptographic signatures across multi-turn delegation loops.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q{"What issue does the<br>scenario describe?"} -->|"Dropped 2 of 4 topics"| Decomp["Fix decomposition<br>Add coverage check gate"]
     Q -->|"Subagent lacks context"| CtxPass["Pass explicit context in<br>delegation prompt payload"]

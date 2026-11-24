@@ -18,12 +18,16 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     User["Customer Message"] --> Cache["1. Prompt Caching Prefix<br>(Static Tools + Rules Cached)"]
     Cache --> Loop["2. Core Agent Loop<br>(Evaluates stop_reason)"]
 
     Loop -->|"stop_reason: end_turn"| Reply["Reply to Customer"]
-    Loop -->|"stop_reason: tool_use"| Gate{"3. Programmatic Gate<br>Identity verified?<br>Refund <= \$500?"}
+    Loop -->|"stop_reason: tool_use"| Gate{"3. Programmatic Gate<br>Identity verified?<br>Refund up to \$500?"}
 
     Gate -->|"Blocked by Policy"| Err["Return Structured Error<br>(isError: true, isRetryable: false)"]
     Gate -->|"Policy Allowed"| Exec["4. Execute MCP Tool<br>(lookup_order / process_refund)"]
@@ -50,6 +54,10 @@ When evaluating an exam question for Customer Support, follow this decision sequ
 5. **Multiple matches found?** If searching "Alex Kim" returns two records, prompt the customer for an unambiguous secondary identifier (phone or email). Never guess or default to the most recent record.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q{"What does the<br>question describe?"} -->|"Rule must hold 100%"| Code["Enforce in code via hook/gate"]
     Q -->|"Agent picks wrong tool"| Desc["Expand and clarify<br>tool descriptions first"]

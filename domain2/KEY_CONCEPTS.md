@@ -18,6 +18,10 @@
 | 2.5 | [Guide](ts_2_5_builtin_tools_usage/README.md) | Progressive discovery (`Glob` → `Grep` → `Read`), surgical `Edit` fallback to `Read + Write` | Reading 300 files upfront, using `Grep` for file paths, or repeating failing non-unique edits |
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart LR
     T1["2.1 Descriptions<br>& Boundaries"] --> T2["2.2 Structured<br>Error Contracts"]
     T2 --> T3["2.3 Scoped Tools<br>& tool_choice"]
@@ -32,6 +36,10 @@ flowchart LR
 The contract between an autoregressive model and an execution environment relies entirely on the precision of tool schemas. Models do not have intuitive knowledge of your backend database schema, API rate limits, or transactional boundaries. They reason solely over the textual definitions exposed in tool payloads.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     subgraph Client ["Client Execution Layer"]
         Prompt["System Prompt & Context"]
@@ -192,6 +200,10 @@ As the number of tools declared in an API request increases, model performance d
 - **The Golden Rule**: Constrain every agent to **4–5 specialized tools** strictly necessary for its defined role.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     subgraph Monolith ["Anti-Pattern: Monolithic Agent (18 Tools)"]
         A1["Coordinator with 18 Tools<br>Context Overhead: 5,500 tokens/turn<br>Tool Selection Accuracy: ~78%"]
@@ -302,6 +314,10 @@ When Claude Code or an Agent SDK client initializes, it discovers tools from **a
 MCP differentiates between **Tools** (executable functions that mutate state or run dynamic queries) and **Resources** (read-only binary or text documents that expose contextual data).
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart LR
     subgraph ActiveExecution ["Executable MCP Tools"]
         T1["execute_query(sql)"]
@@ -340,6 +356,10 @@ Claude Code provides specialized built-in primitives for local software developm
 Reading all files in an unfamiliar codebase upfront instantly floods the context window with 100k+ tokens, triggering context degradation before any work begins. Engineers must follow the **Progressive Discovery Funnel**:
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Step1["1. Locate Paths: Glob('**/*auth*')"] --> Step2["2. Find Symbol Usages: Grep('def verify_jwt')"]
     Step2 --> Step3["3. Inspect Critical File: Read('src/auth/jwt.py', lines=1-80)"]
@@ -355,6 +375,10 @@ flowchart TD
 The `Edit` tool requires an exact, unique character-for-character match for `old_string`. If `old_string` occurs multiple times in the target file, `Edit` aborts to prevent unintended corruption.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     E1["Attempt Surgical Edit"] --> Check{"Unique match found?"}
     Check -->|"Yes: Exactly 1 match"| Success["Edit applied cleanly"]
@@ -432,6 +456,10 @@ When tracing how a function is used across an enterprise application (e.g. `char
 ### 🧠 Domain 2 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q1["1. Agent calls wrong tool among similar options?"] -->|"Yes"| A1["Expand tool descriptions with<br>negative boundaries & formats"]
     Q1 -->|"No"| Q2["2. Communicating tool failure to Claude?"]

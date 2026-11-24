@@ -18,6 +18,10 @@
 ## 2. Architecture Diagram
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Dev["Developer Query / Task"] --> Agent["Productivity Agent"]
 
@@ -60,6 +64,10 @@ Follow this decision sequence on the CCAR-F exam:
 5. **Least Privilege**: Read-only investigation agents must NEVER be provisioned with `Write`, `Edit`, or unrestricted `Bash` tools.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q{"What is the<br>task goal?"} -->|"Locate all test files"| GlobTool["Use Glob with<br>glob path pattern"]
     Q -->|"Find where auth is called"| GrepTool["Use Grep with<br>regex symbol search"]

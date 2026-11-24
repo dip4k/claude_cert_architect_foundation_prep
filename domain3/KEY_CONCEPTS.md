@@ -19,6 +19,10 @@
 | 3.6 | [Guide](ts_3_6_cicd_pipeline_automation/README.md) | Non-interactive `-p`, `--output-format json`, `--json-schema`, independent review session | Inventing imaginary flags like `CLAUDE_HEADLESS` or `--batch`, or using author instance |
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart LR
     T1["3.1 CLAUDE.md<br>Hierarchy"] --> T2["3.2 Commands<br>& Skills"]
     T2 --> T3["3.3 Path-Scoped<br>Rules"]
@@ -34,6 +38,10 @@ flowchart LR
 Claude Code operates within a layered context hierarchy. Unlike standard conversational chat, Claude Code automatically ingests repository memory, dynamically evaluates path-scoping rules, and executes developer skills. Understanding where configuration lives determines whether instructions apply to a single developer, the entire engineering organization, or specific source files.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     subgraph Storage ["Configuration & Rule Precedence Layer"]
         UserScope["User Scope: ~/.claude/CLAUDE.md<br>(Personal; NOT in Git)"]
@@ -210,6 +218,10 @@ Claude Code supports two fundamental operational modalities:
 - **Direct Execution Mode**: Immediate, iterative file modification and tool execution.
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Task["Incoming Engineering Task"] --> Scope{"Scope & Blast Radius?"}
     
@@ -398,6 +410,10 @@ A fundamental principle of automated code verification:
 ### 🧠 Domain 3 Rapid Decision Matrix for Scenario Questions
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Q1["1. Sharing commands/rules with team?"] -->|"Yes"| A1["Commit to .claude/commands/ or<br>.claude/rules/ in Git repo"]
     Q1 -->|"No"| Q2["2. Convention spans multiple folders?"]

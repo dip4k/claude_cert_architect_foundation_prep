@@ -73,6 +73,10 @@
 ## 🏗️ Architecture
 
 ```mermaid
+---
+config:
+  htmlLabels: false
+---
 flowchart TD
     Start["Need to change code"] --> Find["Grep for entry points<br>or Glob for paths"]
     Find --> Read["Read the file<br>(imports first)"]
