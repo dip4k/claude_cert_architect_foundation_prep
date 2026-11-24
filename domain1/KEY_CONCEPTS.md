@@ -25,7 +25,7 @@
 
 ```mermaid
 flowchart LR
-    subgraph Single["Single-Agent Core"]
+    subgraph Single ["Single-Agent Core"]
         direction TB
         S1["TS 1.1:<br>stop_reason Lifecycle"]
         S2["TS 1.4:<br>Programmatic Gates"]
@@ -33,7 +33,7 @@ flowchart LR
         S4["TS 1.7:<br>Session Resumption"]
     end
 
-    subgraph Multi["Multi-Agent Orchestration"]
+    subgraph Multi ["Multi-Agent Orchestration"]
         direction TB
         M1["TS 1.2:<br>Hub-and-Spoke Topology"]
         M2["TS 1.3:<br>Parallel Task Spawning"]
@@ -176,9 +176,9 @@ In enterprise architectures, multi-agent systems must follow a **Hub-and-Spoke**
 ```mermaid
 flowchart TD
     Coord["Coordinator Agent<br>(State & Routing Hub)"]
-    Coord -->|Prompt Injection| Sub1["Web Search<br>Subagent<br>(Context: 0K)"]
-    Coord -->|Prompt Injection| Sub2["Doc Extraction<br>Subagent<br>(Context: 0K)"]
-    Coord -->|Prompt Injection| Sub3["Fact Checker<br>Subagent<br>(Context: 0K)"]
+    Coord -->|"Prompt Injection"| Sub1["Web Search<br>Subagent<br>(Context: 0K)"]
+    Coord -->|"Prompt Injection"| Sub2["Doc Extraction<br>Subagent<br>(Context: 0K)"]
+    Coord -->|"Prompt Injection"| Sub3["Fact Checker<br>Subagent<br>(Context: 0K)"]
 ```
 
 #### 2. The Context Isolation Contract
@@ -336,8 +336,8 @@ The Claude Agent SDK provides lifecycle hooks allowing developers to execute arb
 ```mermaid
 flowchart TD
     Emit["Claude Emits tool_use"] --> Pre{"Policy Check Passed?"}
-    Pre -->|No: Violation| Abort["Abort & Return Error"]
-    Pre -->|Yes: Allowed| Exec["Execute Tool<br>(API / DB Call)"]
+    Pre -->|"No: Violation"| Abort["Abort & Return Error"]
+    Pre -->|"Yes: Allowed"| Exec["Execute Tool<br>(API / DB Call)"]
     Exec --> Post["PostToolUse Hook<br>(Normalize, Trim, Redact PII)"]
     Post --> Done["Append Clean tool_result<br>to Context"]
 ```
@@ -380,7 +380,7 @@ The proven architectural pattern for complex multi-file tasks is **Two-Pass Prom
 flowchart TD
     PR["Multi-File PR (15+ Files)"] --> Decomp["Decompose into<br>Per-File Tasks"]
     
-    subgraph Pass1["Pass 1: Isolated Local Reviews"]
+    subgraph Pass1 ["Pass 1: Isolated Local Reviews"]
         Decomp --> F1["File 1 Reviewer"]
         Decomp --> F2["File 2 Reviewer"]
         Decomp --> Fn["File N Reviewer"]
@@ -391,13 +391,13 @@ flowchart TD
     
     M1 & M2 & Mn --> Agg["Aggregate Findings<br>+ Signatures"]
     
-    subgraph Pass2["Pass 2: System Integration Review"]
+    subgraph Pass2 ["Pass 2: System Integration Review"]
         Agg --> Reviewer["Integration Reviewer"]
         Reviewer --> Gate{"Contract Violations?"}
     end
     
-    Gate -->|Yes| Fail["Block Merge &<br>Report Findings"]
-    Gate -->|No| Pass["Approve Merge Gate"]
+    Gate -->|"Yes"| Fail["Block Merge &<br>Report Findings"]
+    Gate -->|"No"| Pass["Approve Merge Gate"]
 ```
 
 | Review Pass | Execution Scope | Primary Invariants Audited | Context & Token Strategy | Typical Defects Caught |
@@ -692,14 +692,14 @@ Option B is correct. In the Claude Agent SDK lifecycle (TS 1.5):
 
 ```mermaid
 flowchart TD
-    Q1["1. Ending an agentic loop?"] -->|Yes| A1["stop_reason == 'end_turn'<br>Never parse text or regex"]
-    Q1 -->|No| Q2["2. Enforcing business rules?"]
-    Q2 -->|Yes| A2["Programmatic Gate / PreToolUse<br>Never rely on prompts alone"]
-    Q2 -->|No| Q3["3. Spawning subagents?"]
-    Q3 -->|Yes| A3["Multiple Task Calls in Turn 1<br>Concurrent parallel fan-out"]
-    Q3 -->|No| Q4["4. Multi-file code review?"]
-    Q4 -->|Yes| A4["Two-Pass Prompt Chaining<br>Pass 1: Local / Pass 2: Integration"]
-    Q4 -->|No| A5["Fresh Session + Summary<br>Discard stale context on rebase"]
+    Q1["1. Ending an agentic loop?"] -->|"Yes"| A1["stop_reason == 'end_turn'<br>Never parse text or regex"]
+    Q1 -->|"No"| Q2["2. Enforcing business rules?"]
+    Q2 -->|"Yes"| A2["Programmatic Gate / PreToolUse<br>Never rely on prompts alone"]
+    Q2 -->|"No"| Q3["3. Spawning subagents?"]
+    Q3 -->|"Yes"| A3["Multiple Task Calls in Turn 1<br>Concurrent parallel fan-out"]
+    Q3 -->|"No"| Q4["4. Multi-file code review?"]
+    Q4 -->|"Yes"| A4["Two-Pass Prompt Chaining<br>Pass 1: Local / Pass 2: Integration"]
+    Q4 -->|"No"| A5["Fresh Session + Summary<br>Discard stale context on rebase"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

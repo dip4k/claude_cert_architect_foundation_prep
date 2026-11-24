@@ -31,26 +31,27 @@
 
 ## Concepts Explained
 
-### 1. Escalation triggers
-| Trigger | What the agent does |
-|---|---|
-| Customer explicitly asks for a human | Escalate **immediately**. No investigation first. |
-| Policy gap or exception (e.g. competitor price match when policy covers our own site only) | Escalate. Never invent policy. |
-| Agent cannot make progress | Escalate with a clear handoff summary. |
+### 1. Three Legitimate Triggers for Human Escalation
+In autonomous customer operations, an agent should escalate to a human representative under exactly three deterministic conditions:
+1. **Explicit Customer Demand**: The user explicitly requests a human agent or supervisor (e.g., *"Transfer me to a person"*).
+2. **Policy Gaps & Uncovered Exceptions**: The customer's request is not addressed by existing corporate policy, or requires a discretionary exception (e.g., a customer asks to price-match an unlisted foreign competitor when the corporate manual only covers domestic brick-and-mortar stores). Autonomous agents must **never fabricate corporate policy**.
+3. **Inability to Make Meaningful Progress**: The agent has attempted two consecutive tool lookups or troubleshooting steps without converging on a resolution.
 
-### 2. Frustration is not a trigger
-If the issue is within the agent's capability, **acknowledge the frustration and offer a resolution**. If the customer then repeats that they want a human, escalate.
+### 2. Explicit Human Demands vs Customer Frustration
+A core distinction frequently tested on the CCAR-F certification exam:
+- **Explicit Demand for a Human**: When a user states *"I want to speak with a human right now"*, the agent must **escalate immediately without friction**. Forcing the customer to answer further diagnostic questions or attempting to persuade them to stay with the bot directly escalates customer anger and destroys satisfaction scores.
+- **Customer Frustration Alone**: When a user expresses strong negative emotion (e.g. *"This shipping delay is completely ridiculous and unacceptable!"*) but does *not* demand a human, the agent should **acknowledge the frustration with empathy and offer an autonomous resolution** if the task is within its capabilities (e.g. checking tracking status or issuing a late-delivery credit). If the user subsequently reiterates their preference for a person, escalate immediately.
 
-### 3. Ambiguous customer matches
-A lookup returns several customers. Ask for **more identifiers** (email, order ID, account number). Never choose by recency, location or "first result".
+### 3. Resolving Ambiguous Identity Matches
+When `get_customer` or `lookup_order` returns multiple candidate records (e.g. searching for `"John Smith"` yields four accounts with active subscriptions):
+- **The Anti-Pattern**: Selecting the "most recent" account, the highest-tier customer, or the first record in the database list based on heuristics. This frequently compromises user privacy and applies changes to the wrong customer.
+- **The Architectural Standard**: The agent must pause and **ask the customer for additional clarifying identifiers** (e.g., *"We found multiple accounts under that name. Could you please provide your account number, billing postal code, or registered email address?"*).
 
-### 4. Unreliable proxies
-- **Sentiment** does not match complexity. A calm customer can have a serious problem.
-- **Self-reported confidence** is often high when the model is wrong.
-- Neither is a good escalation rule.
-
-### 5. Fix with explicit criteria and few-shot examples
-Write the criteria in the prompt. Add examples that show the boundary, such as "standard damage replacement: resolve" and "competitor price match: escalate".
+### 4. Why Sentiment and Self-Reported Confidence Fail as Escalation Proxies
+Engineering teams frequently attempt to solve escalation calibration by adding infrastructure:
+- **Sentiment Analysis Classifiers**: Sentiment measures emotion, not problem complexity. A perfectly calm, polite customer may present an intricate, unprecedented enterprise contract dispute requiring human legal review; an enraged customer may simply need a replacement tracking link that the agent can deliver in 2 seconds.
+- **LLM Self-Reported Confidence**: Asking an autoregressive model to score its own confidence (1–10) before answering is notoriously uncalibrated. Models are frequently hyper-confident on subtle edge cases where they hallucinate.
+- **The Solution**: Add explicit categorical escalation criteria directly to the system prompt, supported by 4–5 targeted few-shot examples demonstrating exact decision boundaries.
 
 ---
 

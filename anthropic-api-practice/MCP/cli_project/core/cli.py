@@ -31,7 +31,8 @@ class CommandAutoSuggest(AutoSuggest):
 
             if cmd in self.prompt_dict:
                 prompt = self.prompt_dict[cmd]
-                return Suggestion(f" {prompt.arguments[0].name}")
+                if getattr(prompt, "arguments", None):
+                    return Suggestion(f" {prompt.arguments[0].name}")
 
         return None
 

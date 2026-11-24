@@ -34,7 +34,6 @@ class Claude:
         self,
         messages,
         system=None,
-        temperature=1.0,
         stop_sequences=[],
         tools=None,
         thinking=False,
@@ -44,7 +43,6 @@ class Claude:
             "model": self.model,
             "max_tokens": 8000,
             "messages": messages,
-            "temperature": temperature,
             "stop_sequences": stop_sequences,
         }
 

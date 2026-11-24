@@ -16,7 +16,9 @@ class ToolManager:
                 {
                     "name": t.name,
                     "description": t.description,
-                    "input_schema": t.inputSchema,
+                    "input_schema": getattr(
+                        t, "input_schema", getattr(t, "inputSchema", None)
+                    ),
                 }
                 for t in tool_models
             ]
@@ -85,12 +87,19 @@ class ToolManager:
                     item.text for item in items if isinstance(item, TextContent)
                 ]
                 content_json = json.dumps(content_list)
+                is_err = (
+                    getattr(
+                        tool_output,
+                        "is_error",
+                        getattr(tool_output, "isError", False),
+                    )
+                    if tool_output
+                    else False
+                )
                 tool_result_part = cls._build_tool_result_part(
                     tool_use_id,
                     content_json,
-                    "error"
-                    if tool_output and tool_output.isError
-                    else "success",
+                    "error" if is_err else "success",
                 )
             except Exception as e:
                 error_message = f"Error executing tool '{tool_name}': {e}"
@@ -98,9 +107,7 @@ class ToolManager:
                 tool_result_part = cls._build_tool_result_part(
                     tool_use_id,
                     json.dumps({"error": error_message}),
-                    "error"
-                    if tool_output and tool_output.isError
-                    else "success",
+                    "error",
                 )
 
             tool_result_blocks.append(tool_result_part)

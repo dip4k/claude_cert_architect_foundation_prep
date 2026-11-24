@@ -1,8 +1,13 @@
 from pydantic import Field
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("DocumentMCP", log_level="ERROR")
+    mcp = FastMCP("DocumentMCP", log_level="ERROR")
+except (ImportError, ModuleNotFoundError):
+    from mcp.server.mcpserver import MCPServer
+
+    mcp = MCPServer("DocumentMCP", log_level="ERROR")
 
 
 docs = {

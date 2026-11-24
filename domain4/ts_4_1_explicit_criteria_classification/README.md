@@ -27,22 +27,23 @@
 
 ## 📖 Concepts Explained
 
-### 1. Why it matters
-- Every false positive costs a developer a few minutes.
-- After a few weeks, developers stop reading the bot's comments.
-- A bot nobody reads also misses the real bug.
+### 1. The Human Dynamics of Alert Fatigue
+Automated review bots and AI evaluators do not fail in production because they lack intelligence; they fail because of **developer alert fatigue**. When an automated reviewer posts speculative comments or nitpicks variable names on pull requests, developers spend valuable engineering time reading and dismissing false alarms. Within two to three weeks, trust completely erodes: developers begin instinctively clicking "Resolve conversation" without reading the feedback. When the bot eventually discovers a catastrophic SQL injection or authentication bypass, the finding is ignored because it is buried in a wall of noise.
 
-### 2. How it works: four building blocks
-1. **Report categories**: behaviour bugs and security issues.
-2. **Skip categories**: minor style, and local patterns the team uses on purpose.
-3. **Severity levels with code examples**: so "HIGH" means the same thing every run.
-4. **Negative boundaries**: concrete things *not* to flag, such as `mock_` keys under `tests/`.
+The primary goal of prompt engineering in automated evaluation is therefore **precision optimization over recall greed**. High false-positive rates undermine developer confidence across all categories, including accurate ones.
 
-### 3. Managing a noisy category
-Suppose "speculative race condition" findings are dismissed 60% of the time.
-- **Do**: temporarily disable that category, rewrite its criteria with examples, test on labelled samples, then switch it back on.
-- **Do not**: ask Claude for a confidence number and filter below a threshold. Claude can be confident and wrong.
-- Keep a `detected_pattern` field on each finding so you can see which patterns get dismissed (see TS 4.4).
+### 2. Four Concrete Building Blocks of Precision Prompts
+To eliminate ambiguity, an evaluation prompt must establish four distinct, non-negotiable boundaries:
+1. **Explicit Report Categories**: Name the specific failure classes that must be surfaced (e.g. unhandled null pointer dereferences, off-by-one loop errors, missing transaction rollbacks, SQL/command injection).
+2. **Explicit Skip Categories**: Explicitly enumerate non-actionable issues to discard (e.g. variable naming conventions, line length formatting, import ordering, framework idioms).
+3. **Calibrated Severity Levels with Code Examples**: Define each severity tier (Critical, High, Medium, Low) using concrete 3-line code snippets rather than subjective adjectives. When an engineer and Claude both see what "CRITICAL" looks like in code, classification variance vanishes.
+4. **Negative Boundaries**: Define specific syntactic patterns that resemble vulnerabilities but are legitimately permitted by team design (e.g. dummy credentials matching `mock_*` inside test fixtures, or raw `print()` statements in CLI scripts).
+
+### 3. Remediation Strategy for High False-Positive Categories
+When production metrics show that a specific review category (e.g. "speculative race conditions") suffers a high dismissal rate (e.g. > 50% dismissed by developers), how should an architect respond?
+- **The Correct Architectural Action**: **Temporarily disable the noisy category completely**. Disabling the noisy category immediately halts developer trust erosion while engineering refines the prompt. The category is rewritten with explicit negative boundaries and few-shot examples, evaluated against a labeled benchmark, and re-introduced only when precision meets team thresholds.
+- **The Fatal Distractor**: Instructing Claude to *"be more conservative"* or *"only report findings with >90% confidence"*. Language models are notoriously poorly calibrated on open-ended subjective scales; an overconfident model will assign 95% confidence to a hallucinated issue, doing nothing to reduce false positives.
+- **Continuous Tracking via `detected_pattern`**: Every emitted finding should carry a structured metadata tag (e.g. `detected_pattern: "unindexed_foreign_key"`). When developers dismiss a comment in GitHub, telemetry correlates dismissal rates by pattern to identify which prompt rubrics need tuning.
 
 ---
 

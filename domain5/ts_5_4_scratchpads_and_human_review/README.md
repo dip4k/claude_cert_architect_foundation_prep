@@ -30,23 +30,37 @@
 
 ## Concepts Explained
 
-### 1. Context degradation
-In a long session the model reasons from a context full of old output. Early specifics fade. Answers become generic ("services usually have a repository layer") instead of exact ("`OrderService` in `billing/api.py`").
+### 1. The Context Degradation Phenomenon in Large Codebase Exploration
+When an autonomous agent explores a large enterprise codebase over an extended session (e.g. 40+ turns of reading files, grepping symbols, and inspecting logs), the model's effective attention degrades:
+- The context window becomes saturated with thousands of lines of intermediate file dumps, compiler warnings, and abandoned search trails.
+- As context fills, **context degradation** occurs: Claude stops referencing the specific, concrete class names and interfaces discovered on turn 5 (e.g. `LegacyOrderManager` in `billing/legacy/order.py`) and begins hallucinating generic textbook boilerplate ("typical enterprise architectures use a repository pattern...").
+- Inconsistent and contradictory recommendations emerge because the model's attention cannot isolate verified ground truth from discarded exploratory noise.
 
-### 2. Scratchpad files
-The agent writes **key findings** to a file as it goes: class names, file paths, contracts, open questions. Later phases (or a fresh context) read the file back. The scratchpad lives on disk, so context limits do not erase it.
+### 2. The Persistent Scratchpad Pattern
+To counteract context degradation, the agent must maintain a dedicated on-disk **Scratchpad File** (`SCRATCHPAD.md`):
+- As the agent discovers concrete architectural facts (active database engines, auth middleware locations, public API schemas, core classes), it immediately writes these verified findings to the scratchpad.
+- Because the scratchpad lives on disk outside conversation memory, it remains immune to token limits and context degradation.
+- When beginning a new analytical subtask or answering follow-up questions, the agent re-reads the scratchpad, anchoring its reasoning in verified ground truth rather than fuzzy memory.
 
-### 3. Subagents isolate verbose exploration
-Delegate a question such as "find all callers of `TokenVerifier`" to a subagent. It reads many files. It returns a **short summary** to the main session. The raw output never enters the main context.
+### 3. Subagent Delegation for Isolating Exploration Noise
+When investigating a broad, open-ended question across an unfamiliar monorepo (e.g. *"Trace every dependency and caller of `TokenVerifier` across all 50 microservices"*):
+- If the primary coordinator reads all 50 files directly, its context window is instantly destroyed by raw code tokens.
+- **The Architectural Standard**: The coordinator delegates the exploration to an isolated **Explore subagent**. The subagent reads files, runs regex queries, and navigates imports in its own private context buffer.
+- Upon completion, the subagent returns a concise, structured 10-line executive summary (matching file paths, exported symbol names, and call contracts) to the coordinator. The coordinator retains a clean, uncluttered context for high-level decision-making.
 
-### 4. Summarise a phase, then spawn the next
-Finish phase 1 (discovery). Write a short summary of its findings. Give that summary to the phase 2 subagents. They do not need phase 1's raw output.
+### 4. Phase-Gated Summarization Before Subagent Hand-Off
+In multi-phase projects (e.g. Phase 1: Codebase Discovery $\to$ Phase 2: Refactoring Implementation):
+- Never pass Phase 1's raw conversational history into Phase 2 subagents.
+- The coordinator summarizes Phase 1's key findings into a structured architectural baseline, injecting only this verified summary into the initial prompts of Phase 2 subagents.
 
-### 5. Crash recovery with a manifest
-Each agent **exports its state** to a known file. A coordinator keeps a **manifest** listing agents, phases and state files. On resume, the coordinator loads the manifest and injects it into the prompt, then runs only the work still missing.
+### 5. Crash Recovery Manifests for Stateful Systems
+In long-running autonomous workflows that run for hours across distributed systems, network drops, machine reboots, and rate-limit timeouts will inevitably occur:
+- If state is held purely in RAM, a crash forces the system to restart from scratch, re-spending hundreds of dollars in API tokens.
+- **The Architectural Standard**: Every agent exports its execution state and findings to a known disk location upon completing each subtask.
+- The coordinator maintains an authoritative **State Manifest** (`manifest.json`) recording which subtasks are completed, in progress, or pending. Upon restart, the coordinator loads the manifest, injects completed state into context, and resumes execution strictly on pending work.
 
-### 6. `/compact`
-In Claude Code, `/compact` condenses the conversation to free context during a long session. Use it with a scratchpad, not instead of one.
+### 6. Session Compaction (`/compact`)
+Inside Claude Code, developers running long interactive exploration sessions can invoke `/compact` to semantically compress conversation history into a structured summary while preserving active tool pointers. For maximum reliability, use `/compact` in tandem with persistent scratchpad files.
 
 ---
 

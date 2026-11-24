@@ -27,35 +27,30 @@
 
 ## 📖 Concepts Explained
 
-### 1. Why it matters
-- Retrying without feedback repeats the same mistake.
-- Retrying for absent data teaches the model to guess.
-- Unbounded retries waste tokens.
+### 1. The Anatomy of Self-Correction in Extraction Pipelines
+When an extraction pipeline detects an anomaly, naive implementations make one of two critical mistakes: they either retry the exact same prompt blindly (which simply causes the model to regenerate the identical error), or they retry infinitely until rate limits are exhausted. Worse, if the required information is physically missing from the document, retrying actively trains the model to fabricate plausible values to satisfy the schema.
 
-### 2. How it works
+Effective architectural retry loops operate on a **deterministic feedback contract**: the application layer detects errors, categorizes whether they are structurally recoverable, and constructs an explicit feedback message guiding the model to correct its reasoning.
 
-**a. Two kinds of validation error**
+### 2. Schema Syntax Errors vs Semantic Business Invariants
+In production data pipelines, errors fall into three fundamentally distinct categories:
+1. **Schema Syntax Errors (Format Mismatches)**: The model extracted the value, but formatted it incorrectly (e.g. `issue_date` returned as `"October 6, 2026"` instead of ISO 8601 `"2026-10-06"`). These errors are **100% recoverable via retry**.
+2. **Semantic Arithmetic Errors (Cross-Field Invariants)**: The JSON schema is perfectly valid, but internal business logic is violated (e.g. line items sum to \$450.00 while the invoice `total_amount` states \$500.00). Strict JSON schemas cannot detect this because both numbers are valid floats. The post-extraction validation layer must cross-check fields and provide specific arithmetic feedback: *"Line items sum to 450.00, which contradicts stated total of 500.00. Re-examine the document for omitted line items or shipping discounts."*
+3. **Physically Absent Facts**: The supplier simply did not print a VAT registration number on the receipt. **Retries are completely ineffective here**. Retrying an absent fact forces the model into a hallucination trap. The pipeline must fast-fail, assign `null`, and route the record to human review.
 
-| Kind | Example | Action |
-|---|---|---|
-| Schema or syntax | Wrong date format, missing key | Retry with the error |
-| Semantic | Items sum to 400, total says 500; `total < subtotal` | Retry with the numbers |
-| Absent in source | Receipt has no tax ID | **Do not retry.** Keep `null` and route to a human if the field is mandatory |
+### 3. Constructing an Actionable Retry Payload
+When requesting a self-correction pass, Claude requires complete context to re-evaluate its extraction. A compliant retry prompt must contain:
+- **The Original Source Text**: Preserves full contextual grounding.
+- **The Failed Extraction JSON**: Shows Claude what it extracted in the previous turn.
+- **The Specific Validation Error Message**: Pinpoints the exact field, the observed value, and the expected constraint.
 
-**b. A useful retry message** contains:
-1. The original document.
-2. The failed extraction.
-3. The specific error ("`issue_date` is 'Oct 6'; expected YYYY-MM-DD").
+### 4. The Self-Correction Dual-Extraction Pattern
+To catch discrepancies before shipping data to accounting databases, design extraction schemas with built-in verification pairs:
+- Extract `stated_total` (the printed bottom-line number) alongside `calculated_total` (the programmatic sum of extracted item rows).
+- Include a `conflict_detected: bool` flag. When the model detects that the printed total contradicts the arithmetic sum of line items in the source text, it sets `conflict_detected: true`, alerting downstream workflows without crashing the pipeline.
 
-**c. Retry eligibility rule** (`decide_retry()` in [main.py](main.py)):
-- valid → accept
-- absent in source → route to human
-- fixable error and retries left → retry with feedback
-- retries used up → give up and escalate
-
-**d. Semantic cross-check.** Extract both `calculated_total` (sum of items) and `stated_total` (printed), and a `conflict_detected` boolean. Schema validation alone does not catch this.
-
-**e. `detected_pattern`.** For review findings, record which code construct triggered each one. When developers dismiss findings, group dismissals by pattern. A pattern with a high dismissal rate is a candidate to rewrite or disable (see TS 4.1).
+### 5. Tracking Dismissals via `detected_pattern`
+When Claude Code or an agent generates review findings, every finding must carry a `detected_pattern` tag (e.g. `detected_pattern: "raw_sql_in_orm_repository"`). Tracking developer dismissals across thousands of PRs allows teams to analyze which specific prompt rules generate noisy false alarms, enabling targeted rubric revisions.
 
 ---
 

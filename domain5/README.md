@@ -38,15 +38,15 @@ Some folder names mix topics. **Folder names stay unchanged** (tests import them
 
 ```mermaid
 flowchart LR
-    subgraph Context["Keep context accurate"]
+    subgraph Context ["Keep context accurate"]
         T51["TS 5.1<br>Case facts + trimming"]
         T54["TS 5.4<br>Scratchpad + manifest"]
     end
-    subgraph Humans["Involve humans well"]
+    subgraph Humans ["Involve humans well"]
         T52["TS 5.2<br>Escalation + ambiguity"]
         T55["TS 5.5<br>Review + calibration"]
     end
-    subgraph MultiAgent["Reliable multi-agent output"]
+    subgraph MultiAgent ["Reliable multi-agent output"]
         T53["TS 5.3<br>Structured errors + coverage"]
         T56["TS 5.6<br>Provenance + uncertainty"]
     end

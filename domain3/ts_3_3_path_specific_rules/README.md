@@ -26,35 +26,48 @@
 
 ## Concepts Explained
 
-### Why it matters
-A directory-level `CLAUDE.md` only covers its own folder. A test convention for `**/*.test.tsx` applies in dozens of folders. One glob rule covers all of them with one file.
+### 1. Token Economics and the Co-Location Problem
+In enterprise software development, modern architecture patterns frequently co-locate related files across hundreds of subdirectories. In a React or TypeScript monorepo, test files (`Button.test.tsx`), styling modules (`Button.module.css`), and components (`Button.tsx`) sit side-by-side in every folder.
 
-### How it works
+This structure creates a severe configuration dilemma:
+- **Monolithic Rule Bloat**: Putting testing, styling, database, and infrastructure conventions into a single root `CLAUDE.md` forces Claude to ingest thousands of irrelevant tokens on every turn, causing attention dilution.
+- **Directory-Level `CLAUDE.md` Failure**: Placing a `CLAUDE.md` in each component folder is an administrative nightmare across 200 directories. Furthermore, a directory-level file applies to *all* files in that directory—it cannot differentiate between the testing rules needed for `Button.test.tsx` and the styling rules needed for `Button.module.css`.
+- **The Path-Scoped Solution**: `.claude/rules/*.md` files with YAML `paths:` frontmatter solve this by loading conventions **conditionally, just-in-time**, only when Claude reads or modifies files matching specific glob patterns.
+
+### 2. How Path-Scoped Rule Activation Operates
+When Claude Code edits a file in the workspace:
+1. It inspects the `.claude/rules/` directory for markdown files with YAML frontmatter.
+2. It evaluates the active file path against the glob patterns declared in `paths:`.
+3. If a pattern matches, the rule content is injected into session context for that turn.
+4. If no patterns match, the rule remains completely unloaded, saving tokens and preserving attention.
+5. Rules *without* a `paths:` block are treated as universal and load on every session turn.
 
 ```markdown
 ---
 paths:
   - "**/*.test.tsx"
+  - "**/*.test.ts"
+  - "tests/**"
 ---
 
-# Testing conventions
-- Use Vitest.
+# Frontend Testing Conventions
+
+- Test user-visible behavior using React Testing Library; never assert internal state.
+- Mock network interactions exclusively via Mock Service Worker (MSW).
+- Every test file must contain at least one error-boundary failure test case.
 ```
 
-- The file is in `.claude/rules/` (for example `testing.md`), shared via version control.
-- `paths:` is a list of globs (a single string also works, for example `"**/*.test.tsx"`).
-- Claude loads the rule when it works on a file that matches.
-- A rule **without** `paths:` is universal and loads always.
+### 3. Glob Pattern Architecture
+Path-scoping adheres to standard glob semantics:
+- `*`: Matches characters within a single directory segment.
+- `**`: Recursively matches arbitrary nested directory depths.
+- Multiple patterns can be declared in a list (e.g. `["terraform/**/*", "infra/**/*.tf"]`).
 
-**Glob cheat sheet** (as implemented in `main.py`)
-
-| Glob | Matches | Does not match |
-|---|---|---|
-| `**/*.test.tsx` | `src/a/b.test.tsx`, `b.test.tsx` | `src/a/b.tsx` |
-| `terraform/**/*` | `terraform/main.tf`, `terraform/modules/vpc/main.tf` | `infra/terraform/main.tf` |
-| `*.md` | `README.md` | `docs/README.md` |
-
-`*` stays inside one folder; `**` crosses folders.
+| Glob Pattern | Target Scope | Example Match | Non-Match |
+|---|---|---|---|
+| `**/*.test.tsx` | All React test files anywhere | `src/components/auth/Login.test.tsx` | `src/components/auth/Login.tsx` |
+| `terraform/**/*` | All files under terraform directory | `terraform/modules/vpc/main.tf` | `infra/vpc/main.tf` |
+| `src/api/**/*.py` | Backend API routes and schemas | `src/api/v1/endpoints/users.py` | `src/models/user.py` |
 
 ---
 

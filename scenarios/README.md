@@ -24,14 +24,14 @@ flowchart TD
     Exam --> S6["6. Structured Data<br>Extraction"]
 ```
 
-| # | Scenario | Official description | Domains |
-|:---:|---|---|---|
-| 1 | [Customer Support Resolution Agent](scenario_1_customer_support/SCENARIO_GUIDE.md) | Agent SDK agent for returns, billing disputes, account issues. MCP tools `get_customer`, `lookup_order`, `process_refund`, `escalate_to_human`. Target 80%+ first-contact resolution with correct escalation. | D1, D2, D5 |
-| 2 | [Code Generation with Claude Code](scenario_2_code_generation/SCENARIO_GUIDE.md) | Custom slash commands, `CLAUDE.md`, plan mode vs direct execution. | D3, D5 |
-| 3 | [Multi-Agent Research System](scenario_3_multi_agent_research/SCENARIO_GUIDE.md) | Coordinator and subagents (web search, document analysis, synthesis, report generation) producing cited reports. | D1, D2, D5 |
-| 4 | [Developer Productivity with Claude](scenario_4_developer_productivity/SCENARIO_GUIDE.md) | Agent explores unfamiliar code, legacy systems, boilerplate, using built-in tools and MCP servers. | D2, D3, D1 |
-| 5 | [Claude Code for CI](scenario_5_continuous_integration/SCENARIO_GUIDE.md) | Automated reviews, test generation, PR feedback, with few false positives. | D3, D4 |
-| 6 | [Structured Data Extraction](scenario_6_structured_data_extraction/SCENARIO_GUIDE.md) | Extract from unstructured documents, validate with JSON schemas, handle edge cases, feed downstream systems. | D4, D5 |
+| # | Scenario | Official Description & Target SLAs | Primary Tools & Core Pattern | Domains |
+|:---:|---|---|---|---|
+| 1 | [Customer Support Resolution Agent](scenario_1_customer_support/SCENARIO_GUIDE.md) | High-ambiguity support (returns, disputes, accounts). **Target: $\ge 80\%$ FCR, $<2.5\text{s}$ turn latency**. | `get_customer`, `lookup_order`, `process_refund`, `escalate_to_human`<br>• Programmatic 2FA gate<br>• Immediate escalation on human demand<br>• Immutable Case Facts layer | D1 (27%)<br>D2 (18%)<br>D5 (15%) |
+| 2 | [Code Generation with Claude Code](scenario_2_code_generation/SCENARIO_GUIDE.md) | Software development acceleration (generation, refactoring, debug). **Target: $<40\text{k}$ tokens, 0 assumptions**. | `CLAUDE.md`, `.claude/rules/*.md`, `.claude/commands/`<br>• Path-scoped rules for test conventions<br>• Plan Mode for multi-file refactors<br>• Interview Pattern for ambiguity | D3 (20%)<br>D5 (15%) |
+| 3 | [Multi-Agent Research System](scenario_3_multi_agent_research/SCENARIO_GUIDE.md) | Coordinator + specialized subagents producing comprehensive cited reports. **Target: $<20\text{s}$ turn, 100% cited**. | `Task`, `search_web`, `analyze_doc`, `synthesize`<br>• Single-turn concurrent `Task` spawning<br>• 100% subagent context isolation<br>• Preserving conflicting statistics with dates | D1 (27%)<br>D2 (18%)<br>D5 (15%) |
+| 4 | [Developer Productivity with Claude](scenario_4_developer_productivity/SCENARIO_GUIDE.md) | Codebase exploration, legacy systems, boilerplate, automated tasks. **Target: $<15\text{k}$ exploration context**. | `Glob`, `Grep`, `Read`, `Edit`, `Bash`, `.mcp.json`<br>• Progressive discovery (`Glob` $\to$ `Grep` $\to$ chunked `Read`)<br>• 3-stage `Edit` Fallback Protocol (`Read + Write`)<br>• Zero-turn catalogs via MCP Resources | D2 (18%)<br>D3 (20%)<br>D1 (27%) |
+| 5 | [Claude Code for CI](scenario_5_continuous_integration/SCENARIO_GUIDE.md) | Automated PR review, test generation, actionable feedback. **Target: $<3\text{m}$ PR review latency, 0 hangs**. | Claude CLI (`-p`, `--output-format json`, `--json-schema`)<br>• Non-interactive `-p` flag eliminates hangs<br>• Two-Pass Review (per-file local + cross-file integration)<br>• Avoiding Message Batches API for blocking checks | D3 (20%)<br>D4 (20%) |
+| 6 | [Structured Data Extraction](scenario_6_structured_data_extraction/SCENARIO_GUIDE.md) | Extract from unstructured docs into JSON schemas. **Target: $\ge 85\%$ STP, 0 hallucinations**. | `tool_use`, JSON schema, Message Batches API<br>• Schema enforcement via `tool_use`<br>• Nullable fields eliminate hallucinated data<br>• Two-pass extraction (Sonnet thinking $\to$ Haiku schema)<br>• 5–10% stratified random sampling | D4 (20%)<br>D5 (15%) |
 
 ## Study Plan
 

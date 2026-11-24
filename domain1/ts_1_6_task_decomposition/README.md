@@ -99,12 +99,12 @@ The plan changed because of what was found. A fixed script could not do that.
 
 ```mermaid
 flowchart TD
-    subgraph Bad["Single pass over 14 files"]
+    subgraph Bad ["Single pass over 14 files"]
         Many["14 changed files"] --> One["One big review prompt"]
         One --> Uneven["Uneven depth,<br>inconsistent findings,<br>missed cross-file breaks"]
     end
 
-    subgraph Good["Prompt chain"]
+    subgraph Good ["Prompt chain"]
         Files["14 changed files"] --> P1["Pass 1: one call per file<br>(claude-haiku-4-5)"]
         P1 --> Cards["Per-file finding cards"]
         Cards --> P2["Pass 2: cross-file integration<br>(claude-sonnet-4-5)"]

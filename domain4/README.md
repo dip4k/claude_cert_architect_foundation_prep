@@ -142,14 +142,14 @@ Cross-links: 4.1 ↔ 4.4 (`detected_pattern`, dismissals), 4.3 ↔ 4.4 (schema t
 
 ```mermaid
 flowchart TD
-    Q1["1. JSON syntax parsing errors?"] -->|Yes| A1["tool_use with forced tool_choice<br>Valid JSON syntax<br>(semantics need checks)"]
-    Q1 -->|No| Q2["2. Document attributes missing?"]
-    Q2 -->|Yes| A2["Mark Nullable:<br>type ['string', 'null']<br>Prevents hallucinated values"]
-    Q2 -->|No| Q3["3. Missing physical source facts?"]
-    Q3 -->|Yes| A3["Fast-Fail to Human Review<br>Retries cannot invent absent data"]
-    Q3 -->|No| Q4["4. Message Batches for PR checks?"]
-    Q4 -->|Yes| A4["Reject: Use Real-Time API<br>Batches have 24h SLA; use for audits"]
-    Q4 -->|No| A5["Two-Pass Review Pipeline<br>Pass 1 Local + Pass 2 Integration"]
+    Q1["1. JSON syntax parsing errors?"] -->|"Yes"| A1["tool_use with forced tool_choice<br>Valid JSON syntax<br>(semantics need checks)"]
+    Q1 -->|"No"| Q2["2. Document attributes missing?"]
+    Q2 -->|"Yes"| A2["'Mark Nullable:<br>type ['string', 'null'"]<br>Prevents hallucinated values"]
+    Q2 -->|"No"| Q3["3. Missing physical source facts?"]
+    Q3 -->|"Yes"| A3["Fast-Fail to Human Review<br>Retries cannot invent absent data"]
+    Q3 -->|"No"| Q4["4. Message Batches for PR checks?"]
+    Q4 -->|"Yes"| A4["Reject: Use Real-Time API<br>Batches have 24h SLA; use for audits"]
+    Q4 -->|"No"| A5["Two-Pass Review Pipeline<br>Pass 1 Local + Pass 2 Integration"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

@@ -42,14 +42,17 @@ class MCPClient:
         return self._session
 
     async def list_tools(self) -> list[types.Tool]:
-        # TODO: Return a list of tools defined by the MCP server
-        return []
+        # Return a list of tools defined by the MCP server
+        result = await self.session().list_tools()
+        return result.tools
 
     async def call_tool(
         self, tool_name: str, tool_input: dict
     ) -> types.CallToolResult | None:
-        # TODO: Call a particular tool and return the result
-        return None
+        # Call a particular tool and return the result
+        return await self.session().call_tool(
+            name=tool_name, arguments=tool_input
+        )
 
     async def list_prompts(self) -> list[types.Prompt]:
         # TODO: Return a list of prompts defined by the MCP server
@@ -81,8 +84,24 @@ async def main():
         # If using Python without UV, update command to 'python' and remove "run" from args.
         command="uv",
         args=["run", "mcp_server.py"],
-    ) as _client:
-        pass
+    ) as client:
+        # Test listing tools
+        tools = await client.list_tools()
+        print(f"Available tools ({len(tools)}):")
+        for tool in tools:
+            print(f"  - {tool.name}: {tool.description}")
+
+        # Test calling tool
+        print("\nCalling tool 'read_doc_contents' for 'deposition.md':")
+        result = await client.call_tool(
+            tool_name="read_doc_contents",
+            tool_input={"doc_id": "deposition.md"},
+        )
+        print(f"Result: {result}")
+        if result and result.content:
+            for item in result.content:
+                if isinstance(item, types.TextContent):
+                    print(f"Content: {item.text}")
 
 
 if __name__ == "__main__":

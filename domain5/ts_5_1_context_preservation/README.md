@@ -29,26 +29,38 @@
 
 ## Concepts Explained
 
-### 1. Progressive summarisation loses detail
-Each summary pass keeps the topic and drops the specifics. Numbers get rounded, dates vanish, and **customer expectations** ("I need it by Friday") disappear.
+### 1. The Degradation Dynamics of Progressive Summarization
+In long-running conversational systems, context budgets eventually fill up. The most common naive mitigation is **progressive summarization**: periodically taking turns 1 through $N$ and prompting the model to write a summary paragraph.
 
-### 2. Case facts block
-Pull transactional facts into a small structured block (customer ID, order ID, amount, date, status, stated expectation). It lives **outside** the summarised history. You inject it into every request.
+While progressive summarization preserves broad conversational themes, it catastrophically degrades **transactional precision**:
+- Exact numeric quantities (\$149.99) are rounded or converted into vague approximations ("about \$150").
+- Precise timestamps and order numbers (`ORD-2026-9921`) evaporate.
+- Critical customer expectations ("I need this replacement before Friday's flight") are discarded as stylistic filler.
+- Within 20 turns, the agent cannot issue refunds or update accounts because the underlying factual grounding has been completely wiped.
 
-### 3. Trim tool results early
-A tool can return 40+ fields when only 5 matter. Every raw result stays in the history for the rest of the session. Trim it **before it enters context**, for example in a `PostToolUse` hook.
+### 2. The Dedicated "Case Facts" Architectural Layer
+To prevent transactional amnesia, enterprise architectures decouple **session history** from **authoritative entities** by maintaining a dedicated, immutable **Case Facts Layer**:
+- When transactional entities (customer IDs, order numbers, dollar amounts, tracking numbers, customer constraints) are first mentioned or returned by backend tools, the application runtime extracts them into an isolated structured data store.
+- On every subsequent turn, the application runtime renders this Case Facts block at the very top of the system prompt, completely outside the reach of conversational summarization.
+- Even if turns 1 through 30 are compressed into a 3-sentence summary, the Case Facts block guarantees that Claude always sees exact, uncorrupted identifiers.
 
-### 4. "Lost in the middle"
-Models use the start and end of a long input best. Details in the middle are easier to miss.
-- Put **key findings at the start** of aggregated input.
-- Use **clear section headers** for the detail below.
-- Keep case facts at the top; keep the newest turns at the end.
+### 3. Early Tool Trimming via `PostToolUse` Hooks
+Enterprise backend tools (like SAP, Salesforce, or order management databases) frequently return massive database dumps containing 40+ attributes per entity—internal shard IDs, database revision timestamps, employee shift logs, and raw network routing metadata.
+- If raw tool outputs are appended directly to conversation context, a single order lookup can consume 2,000+ tokens. Over a 10-turn interaction, the context window fills with irrelevant noise.
+- **The Architectural Fix**: Implement a `PostToolUse` normalization hook that intercepts raw tool outputs *before* they are committed to conversation history, trimming 40+ raw fields down to the 4–5 attributes strictly relevant to the agent's decision logic.
 
-### 5. Pass the complete history
-Each API request must include the full conversation history (or its safe, trimmed form). Case facts add to the history. They do not replace it.
+### 4. Mitigating the "Lost in the Middle" Transformer Effect
+Extensive research on transformer attention architectures reveals the **U-shaped recall curve** ("lost in the middle"): models retrieve information positioned at the very beginning and very end of long input prompts with near 100% accuracy, but retrieval fidelity dips significantly for information buried in the middle 60% of context.
+- **Positioning Strategies**:
+  1. Position the immutable **Case Facts block at the absolute top** of the prompt context.
+  2. Place aggregated executive summaries and high-priority findings at the beginning of multi-source payloads.
+  3. Organize detailed supporting documentation with explicit markdown section headers to guide attention.
+  4. Ensure the most recent turns and user messages reside at the end of the context window.
 
-### 6. Subagents return structured data
-Upstream agents should return **key facts, citations, relevance scores and dates**, not long reasoning. This keeps the downstream context small and checkable.
+### 5. Multi-Agent Context Budgets: Structured Data Over Reasoning Chains
+When specialized subagents (e.g. Web Search or Document Analysis subagents) complete their tasks, they must not return verbose 2,000-word reasoning chains or raw conversational transcripts to the coordinator.
+- Downstream synthesis agents have limited context budgets. Upstream agents must return **structured payloads**: extracted factual claims, source citations, publication dates, and relevance scores.
+- This allows the coordinator to synthesize findings efficiently without exceeding context limits or triggering attention dilution.
 
 ---
 

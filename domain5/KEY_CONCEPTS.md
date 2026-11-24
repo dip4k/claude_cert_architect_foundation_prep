@@ -35,17 +35,17 @@ Exam weights: D1 27%, D2 18%, D3 20%, D4 20%, **D5 15%**. Folder names are uncha
 
 ```mermaid
 flowchart LR
-    subgraph Preservation["Context Preservation"]
+    subgraph Preservation ["Context Preservation"]
         direction TB
         P1["TS 5.1:<br>Case facts + trimming"]
         P2["TS 5.4:<br>Scratchpad + manifest"]
     end
-    subgraph Humans["Human Involvement"]
+    subgraph Humans ["Human Involvement"]
         direction TB
         H1["TS 5.2:<br>Escalation + ambiguity"]
         H2["TS 5.5:<br>Review + calibration"]
     end
-    subgraph Reliability["Multi-Agent Reliability"]
+    subgraph Reliability ["Multi-Agent Reliability"]
         direction TB
         R1["TS 5.3:<br>Structured errors + coverage"]
         R2["TS 5.6:<br>Provenance + uncertainty"]
@@ -67,12 +67,12 @@ In long-running autonomous workflows (e.g. customer support sessions or complex 
 
 ```mermaid
 flowchart TD
-    subgraph Bad["Anti-Pattern: Naive Summarization"]
+    subgraph Bad ["Anti-Pattern: Naive Summarization"]
         B1["Raw Turns 1-4"] --> B2["Summarize History"]
         B2 --> B3["Order IDs & amounts<br>washed away into prose"]
     end
 
-    subgraph Good["Production: Immutable<br>Case Facts Layer"]
+    subgraph Good ["Production: Immutable<br>Case Facts Layer"]
         G1["Immutable Case Facts<br>(Order ID, Amounts, Auth)"]
         G2["Summarized Dialogue History"]
         G1 & G2 --> G3["Prompt Context:<br>100% Ground Truth Preserved"]
@@ -137,10 +137,10 @@ One of the most heavily tested human escalation scenarios:
 ```mermaid
 flowchart TD
     Start["Customer Request"] --> Demand{"Demands Human Agent?"}
-    Demand -->|Yes| EscHuman["Escalate Immediately<br>(Zero friction; no probing)"]
-    Demand -->|No| Policy{"Policy Silent / Gap?"}
-    Policy -->|Yes| EscGap["Escalate Policy Gap<br>(Never invent company rules)"]
-    Policy -->|No| Resolve["Autonomous Tool Resolution"]
+    Demand -->|"Yes"| EscHuman["Escalate Immediately<br>(Zero friction; no probing)"]
+    Demand -->|"No"| Policy{"Policy Silent / Gap?"}
+    Policy -->|"Yes"| EscGap["Escalate Policy Gap<br>(Never invent company rules)"]
+    Policy -->|"No"| Resolve["Autonomous Tool Resolution"]
 ```
 
 #### 2. Escalation on Policy Gaps
@@ -633,14 +633,14 @@ Option B is correct. In deep codebase exploration (TS 5.4), multi-turn sessions 
 
 ```mermaid
 flowchart TD
-    Q1["1. Customer demands a human?"] -->|Yes| A1["Escalate Immediately<br>Zero friction; compile<br>handoff manifest"]
-    Q1 -->|No| Q2["2. Entity lookup collision?"]
-    Q2 -->|Yes| A2["Prompt for Unique ID<br>Never pick heuristically by recency"]
-    Q2 -->|No| Q3["3. Conflicting metric claims?"]
-    Q3 -->|Yes| A3["Cite Both Figures & Dates<br>Never average into synthetic mean"]
-    Q3 -->|No| Q4["4. High aggregate accuracy (98%)?"]
-    Q4 -->|Yes| A4["5-10% Stratified Audit<br>Sample high-confidence<br>items for drift"]
-    Q4 -->|No| A5["Immutable Case Facts Layer<br>Store critical facts outside summary"]
+    Q1["1. Customer demands a human?"] -->|"Yes"| A1["Escalate Immediately<br>Zero friction; compile<br>handoff manifest"]
+    Q1 -->|"No"| Q2["2. Entity lookup collision?"]
+    Q2 -->|"Yes"| A2["Prompt for Unique ID<br>Never pick heuristically by recency"]
+    Q2 -->|"No"| Q3["3. Conflicting metric claims?"]
+    Q3 -->|"Yes"| A3["Cite Both Figures & Dates<br>Never average into synthetic mean"]
+    Q3 -->|"No"| Q4["4. High aggregate accuracy (98%)?"]
+    Q4 -->|"Yes"| A4["5-10% Stratified Audit<br>Sample high-confidence<br>items for drift"]
+    Q4 -->|"No"| A5["Immutable Case Facts Layer<br>Store critical facts outside summary"]
 ```
 
 | Question Trigger / Condition | Decision Branch | Architectural Action & Distractor Rule |

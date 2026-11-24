@@ -154,8 +154,8 @@ flowchart TD
     Grep --> Read["3. Read Tool<br>(Chunked inspect)"]
     Read --> Edit["4. Edit Tool<br>(Surgical anchor)"]
     Edit --> Collision{"Anchor collision?"}
-    Collision -- "No" --> Done["Edit Applied"]
-    Collision -- "Yes" --> Fallback["5. Fallback Protocol<br>Full read + Write"]
+    Collision -->|"No"| Done["Edit Applied"]
+    Collision -->|"Yes"| Fallback["5. Fallback Protocol<br>Full read + Write"]
     Fallback --> Done
 ```
 
@@ -219,12 +219,14 @@ flowchart LR
 ```mermaid
 flowchart TD
     Extr["Extract Structured Entity<br>via tool_use"] --> Val{"Schema & Math Valid?"}
-    Val -- "Valid" --> Success["Commit Record"]
-    Val -- "Invalid" --> ErrorType{"Error Type"}
-    ErrorType -- "Calculation / Format" --> CanRetry{"Retries < 2?"}
-    CanRetry -- "Yes" --> Feedback["Send targeted math error<br>feedback to Claude"] --> Extr
-    CanRetry -- "No" --> HumanQueue["Route to Human Exception Queue"]
-    ErrorType -- "Physically Absent Fact" --> FastFail["Fast-Fail to Human Queue<br>(Retries cannot invent absent data)"] --> HumanQueue
+    Val -->|"Valid"| Success["Commit Record"]
+    Val -->|"Invalid"| ErrorType{"Error Type"}
+    ErrorType -->|"Calculation / Format"| CanRetry{"Retries < 2?"}
+    CanRetry -->|"Yes"| Feedback["Send targeted math error<br>feedback to Claude"]
+    Feedback --> Extr
+    CanRetry -->|"No"| HumanQueue["Route to Human Exception Queue"]
+    ErrorType -->|"Physically Absent Fact"| FastFail["Fast-Fail to Human Queue<br>(Retries cannot invent absent data)"]
+    FastFail --> HumanQueue
 ```
 
 
@@ -234,10 +236,10 @@ flowchart TD
 ### [Domain 5: Context Management & Reliability (15%)](domain5/README.md) · [Key Concepts](domain5/KEY_CONCEPTS.md)
 ```mermaid
 flowchart TD
-    subgraph Facts["Immutable Case Facts Layer"]
+    subgraph Facts ["Immutable Case Facts Layer"]
         CF["Customer ID: C-88129<br>Order #: ORD-44102<br>Amount: \$149.99<br>Tracking: 1Z9999999999"]
     end
-    subgraph History["Compacted Conversation History"]
+    subgraph History ["Compacted Conversation History"]
         CH["Summarized Turns 1-12...<br>'Customer requested return<br>due to transit damage...'"]
     end
     Facts --> Context["Combined Context Injected<br>into Next Turn Prompt"]

@@ -55,12 +55,12 @@ npx @modelcontextprotocol/inspector ../../../.venv/Scripts/python.exe mcp_server
 flowchart TD
     CCAR["Claude Certified Architect<br>Foundations (CCAR-F)<br>Score: 720/1000 | 60 Qs | 120 Mins"]
     
-    subgraph Core["Core Architecture & Tooling"]
+    subgraph Core ["Core Architecture & Tooling"]
         D1["Domain 1: Agentic Loops (27%)<br>• stop_reason == 'end_turn'<br>• Hub-and-spoke topology<br>• SDK hooks"]
         D2["Domain 2: Tool Design & MCP (18%)<br>• Descriptions as interfaces<br>• Structured MCP errors<br>• Least privilege"]
     end
     
-    subgraph Workflows["Workflows, Prompting & Reliability"]
+    subgraph Workflows ["Workflows, Prompting & Reliability"]
         D3["Domain 3: Claude Code (20%)<br>• CLAUDE.md hierarchy<br>• Plan Mode<br>• Headless CI (-p)"]
         D4["Domain 4: Prompting & Output (20%)<br>• JSON via tool_use<br>• Nullable fields<br>• Real-time vs Batch"]
         D5["Domain 5: Reliability (15%)<br>• Case Facts layer<br>• Immediate escalation<br>• Stratified audits"]

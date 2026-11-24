@@ -100,6 +100,12 @@ flowchart TD
     SLA24Check -- "No (e.g. 1-hour SLA)" --> WorkerPool["Use Real-Time API with<br>Managed Worker Pool"]
 ```
 
+> **SLA Scheduling Formula (TS 4.5 Exam Standard)**:  
+> When managing customer SLAs with the Message Batches API:  
+> $$\text{Target SLA} - \text{Max Batch Processing Window (24h)} = \text{Maximum Accumulation Window}$$  
+> *Example*: To guarantee a **30-hour customer SLA** with up to 24-hour batch turnaround, the ingestion pipeline must accumulate and flush requests in **4-hour submission windows** ($4\text{h} + 24\text{h} = 28\text{h} \le 30\text{h}$).  
+> *Architectural Limitation*: The Message Batches API does **NOT** support mid-request multi-turn tool calling. It cannot pause a batch item, wait for client-side tool execution, and resume. Use Message Batches strictly for single-turn extraction, classification, or generation tasks.
+
 ### Decision Tree 3: Handling Missing Document Attributes (Domain 4 & Scenario 6)
 ```mermaid
 flowchart TD
@@ -114,6 +120,16 @@ flowchart TD
     NullableCheck -- "Yes (type: ['string', 'null'])" --> ReturnNull["Return null<br>(Zero Hallucination)"]
     NullableCheck -- "No (Required string)" --> Trap["Hallucination Trap!<br>Make field nullable<br>immediately"]
 ```
+
+> **The Two-Pass Extraction Pattern (Extended Thinking + Strict Schemas)**:  
+> Anthropic API returns **HTTP 400 Bad Request** if Extended Thinking (`thinking: {"type": "enabled", ...}`) is paired with forced `tool_choice: {"type": "tool", ...}` or `"any"`.  
+> *Production Pipeline*:  
+> 1. **Pass 1 (Comprehension & Spatial Reasoning)**: `claude-sonnet-4-5` with Extended Thinking enabled and `tool_choice: "auto"` analyzes complex multi-page tables, handwriting, and ambiguous disclosures.  
+> 2. **Pass 2 (Deterministic Schema Conformance)**: Pass 1 output is fed into `claude-haiku-4-5` without thinking, using forced `tool_choice` to map reasoning tokens into guaranteed, syntax-validated JSON schemas at minimal cost.
+
+> **Simpson's Paradox in Stratified Audits (TS 5.5 Warning)**:  
+> Aggregate accuracy metrics (e.g. 97.5% across 50,000 documents) frequently mask catastrophic localized failure rates. If standard domestic US invoices (85% of volume) run at 99.8% accuracy, while low-volume foreign multi-currency bills of lading (15% of volume) suffer a 40% failure rate, overall accuracy remains ~90.8%, deceiving leadership while downstream ERP imports continually fail.  
+> *Requirement*: You must mandate continuous **5–10% stratified random sampling** segmented by document type, vendor, and currency.
 
 ### Decision Tree 4: Customer Support Resolution & Gating Flow (Domain 1, 2, 5 & Scenario 1)
 ```mermaid
@@ -138,7 +154,7 @@ flowchart TD
 flowchart TD
     Coord["Coordinator Receives<br>Complex Research Prompt"] --> FanOut["Turn 1: Emit Multiple<br>Task Calls Concurrently"]
     
-    subgraph Subagents["Isolated Subagents<br>(Turn 1 Execution)"]
+    subgraph Subagents ["Isolated Subagents<br>(Turn 1 Execution)"]
         FanOut --> S1["Financial Subagent<br>(10-K filings)"]
         FanOut --> S2["Regulatory Subagent<br>(FDA/FTC docket)"]
         FanOut --> S3["Patent Subagent<br>(USPTO database)"]
@@ -175,6 +191,20 @@ flowchart TD
     FallbackProtocol --> EditSuccess
 ```
 
+---
+
+### 🌐 Cross-Scenario Architectural Interlock Matrix
+
+Architectural patterns learned in one production scenario directly cross-pollinate into others. The table below illustrates how the CCAR-F syllabus tests universal patterns across diverse business domains:
+
+| Architectural Pattern | Primary Anchor Scenario | Cross-Pollination in Other Scenarios | Exam Distractor Alert |
+| :--- | :--- | :--- | :--- |
+| **Context Trimming (`PostToolUse`)** | **Scenario 1 (Support)**: Trimming 55 raw CRM fields to 4 attributes | **Scenario 4 (Developer Productivity)**: Stripping verbose stdout/stderr before feeding into context | Assuming the model can filter 50k tokens of noise without attention dilution |
+| **Negative Boundaries in Rubrics** | **Scenario 5 (CI/CD)**: Explicit skip lists for mock keys and test files | **Scenario 6 (Extraction)**: Distinguishing decorative footers and terms from valid invoice line items | Using subjective directives like `"be conservative"` or `"only high-confidence findings"` |
+| **Context Isolation (`context: fork`)** | **Scenario 3 (Research)**: Subagents execute in isolated context buffers | **Scenario 2 (Code Generation)**: Claude Code skills running exploratory analysis without polluting main chat | Expecting subagents or skills to automatically inherit parent session conversation history |
+| **Programmatic Prerequisite Gates** | **Scenario 1 (Support)**: Blocking `process_refund` until `get_customer` verifies ID | **Scenario 4 (Developer Productivity)**: Requiring test pass gate before running deployment tool | Relying on system prompt instructions alone for financial, security, or production gates |
+| **Two-Pass Review Pipelines** | **Scenario 5 (CI/CD)**: Pass 1 file-level correctness + Pass 2 cross-file integration | **Scenario 6 (Extraction)**: Pass 1 Sonnet reasoning + Pass 2 Haiku schema extraction | Performing single-pass analysis on 15+ files (causes attention dilution and missed bugs) |
+| **Structured Manifest Resumption** | **Scenario 3 (Research)**: Aggregating research findings with citation metadata | **Scenario 2 & 4 (Codebase)**: Discarding stale multi-turn sessions after git rebase; injecting `STATE_SUMMARY.md` | Resuming 70-turn sessions with `--resume` after files have changed out-of-band |
 
 ---
 

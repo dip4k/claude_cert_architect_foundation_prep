@@ -27,23 +27,22 @@
 
 ## 📖 Concepts Explained
 
-### 1. Why it matters
-- Without examples, output format drifts: sometimes prose, sometimes a table, sometimes missing fields.
-- Without examples of acceptable code, the model flags everything that looks unusual.
-- Without layout variety, extraction works on one document style and returns nulls on the next.
+### 1. The Cognitive Role of Few-Shot Examples in Foundation Models
+While detailed system prompts provide abstract semantic rules, autoregressive language models generalize most reliably when abstract instructions are paired with **concrete input/output demonstrations**. When detailed instructions alone produce inconsistent formatting, hallucinated required fields, or tool misrouting, few-shot prompting is the highest-leverage technique to restore consistency.
 
-### 2. How it works
-1. **Pick 2-4 examples**, aimed at the cases where the model is unsure.
-2. **State the reason** in each example ("ACCEPTABLE: mock key in a test file").
-3. **Show the exact format**: for reviews, `location | issue | severity | suggested_fix`.
-4. **Pair opposites**: one acceptable pattern, one genuine issue.
-5. **Vary the structure**: inline citations (`Lee, 2021, p. 4`) vs a bibliography at the end; a table vs a narrative paragraph.
-6. **Include an empty case**: a document with no citations returns `[]`, a missing date returns `null`.
+Few-shot examples do not simply teach a format; they teach **decision boundaries and latent reasoning patterns**. By demonstrating *why* an action was chosen over plausible alternatives, few-shot examples allow Claude to generalize its judgment to novel, unseen inputs rather than rote-matching pre-specified phrases.
 
-Why reasons matter: the model learns the *principle* ("test mocks are not live secrets"), so it generalises to a mock it has never seen.
+### 2. Four Key Syllabus Patterns Demonstrated Through Few-Shot Prompting
+To maximize exam readiness and production reliability, few-shot demonstrations must target the primary failure modes tested in the CCAR-F blueprint:
+1. **Ambiguous Tool Selection**: Demonstrating which tool to select when a user prompt contains multiple plausible identifiers (e.g. showing a query with both an order ID and customer email correctly routing to `lookup_order`).
+2. **Acceptable Code Patterns vs Genuine Vulnerabilities**: Pairing contrastive examples showing why a mock credential in a test directory (`tests/test_auth.py: sk-ant-test_dummy`) is acceptable, while a hardcoded credential in an API handler (`src/api/client.py: sk-ant-live_key`) is a Critical security defect.
+3. **Handling Varied Document Layouts**: Demonstrating extraction across structurally diverse documents—such as pulling citations from inline references (`[Author, 2024, p. 12]`) versus formal end-of-document bibliographies, or extracting operational metrics from narrative prose versus multi-column financial tables.
+4. **Correct Handling of Missing Attributes**: Demonstrating that when a required document attribute (e.g. tax ID or shipping carrier) is physically missing from the source text, the model must output `null` or an empty list `[]` rather than fabricating plausible filler data.
 
-### 3. Where more examples stop helping
-Five or six near-identical examples add cost and make the model copy their surface form. A small, varied set generalises better.
+### 3. The 2–4 Example Budget and the Law of Diminishing Returns
+A common misconception is that more examples always improve accuracy. In production agent architectures:
+- Providing 8–10 repetitive examples dramatically inflates turn token costs (consuming 2,000+ context tokens on every request) and induces **overfitting**, causing the model to rigidly parrot the syntax of the examples rather than generalizing.
+- **The Optimal Architectural Standard**: Provide **2–4 carefully curated, structurally diverse examples**. Each example must carry an explicit `Reasoning:` clause explaining why the choice was made, giving Claude the conceptual principle needed to handle novel cases.
 
 ---
 

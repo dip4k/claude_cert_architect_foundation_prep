@@ -31,26 +31,36 @@
 
 ## Concepts Explained
 
-### 1. Claim-source mappings
-Each claim is stored with: **source**, **verbatim excerpt**, **publication or collection date**, and **methodology** when known. Subagents return these. The synthesiser must **carry them through** to the final report. Summarising must not cut the link.
+### 1. The Provenance Loss Trap in Multi-Source Summarization
+When an orchestration system ingests research from multiple subagents, standard text summarization acts as a destructive compression algorithm:
+- Verbatim evidence excerpts and source document citations are severed from individual claims.
+- Publication and collection dates are dropped, flattening temporal changes.
+- In subsequent turns, the agent presents assertions without attribution, making fact-checking impossible and hallucinating authority.
+- **The Architectural Standard**: Every finding returned by a subagent must adhere to a strict **Claim-Source Mapping** schema containing: `claim`, `verbatim_excerpt`, `source_url_or_document`, `publication_date`, and `methodology`. Downstream synthesis agents must preserve and merge these mappings rather than dissolving them into unstructured prose.
 
-### 2. Conflicting statistics
-Two credible sources give different numbers. Do not average them. Do not choose one without saying so. **Show both, each with its source**, and explain any known difference (method, definition).
+### 2. Never Average Conflicting Statistics from Credible Sources
+A signature scenario tested on the CCAR-F certification exam:
+- Source A (Reuters) reports Q3 electric vehicle market share at 18.2%.
+- Source B (Bloomberg) reports Q3 electric vehicle market share at 21.5%.
+- **The Catastrophic Anti-Pattern**: The synthesis agent computes the arithmetic mean (19.85%) or arbitrarily picks one source without explanation. Averaging two credible measurements creates a **fabricated number that neither source reported**, violating journalistic and architectural integrity.
+- **The Correct Architectural Action**: **Preserve both figures explicitly with source attribution and methodology notes**: *"Reuters reported 18.2% based on passenger vehicle registrations, while Bloomberg reported 21.5% including commercial fleet deliveries."*
 
-### 3. Dates prevent false conflicts
-A number from 2025 and a number from 2026 may both be right. Include the **publication or collection date** (and the period the number describes). Then the report shows a change over time, not a contradiction.
+### 3. Collection Dates Prevent False Temporal Contradictions
+Apparent contradictions in enterprise data often reflect temporal change rather than factual error:
+- Report A states Company X has 1,200 employees; Report B states Company X has 1,850 employees.
+- If dates are omitted, the synthesis agent flags an unresolvable contradiction or rejects one document.
+- When **publication and data collection dates** are preserved in structured metadata, the agent correctly recognizes organic headcount growth across consecutive years (`2024-Q1` vs `2026-Q1`) rather than a data conflict.
 
-### 4. Separate established from contested
-Structure the report with a section for **well-established findings** (sources agree) and one for **contested findings** (sources disagree). Readers see the confidence level at a glance.
+### 4. Structuring Reports: Established vs Contested Findings
+To give executive readers instant clarity on confidence levels, multi-agent synthesis reports must separate findings into two explicit structural sections:
+- **Well-Established Findings**: Facts and metrics where all credible sources corroborate the observation.
+- **Contested or Divergent Findings**: Metrics, market estimates, or projections where credible sources diverge, explicitly annotating the methodological variations between sources.
 
-### 5. Render each content type appropriately
-| Content | Best format |
-|---|---|
-| Financial data | Table |
-| News and events | Prose |
-| Technical findings | List |
-
-Do not squash everything into one uniform format.
+### 5. Multi-Modal Content Type Formatting
+Avoid converting all findings into uniform paragraphs of text:
+- **Financial & Operational Data**: Render as structured Markdown **tables** with aligned columns and currency units.
+- **News, Strategic Narratives & Incident Context**: Render as clear, cohesive **prose**.
+- **Technical Invariants & API Specifications**: Render as structured bulleted **lists** with bold invariant headers.
 
 ---
 

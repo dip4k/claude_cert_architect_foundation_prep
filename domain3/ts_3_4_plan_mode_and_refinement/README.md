@@ -28,22 +28,28 @@
 
 ## Concepts Explained
 
-### Why it matters
-Starting big changes without a plan causes rework: edits land in the wrong places or follow the wrong design. Planning a one-line fix wastes time.
+### 1. Architectural Risk and Blast Radius Assessment
+When an engineer asks Claude Code to modify software, the primary architectural decision is choosing between **Plan Mode** and **Direct Execution Mode**. Making the wrong choice creates severe operational consequences:
+- **Jumping Straight to Direct Execution on Architectural Tasks**: When tasked with restructuring a monolith into microservices, migrating a database ORM across 45 files, or integrating a new payment gateway, jumping directly into file editing is catastrophic. Claude will begin altering files sequentially, discovering circular dependencies or schema mismatches 30 files in, forcing massive rollbacks and corrupting repository state.
+- **Using Plan Mode for Trivial Fixes**: Forcing a read-only architectural planning phase for a single-line null check with an unambiguous stack trace wastes turns and developer time.
+- **The Core Rule**: Evaluate **blast radius, ambiguity, and architectural divergence** before selecting the mode.
 
-### How it works
+### 2. When to Use Plan Mode
+Plan Mode (`Shift+Tab` / `/plan`) switches Claude Code into a safe, read-only architectural exploration state. It is strictly required when:
+- **Large-Scale Multi-File Changes**: The task touches multiple modules or services with cross-file contracts.
+- **Multiple Valid Architectural Approaches**: Choosing between Event-Driven Pub/Sub vs Polling requires evaluating trade-offs and getting human engineer approval before writing code.
+- **Unfamiliar Codebases with Hidden Dependencies**: You must understand existing conventions and call graphs before introducing new patterns.
 
-| Signal | Points to |
-|---|---|
-| Touches many files or services | Plan mode |
-| Architectural decision, several valid approaches | Plan mode |
-| Unfamiliar codebase, unclear scope | Plan mode |
-| Single file, clear cause, stack trace available | Direct execution |
-| One small addition (for example one validation) | Direct execution |
+### 3. The Explore Subagent: Context Preservation During Reconnaissance
+During Plan Mode, exploring a large monorepo requires running dozens of `Glob` and `Grep` commands, which can produce thousands of lines of output:
+- If this raw reconnaissance data is appended to the main conversation, the developer's context window fills with intermediate noise, degrading subsequent reasoning.
+- Claude Code uses the dedicated **Explore subagent** to perform discovery in an isolated context buffer.
+- The Explore subagent reads files, analyzes dependencies, and returns a concise, structured architectural summary to Plan Mode, leaving the main context clean and focused.
 
-- **Explore subagent**: reads and searches in isolation, then returns a summary. This keeps verbose discovery out of the main conversation.
-- **Hybrid**: investigate in plan mode, then switch to direct execution to implement what you approved.
-- The file-count threshold in `main.py` (`MULTI_FILE_THRESHOLD = 3`) is a **teaching heuristic**, not an official limit.
+### 4. The Two-Phase Hybrid Workflow
+The industry-standard production workflow combines both modes:
+1. **Phase 1 (Reconnaissance & Architecture in Plan Mode)**: Claude explores the codebase, maps service boundaries, designs the step-by-step implementation blueprint, and presents it to the engineer for review.
+2. **Phase 2 (Implementation in Direct Execution Mode)**: Once the human developer approves the blueprint, Claude switches into Direct Execution mode to execute surgical edits and run unit tests.
 
 ---
 

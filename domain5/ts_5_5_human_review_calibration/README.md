@@ -29,22 +29,32 @@
 
 ## Concepts Explained
 
-### 1. Aggregate accuracy can mislead
-If 90% of documents are easy and 10% are hard, a high overall number says little about the hard 10%.
+### 1. Simpson's Paradox: Why Aggregate Metrics Deceive Leadership
+In high-volume document automation and data extraction systems, reporting aggregate accuracy (e.g. *"Our extraction pipeline achieves 97.5% accuracy overall!"*) creates a dangerous illusion of production readiness.
 
-### 2. Stratified random sampling
-Sample **inside each stratum**: (document type, field). A flat 10% random sample may include no rare-segment items at all. Stratification guarantees coverage. Sample **high-confidence** outputs too. These are the ones automation would approve without a human seeing them.
+In enterprise operations, document distributions are heavily skewed:
+- 85% of volume consists of standard, cleanly printed domestic supplier invoices that achieve 99.8% extraction accuracy.
+- 15% of volume consists of complex, multi-currency foreign bills of lading with handwriting and non-standard layouts that suffer a catastrophic 40% failure rate.
+- Across the blended population, aggregate accuracy appears to be **90.8%** (or higher in larger volume imbalances). Engineering leadership automates the pipeline believing error rates are negligible, while finance teams are blindsided by millions of dollars in unpayable foreign trade disputes.
+- **Architectural Imperative**: Never automate based on aggregate accuracy. Measure and validate accuracy independently **by document type and field segment**.
 
-### 3. Per-segment validation first
-Before reducing review for a segment, measure its accuracy on labelled data. Require enough samples and a high enough accuracy for that segment.
+### 2. Stratified Random Sampling of High-Confidence Predictions
+When an extraction pipeline routes low-confidence items to human reviewers, high-confidence extractions are approved automatically without human inspection. How do you detect novel failure modes or model drift in automated throughput?
+- **Flat Random Sampling Fails**: If you sample 5% of all traffic completely at random, rare or specialized document types may receive zero representation in the audit batch.
+- **Stratified Random Sampling (5–10%)**: The pipeline partitions automated traffic into discrete strata `(document_type, field, vendor)` and samples a deterministic percentage from **within every individual stratum**.
+- Crucially, you must sample **high-confidence predictions** to discover "confidently wrong" hallucinations and measure the true background error rate of autonomous straight-through processing (STP).
 
-### 4. Field-level confidence, calibrated
-Ask the model for confidence **per field**. Then compare confidence against the truth on a **labelled validation set**. Calibrated means "items at 90% confidence are right about 90% of the time". Two simple checks:
-- **Reliability bins:** group items by stated confidence and compare with real accuracy.
-- **Expected calibration error (ECE):** size-weighted average gap between confidence and accuracy.
+### 3. Field-Level Confidence Calibration via Labeled Validation Sets
+Models do not natively output calibrated probabilities. A model reporting 0.95 confidence on an extracted date might only be correct 70% of the time on that specific document format.
+- **Field-Level Granularity**: Request confidence scores on individual extracted fields, not a single global score for the entire page. A model might be 99% confident in the invoice date, but only 45% confident in the line-item tax rate.
+- **Empirical Calibration**: Run the extraction model across a labeled holdout validation set and plot reliability diagrams (accuracy vs confidence bins) to compute the **Expected Calibration Error (ECE)**. A segment is calibrated when items assigned 90% confidence achieve approximately 90% accuracy.
+- Calibrate review thresholds independently per field: financial totals require a strict $\ge 0.95$ threshold, while internal document descriptions may permit straight-through processing at $\ge 0.80$.
 
-### 5. Route to humans on risk signals
-Send items to a human when confidence is low, the source is **ambiguous**, or sources **contradict** each other.
+### 4. Triaging to Human Review
+Automated pipelines should route an extraction to human reviewers under three explicit conditions:
+1. Calibrated field-level confidence falls below the segment's validated straight-through threshold.
+2. Source document exhibits internal ambiguity or poor scan quality.
+3. Multi-source analysis reveals contradictory facts between equally credible sources.
 
 ---
 
