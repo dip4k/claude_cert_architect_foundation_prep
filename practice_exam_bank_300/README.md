@@ -1,4 +1,4 @@
-# CCAR-F Exam Practice Question Bank (345 Questions)
+# CCAR-F Exam Practice Question Bank (385 Questions)
 ### Claude Certified Architect – Foundations (CCAR-F)
 **Aligned with the Official CCAR-F 27 Task Statements, Claude 4.5 Family, and Production Agentic Architectures**
 
@@ -8,7 +8,7 @@
 
 The CCAR-F exam evaluates real-world architectural decision-making, failure recovery, token economics, and governance across 60 scenario-based questions in a 120-minute testing window (passing score: **720 / 1000**).
 
-This question bank provides **345 scenario-based practice questions** (`Q1 – Q345`) with balanced answer keys (`A/B/C/D`), full option-by-option breakdowns, and Anti-Pattern alerts:
+This question bank provides **385 scenario-based practice questions** (`Q1 – Q385`) with balanced answer keys (`A/B/C/D` and `A–E` multi-response), collapsible `<details>` answer & explanation blocks, full option-by-option breakdowns, and Anti-Pattern alerts:
 
 > **Note on File Naming vs. Official Blueprint Domain Numbers:** Sets 04–09 keep their original filenames (`set_04_domain2...` through `set_09_domain4...`) so existing study links across `scenarios/` remain intact. Use the **Official Blueprint Mapping** column below to match each set to [EXAM_BLUEPRINT.md](../EXAM_BLUEPRINT.md).
 
@@ -20,7 +20,8 @@ This question bank provides **345 scenario-based practice questions** (`Q1 – Q
 | **Sets 08 – 09** | **Domain 2:** Tool Design & MCP Integration (**18%**) | Q216 – Q275 | **60** | JSON Schema descriptions, `tool_choice` constraints with thinking, actionable error feedback (`is_error` / `isError`), MCP primitives (`tools/*`, `resources/*`, `prompts/*`), OAuth 2.1, progressive tool discovery. |
 | **Set 10** | **Domain 5:** Context Management, Reliability & Governance (**15%**) | Q276 – Q305 | **30** | Autonomy Spectrum, Approval Fatigue, DLP sanitization, Least Privilege environment isolation, audit trails, OpenTelemetry tracing. |
 | **Set 11** | **Cross-Domain High-Yield CCAR-F Gaps** (**TS 1.7, 2.4–2.5, 3.1–3.5, 4.1–4.6, 5.2–5.6**) | Q306 – Q345 | **40** | Closed-loop extraction retries, fast-fail on missing facts, two-pass PR review & independent sessions, `VALID_EMPTY` vs. `UPSTREAM_FAILURE`, Simpson's Paradox & 5–10% stratified audits, nullable schemas, escalation & disambiguation, session forking, `Glob`/`Grep`/`Edit` fallback, Batch SLA math. |
-| **TOTAL** | **All 5 Domains (27 Task Statements)** | **Q1 – Q345** | **345** | **Full syllabus and scenario coverage.** |
+| **Set 12** | **Full-Spectrum Exam Simulation: Complex Passages & Multi-Response** (**All 5 Domains · TS 1.1–5.6 · Scenarios 1–6**) | Q346 – Q385 | **40** | Long multi-paragraph scenario passages (72–157 word stems), embedded JSON/YAML/Python/CI artifacts, realistic tie-breaker distractors, and 10 **"Select two"** (`A–E`) multi-response items across all 6 scenarios and 30 task statements. |
+| **TOTAL** | **All 5 Domains (TS 1.1 – 5.6)** | **Q1 – Q385** | **385** | **Full syllabus, scenario, passage, and multi-select coverage.** |
 
 ---
 
@@ -104,6 +105,11 @@ Each set is saved in a dedicated markdown file with complete answers, option-by-
     * Negative boundaries in rubrics, nullable `["string", "null"]` fields, `"other"`/`"unclear"` enums, multi-page tables, and two-pass thinking + schema extraction (TS 4.1, 4.3)
     * Immediate escalation on human demand, empathy vs. sentiment escalation, duplicate customer disambiguation, and preserving conflicting stats (TS 5.2, 5.6)
     * `--fork-session` + git branches, `STATE_SUMMARY.md` post-rebase recovery, `Glob` → `Grep` → chunked `Read`, 3-stage `Edit` fallback, `.mcp.json` `${ENV_VAR}`, `@import`/`/memory`, nested globs, Interview Pattern, and Batch SLA math (TS 1.7, 2.4, 2.5, 3.1, 3.3, 3.5, 4.5)
+
+12. [Set 12: Full-Spectrum Exam Simulation — Complex Passages & Multi-Response ("Select Two") Items (Q346 – Q385)](set_12_ccar_f_exam_simulation_passages.md)
+    * Dense, multi-paragraph production scenario passages across all 6 Scenarios and all 30 Task Statements (`TS 1.1 – 5.6`)
+    * 10 **"Select two"** (`A–E`) multi-response items testing paired architectural controls (e.g., Hub-and-Spoke + isolated briefs, `PreToolUse` + `PostToolUse`, `VALID_EMPTY` + `UPSTREAM_FAILURE`, `Glob/Grep/Read` + 3-stage `Edit`, `tool_use` + nullable schemas)
+    * Embedded Python loops, JSON schemas, `.claude/rules/` YAML frontmatter, and GitHub Actions CI configs with realistic tie-breaker distractors
 
 ---
 
